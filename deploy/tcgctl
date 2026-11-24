@@ -9,6 +9,7 @@ guest_script=/opt/tcg-hub/current/deploy/ubuntu.sh
 engine_file="$PREFIX/var/lib/tcg-hub/db-engine"
 native_state="$PREFIX/var/lib/tcg-hub-native"
 native_script="$PREFIX/libexec/tcg-hub/native-db.sh"
+guest_stop="$PREFIX/libexec/tcg-hub/stop-guest.py"
 mkdir -p "$backups" "$HOME/tcg-import"
 exec 9>"$HOME/.tcg-control.lock"
 flock -n 9 || { echo 'Another TCG management command is active.' >&2; exit 1; }
@@ -86,13 +87,38 @@ write_native_service() {
     mv -f "$tmp" "$target"
   done
 }
+install_guest_controls() {
+  local svc dir tmp
+  [[ -x $PREFIX/bin/python && -r $release/deploy/stop-guest.py ]] || {
+    echo 'Guest controls require Termux python and deploy/stop-guest.py in the release.' >&2; return 1
+  }
+  install -d -m 0700 "$(dirname "$guest_stop")"
+  tmp=$(mktemp "${guest_stop}.XXXXXX")
+  install -m 0600 "$release/deploy/stop-guest.py" "$tmp"
+  mv -f "$tmp" "$guest_stop"
+  for svc in worker api tunnel; do
+    dir="$svroot/tcg-$svc"
+    [[ -x $dir/run ]] || { echo "Missing tcg-$svc service." >&2; return 1; }
+    mkdir -p "$dir/control"
+    tmp=$(mktemp "$dir/control/.t.XXXXXX")
+    printf '#!%s/bin/sh\nexec "%s/bin/python" "%s" "%s"\n' "$PREFIX" "$PREFIX" "$guest_stop" "$svc" > "$tmp"
+    chmod 0700 "$tmp"
+    mv -f "$tmp" "$dir/control/t"
+  done
+}
+stop_service() {
+  local wait_seconds=60
+  # Let active HTTP reads reach their timeout and complete rollback at a batch boundary.
+  if [[ $1 == worker ]]; then wait_seconds=180; fi
+  sv -w "$wait_seconds" stop "$svroot/tcg-$1"
+}
 enable() {
   rm -f "$svroot/tcg-$1/down"
   sv up "$svroot/tcg-$1"
 }
 disable() {
   touch "$svroot/tcg-$1/down"
-  sv -w 60 stop "$svroot/tcg-$1"
+  stop_service "$1"
 }
 hold_writers() {
   for member in tunnel worker api; do disable "$member"; done
@@ -146,6 +172,7 @@ case "$cmd" in
       add_service "${member%:*}" "${member#*:}"
     done
     if [[ $engine == native ]]; then write_native_service "$svroot/tcg-db"; fi
+    install_guest_controls
     cat > "$HOME/.termux/boot/30-tcg-services" <<BOOT
 #!$PREFIX/bin/sh
 termux-wake-lock
@@ -164,6 +191,7 @@ BOOT
     mv -f "$completed" "$(dirname "$engine_file")/installed-manifest"
     echo 'Database prepared. Use tcgctl start-local for local access or restore a backup first.'
     ;;
+  service-controls) install_guest_controls ;;
   token)
     read -rsp 'Cloudflare tunnel token: ' token
     echo
@@ -217,7 +245,7 @@ BOOT
     done
     resume() { for member in "${members[@]}"; do sv up "$svroot/tcg-$member" || true; done; }
     trap resume EXIT
-    for member in tunnel worker api; do sv -w 60 stop "$svroot/tcg-$member"; done
+    for member in tunnel worker api; do stop_service "$member"; done
     if [[ $engine == native ]]; then
       work=$(mktemp -d "$native_state/.dump.XXXXXX")
       trap 'rm -rf -- "$work"; resume' EXIT
@@ -230,7 +258,7 @@ BOOT
   restore)
     for member in tunnel worker api; do
       [[ -e $svroot/tcg-$member/down ]] || { echo 'Use tcgctl maintenance before restore.' >&2; exit 1; }
-      sv -w 60 stop "$svroot/tcg-$member"
+      stop_service "$member"
     done
     restore_guest() { proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" "$@"; }
     if [[ $engine == native ]]; then
@@ -242,5 +270,5 @@ BOOT
       restore_guest restore "$@"
     fi
     ;;
-  *) echo 'tcgctl install [--local]|configure-public|token|x-token|start-local|start|status|maintenance|stop|account|media|backup|restore'; exit 2;;
+  *) echo 'tcgctl install [--local]|service-controls|configure-public|token|x-token|start-local|start|status|maintenance|stop|account|media|backup|restore'; exit 2;;
 esac

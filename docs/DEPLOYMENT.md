@@ -127,7 +127,20 @@ tcgctl status
 
 - **백업** — `tcgctl backup`은 터널·워커·API를 잠시 중지하고 PostgreSQL custom-format dump, 공개 미디어와 미처리 spool, SHA-256 목록을 `$HOME/tcg-backups/<백업명>/`에 만든 뒤 이전 서비스 활성 상태를 복원한다. 백업 중에는 서비스가 잠시 오프라인이다. 개인 콘텐츠와 인증 해시가 들어 있으므로 기기 밖에 보관할 복사본은 암호화한다. 터널 토큰·DB 비밀번호·JWT 키는 별도로 관리한다.
 - **복구** — 새 설치의 4단계에서 `tcgctl install`까지만 실행한다. 백업 디렉터리를 Termux 전용 `$HOME/tcg-backups/`로 옮기고 `tcgctl restore 20261124T120000Z-1234`처럼 실제 백업명을 전달한다. 자신이 생성해 보관한 백업을 사용한다. 복구는 빈 미디어 디렉터리와 아직 Flyway를 실행하지 않은 전용 DB에서 동작한다. 중간에 끊기면 같은 백업명으로 재실행한다. 이어서 `tcgctl start-local`로 카드 수·이미지·계정 및 대기열을 확인하고, 새 토큰을 입력한 뒤 `tcgctl start`로 공개한다.
-- **업데이트** — PC에서 새 릴리스를 생성하고 A90에서 `tcgctl backup`, `tcgctl maintenance` 순으로 실행한다. 새 빈 디렉터리(예: `$HOME/tcg-release-next`)에 검증한 배포본을 풀고 그 안의 `deploy/tcgctl`을 `$PREFIX/bin/tcgctl`에 설치한다. `TCG_RELEASE_DIR="$HOME/tcg-release-next" tcgctl install` 후 `tcgctl start`로 새 마이그레이션을 적용한다. 스키마를 변경한 버전의 롤백은 이전 릴리스와 배포 직전 백업을 새 설치에 복원한다.
+- **업데이트** — 체크섬을 확인한 새 배포본을 Termux 전용 빈 디렉터리에 풀고, 해당 디렉터리의 `MANIFEST.sha256`도 확인한다. 이전 배포본을 사용 중인 A90의 첫 업데이트에서는 아래 명령으로 실행 중인 서비스에 종료 처리를 먼저 등록한다. 이어 백업과 유지보수 모드를 거쳐 설치한다. 로컬 배포는 `install --local`과 `start-local`을 사용한다. 이미 외부에 공개 중인 배포는 마지막 두 명령을 `tcgctl install`, `tcgctl start`로 바꾼다. 스키마를 변경한 버전의 롤백은 이전 릴리스와 배포 직전 백업을 새 설치에 복원한다.
+
+```bash
+export TCG_RELEASE_DIR="$HOME/tcg-release-next"
+(cd "$TCG_RELEASE_DIR" && sha256sum --quiet --check MANIFEST.sha256) &&
+  install -m 0700 "$TCG_RELEASE_DIR/deploy/tcgctl" "$PREFIX/bin/tcgctl" &&
+  tcgctl service-controls &&
+  tcgctl backup &&
+  tcgctl maintenance &&
+  tcgctl install --local &&
+  tcgctl start-local
+```
+
+`service-controls`는 워커·API·터널 각각의 runit 디렉터리에 종료 처리를 등록한다. `maintenance`와 `backup`은 PRoot 하위에서 실제 실행 중인 서비스 프로세스에 TERM을 전달한 뒤 종료를 기다린다. 워커가 진행 중인 HTTP 요청과 DB 작업을 정리할 수 있도록 최대 180초를 기다린다.
 
 ## 8. 자동 수집과 모바일 운영
 
