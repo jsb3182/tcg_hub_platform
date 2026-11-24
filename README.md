@@ -19,7 +19,7 @@
 3. `backend`에서 `mvn spring-boot:run`을 실행한다. Flyway가 마이그레이션을 적용하고 Spring이 루프백 8080에서 대기한다. `frontend`에서 `npm ci`, `npm run dev`를 실행하고 브라우저에서 `http://localhost:5173`을 연다.
 4. [워커 운영 가이드](crawler-middleware/README.md)에 따라 Python 환경을 설치한 뒤 `python -m tcg_worker run`을 실행한다. 다섯 게임 도감과 발행처 공지의 초기 수집이 시작된다. 기존 정적 사이트의 `js/app.js`, `imgd/`, `pk/`도 사용할 경우 `check-legacy`로 건수와 시트를 확인하고 `import-legacy`로 이관한다.
 
-PWA 설치와 오프라인 동작은 배포 빌드에서 확인한다. 운영자는 모바일·PC에서 Cloudflare Access와 관리자 계정으로 `/admin`에 접속한다. 계정은 A90의 관리 명령으로 만든다.
+PWA 설치와 오프라인 동작은 배포 빌드에서 확인한다. A90 내부에서는 Termux에서 관리자 계정과 인증 앱을 등록한 뒤 휴대폰 브라우저의 `http://127.0.0.1:8080/admin`에서 비밀번호와 인증 코드를 입력한다. 공개 도메인에서는 Cloudflare Access와 관리자 계정으로 접속한다. [계정 등록과 접속 절차](docs/DEPLOYMENT.md)
 
 ### 검증
 

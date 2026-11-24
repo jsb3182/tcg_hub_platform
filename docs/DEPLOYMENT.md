@@ -20,7 +20,7 @@ bash deploy/build-release.sh
 d=/sdcard/Download/tcg-hub/DIGEST12; [ -r "$d/bootstrap-termux.sh" ] || { termux-setup-storage; read -rp 'Allow storage, then press Enter: '; }; bash "$d/bootstrap-termux.sh" --proof
 ```
 
-스크립트가 앱 전용 저장소의 복사본에서 압축 파일과 내부 매니페스트를 검증하고, 옆에 있는 실행 스크립트도 패키지의 원본과 대조한다. 필요한 Termux 패키지와 Ubuntu 24.04를 준비한 뒤 `tcgctl install --local`, `tcgctl start-local`을 실행한다. 폰의 브라우저에서 `http://127.0.0.1:8080/`을 연다. 루프백으로만 카드·뉴스 조회가 열리고, Access 설정이 없는 동안 관리자 화면과 관리자 API는 접근을 거부한다. 이 설치로 Cloudflare 계정이나 터널 토큰을 만들지 않는다.
+스크립트가 앱 전용 저장소의 복사본에서 압축 파일과 내부 매니페스트를 검증하고, 옆에 있는 실행 스크립트도 패키지의 원본과 대조한다. 필요한 Termux 패키지와 Ubuntu 24.04를 준비한 뒤 `tcgctl install --local`, `tcgctl start-local`을 실행한다. 폰의 브라우저에서 `http://127.0.0.1:8080/`을 열어 카드와 뉴스를 조회한다. 관리자는 4단계에서 인증 앱을 등록한 뒤 같은 기기에서 로그인한다.
 
 `--proof`를 주면 정상 readiness 응답과 5종목 목록을 실제로 조회한 후 같은 폴더에 `tcg-hub-ready.json`을 원자적으로 기록한다. 파일에는 압축 파일의 SHA-256, 상태, 게임 수와 UTC 확인 시각이 들어간다. PC에서는 이번 전송 이후의 확인 시각과 동일한 릴리스 해시를 대조한다. 기록이 필요 없으면 `--proof`를 생략한다. 같은 로컬 릴리스에서 다시 실행하면 DB와 기존 데이터를 보존한다.
 
@@ -91,6 +91,15 @@ tcgctl account admin@example.com ROLE_ADMIN
 
 계정 명령에서 관리자의 실제 이메일과 암호를 입력한다. 비밀번호는 BCrypt 해시로 저장되고 이미 존재하는 이메일은 거부된다. 일반 계정은 같은 명령의 마지막 인수로 `ROLE_USER`를 사용한다. CLI의 표준 입력이 터미널이 아닌 경우에는 암호 한 줄을 비밀 입력으로 전달한다. HTTPS 브라우저 로그인은 5단계에서 확인한다.
 
+### A90에서 로컬 관리자 로그인
+
+1. `tcgctl start-local`로 앱을 기동한다. 관리자 계정이 없으면 Termux에서 `tcgctl account admin@example.com ROLE_ADMIN`을 실행해 자신의 이메일과 암호로 계정을 만든다.
+2. **A90의 Termux 터미널**에서 `tcgctl totp admin@example.com`을 실행한다. 인증 앱의 수동 등록 화면에서 키 종류를 시간 기반으로 지정하고 표시된 설정 키를 입력한다. 기본값은 SHA-1, 6자리, 30초다. 인증 앱이 설정 URI 입력을 지원하면 같은 화면에 표시된 URI를 사용할 수 있다. 인증 앱의 6자리 코드를 Termux에 입력하면 등록이 완료된다. [TOTP 규격](https://www.rfc-editor.org/rfc/rfc6238.html)
+3. A90의 브라우저로 `http://127.0.0.1:8080/login?to=admin`을 연다. 관리자 이메일과 암호로 로그인하고 **다음 6자리 코드**를 입력한다. 등록 확인에 사용한 코드는 이미 소비됐다. 인증 앱의 시각이 어긋나면 Android의 자동 날짜 및 시간을 확인한다.
+4. 인증 앱을 교체하거나 분실하면 기기를 직접 열고 `tcgctl totp admin@example.com --rotate`를 실행한다. 새 앱의 코드 확인과 교체가 성공하면 기존 로컬 관리자 세션이 만료된다. 교체가 취소되거나 코드가 틀리면 기존 앱과 세션을 계속 사용할 수 있다.
+
+공개 HTTPS 배포에서는 Cloudflare Access가 관리자를 인증한다. 로컬 등록 명령은 `http://127.0.0.1:8080` 전용 설치에서만 실행할 수 있다.
+
 ## 5. 도감 마이그레이션과 공개
 
 기존 사이트에서 `js/app.js`, `imgd/`, `pk/`를 디렉터리 구조 그대로 Termux의 `$HOME/tcg-import/`에 준비한다. 새로 업로드한 원본을 대기열에 넣을 때도 여기에 파일을 옮긴 뒤 DB의 실제 카드 variant ID를 지정한다.
@@ -125,7 +134,7 @@ tcgctl status
 
 백업은 DB 데이터 디렉터리와 독립적인 논리 덤프다. 선택한 서버에 맞는 `pg_dump`와 `pg_restore`를 사용한다. PostgreSQL 18 서버를 Ubuntu 기본 클라이언트 16으로 덤프하면 버전 검사에서 실패한다. PostgreSQL 16에서 만든 덤프를 18로 옮길 때에는 대상에 호환되는 PostGIS를 설치한 뒤 복구한다. 반대 방향의 메이저 버전 다운그레이드는 PostgreSQL이 복원을 보장하지 않는다. 새 엔진에서 PostGIS 버전, 도감 수와 스프라이트를 확인할 때까지 원본 백업을 보관한다. [pg_dump 버전 호환성](https://www.postgresql.org/docs/18/app-pgdump.html#PG-DUMP-NOTES) · [pg_restore](https://www.postgresql.org/docs/18/app-pgrestore.html)
 
-- **백업** — `tcgctl backup`은 터널·워커·API를 잠시 중지하고 PostgreSQL custom-format dump, 공개 미디어와 미처리 spool, SHA-256 목록을 `$HOME/tcg-backups/<백업명>/`에 만든 뒤 이전 서비스 활성 상태를 복원한다. 백업 중에는 서비스가 잠시 오프라인이다. 개인 콘텐츠와 인증 해시가 들어 있으므로 기기 밖에 보관할 복사본은 암호화한다. 터널 토큰·DB 비밀번호·JWT 키는 별도로 관리한다.
+- **백업** — `tcgctl backup`은 터널·워커·API를 잠시 중지하고 PostgreSQL custom-format dump, 공개 미디어와 미처리 spool, SHA-256 목록을 `$HOME/tcg-backups/<백업명>/`에 만든 뒤 이전 서비스 활성 상태를 복원한다. 백업 중에는 서비스가 잠시 오프라인이다. 덤프에는 계정·콘텐츠와 등록된 TOTP 비밀 키가 포함되므로 기기 밖에 보관할 복사본은 암호화한다. 터널 토큰·DB 비밀번호·JWT 키는 별도로 관리한다.
 - **복구** — 새 설치의 4단계에서 `tcgctl install`까지만 실행한다. 백업 디렉터리를 Termux 전용 `$HOME/tcg-backups/`로 옮기고 `tcgctl restore 20261124T120000Z-1234`처럼 실제 백업명을 전달한다. 자신이 생성해 보관한 백업을 사용한다. 복구는 빈 미디어 디렉터리와 아직 Flyway를 실행하지 않은 전용 DB에서 동작한다. 중간에 끊기면 같은 백업명으로 재실행한다. 이어서 `tcgctl start-local`로 카드 수·이미지·계정 및 대기열을 확인하고, 새 토큰을 입력한 뒤 `tcgctl start`로 공개한다.
 - **업데이트** — 체크섬을 확인한 새 배포본을 Termux 전용 빈 디렉터리에 풀고, 해당 디렉터리의 `MANIFEST.sha256`도 확인한다. 이전 배포본을 사용 중인 A90의 첫 업데이트에서는 아래 명령으로 실행 중인 서비스에 종료 처리를 먼저 등록한다. 이어 백업과 유지보수 모드를 거쳐 설치한다. 로컬 배포는 `install --local`과 `start-local`을 사용한다. 이미 외부에 공개 중인 배포는 마지막 두 명령을 `tcgctl install`, `tcgctl start`로 바꾼다. 스키마를 변경한 버전의 롤백은 이전 릴리스와 배포 직전 백업을 새 설치에 복원한다.
 

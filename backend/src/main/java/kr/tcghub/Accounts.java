@@ -25,7 +25,7 @@ class Accounts {
     static final Duration REFRESH_LIFETIME = Duration.ofDays(14);
     private final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder();
     private final String dummyHash = passwords.encode(UUID.randomUUID().toString());
-    private final SecureRandom random = new SecureRandom();
+    private static final SecureRandom RANDOM = new SecureRandom();
     private final JdbcClient db;
     private final Tokens tokens;
 
@@ -86,9 +86,7 @@ class Accounts {
     }
 
     private Session newSession(Account user) {
-        byte[] entropy = new byte[32];
-        random.nextBytes(entropy);
-        String refresh = Base64.getUrlEncoder().withoutPadding().encodeToString(entropy);
+        String refresh = randomToken();
         db.sql("delete from refresh_session where expires_at<=now()").update();
         db.sql("insert into refresh_session(user_id,token_hash,expires_at) values(?,?,now() + (? * interval '1 second'))")
                 .param(user.id()).param(hash(refresh)).param(REFRESH_LIFETIME.toSeconds()).update();
@@ -99,7 +97,13 @@ class Accounts {
         return value.getBytes(StandardCharsets.UTF_8).length > 72;
     }
 
-    private static String hash(String token) {
+    static String randomToken() {
+        byte[] entropy = new byte[32];
+        RANDOM.nextBytes(entropy);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(entropy);
+    }
+
+    static String hash(String token) {
         if (token == null || token.length() != 43) throw unauthorized();
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")

@@ -1,15 +1,29 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { request } from '../api'
+import { ApiError, request } from '../api'
 
 export const useSession = defineStore('session', () => {
   const account = ref(null)
   const ready = ref(false)
   const error = ref('')
   const adminAccessBlocked = ref(false)
+  const adminMode = ref(null)
   const isAdmin = computed(() => account.value?.role === 'ROLE_ADMIN')
   let initPromise
   let refreshPromise
+  let modePromise
+
+  function loadAdminMode() {
+    if (adminMode.value) return Promise.resolve(adminMode.value)
+    if (!modePromise) {
+      modePromise = request('/auth/admin-mode', { privateRequest: true }).then(({ mode }) => {
+        if (!['LOCAL_TOTP', 'CLOUDFLARE', 'DISABLED'].includes(mode)) throw new ApiError(502)
+        adminMode.value = mode
+        return mode
+      }).finally(() => { modePromise = null })
+    }
+    return modePromise
+  }
 
   // Cross-tab requests share one rotating cookie, even though each tab has its own access token.
   function serialize(operation) {
@@ -52,19 +66,24 @@ export const useSession = defineStore('session', () => {
       error.value = ''
     })
   }
+  async function authenticatedRequest(path, options) {
+    const load = () => request(path, { ...options, token: account.value?.accessToken, privateRequest: true })
+    try { return await load() }
+    catch (cause) { if (cause.status !== 401) throw cause }
+    await refresh()
+    return load()
+  }
   async function adminRequest(path, options = {}) {
-    const load = () => request('/admin' + path, { ...options, token: account.value?.accessToken, privateRequest: true })
     try {
-      try { return await load() }
-      catch (cause) {
-        if (cause.status !== 401) throw cause
-      }
-      await refresh()
-      return await load()
+      return await authenticatedRequest('/admin' + path, options)
     } catch (cause) {
       if (isAdmin.value && [401, 403].includes(cause.status)) adminAccessBlocked.value = true
       throw cause
     }
   }
-  return { account, ready, isAdmin, adminAccessBlocked, error, initialize, login, logout, adminRequest }
+  function verifyLocalCode(code, signal) {
+    return authenticatedRequest('/auth/local-admin', { method: 'POST', body: { code }, signal })
+  }
+  return { account, ready, isAdmin, adminAccessBlocked, adminMode, error, initialize, login, logout,
+    loadAdminMode, adminRequest, verifyLocalCode }
 })
