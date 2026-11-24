@@ -13,6 +13,9 @@ config=/etc/tcg-hub
 base=/opt/tcg-hub
 source "$release/deploy/exposure.sh"
 local_origin=http://127.0.0.1:8080
+if [[ -e /var/lib/postgresql/tcg-hub/PG_VERSION && ( ! -s $config/postgres.pw || ! -s $config/runtime.env ) ]]; then
+  echo 'Existing Ubuntu database requires its original credentials and runtime settings.' >&2; exit 1
+fi
 if [[ -s $config/runtime.env ]]; then
   # Pre-access.env releases kept the three settings in the private runtime file.
   source "$config/runtime.env"
@@ -44,19 +47,26 @@ if [[ ! -e /usr/sbin/policy-rc.d ]]; then
   trap 'rm -f /usr/sbin/policy-rc.d' EXIT
 fi
 apt-get update
-apt-get install -y --no-install-recommends ca-certificates curl openjdk-17-jre-headless postgresql-16 postgresql-16-postgis-3 python3-venv libpq5 openssl
+case ${TCG_DB_ENGINE:-guest} in
+  native) db_packages=(postgresql-client-16);;
+  guest) db_packages=(postgresql-16 postgresql-16-postgis-3);;
+  *) echo 'Unknown database engine.' >&2; exit 2;;
+esac
+apt-get install -y --no-install-recommends ca-certificates curl openjdk-17-jre-headless "${db_packages[@]}" python3-venv libpq5 openssl
 if [[ $PUBLIC_ORIGIN != "$local_origin" ]]; then install_tunnel_package; fi
 apt-get clean
 id tcgapp >/dev/null 2>&1 || useradd --system --create-home --user-group tcgapp
 id tcgtunnel >/dev/null 2>&1 || useradd --system --create-home --user-group tcgtunnel
 install -d -m 0755 "$config" "$base" "$base/releases"
 install -d -m 0700 -o tcgapp -g tcgapp /var/lib/tcg-hub /var/lib/tcg-hub/{media,spool,catalog-cache}
-install -d -m 0700 -o postgres -g postgres /var/lib/postgresql/tcg-hub
+if [[ ${TCG_DB_ENGINE:-guest} == guest ]]; then
+  install -d -m 0700 -o postgres -g postgres /var/lib/postgresql/tcg-hub
+fi
 if [[ ! -s $config/postgres.pw ]]; then
   [[ ! -e /var/lib/postgresql/tcg-hub/PG_VERSION ]] || { echo 'Existing cluster needs its original postgres.pw.' >&2; exit 1; }
   openssl rand -hex 32 > "$config/postgres.pw"
 fi
-chown postgres:postgres "$config/postgres.pw"
+if [[ ${TCG_DB_ENGINE:-guest} == guest ]]; then chown postgres:postgres "$config/postgres.pw"; fi
 chmod 0600 "$config/postgres.pw"
 write_access_settings "$PUBLIC_ORIGIN" "${CF_TEAM_DOMAIN:-}" "${CF_AUDIENCE:-}"
 if [[ ! -s $config/runtime.env ]]; then

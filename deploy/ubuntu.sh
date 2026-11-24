@@ -39,6 +39,18 @@ admin_db() {
   PGUSER=postgres PGPASSWORD="$(cat "$config/postgres.pw")" "$@"
 }
 case "$cmd" in
+  native-auth)
+    # The bind target is a private Termux directory, never Android shared storage.
+    dest=/mnt/tcg-auth/postgres.pw
+    if [[ -e $dest ]]; then
+      cmp -s "$config/postgres.pw" "$dest" || { echo 'Native and guest database credentials differ.' >&2; exit 1; }
+    else
+      tmp=$(mktemp /mnt/tcg-auth/.pw.XXXXXX)
+      trap 'rm -f -- "$tmp"' EXIT
+      cat "$config/postgres.pw" > "$tmp"
+      mv -T "$tmp" "$dest"
+    fi
+    ;;
   configure-public)
     [[ $# == 3 ]] && valid_public_settings "$1" "$2" "$3" || { echo 'Expected HTTPS_ORIGIN TEAM.cloudflareaccess.com APP_AUD.' >&2; exit 2; }
     export DEBIAN_FRONTEND=noninteractive
@@ -102,13 +114,17 @@ SQL
     target="$parent/$(date -u +%Y%m%dT%H%M%SZ)-$$"
     tmp=$(mktemp -d "$parent/.incomplete.XXXXXX")
     trap 'rm -rf -- "$tmp"' EXIT
-    admin_db pg_dump --format=custom --file="$tmp/db.dump"
+    if [[ ${1:-} == --native ]]; then
+      cp /mnt/tcg-native/db.dump "$tmp/db.dump"
+    else
+      admin_db pg_dump --format=custom --file="$tmp/db.dump"
+    fi
     tar -C "$state" -czf "$tmp/files.tar.gz" media spool
     (cd "$tmp" && sha256sum db.dump files.tar.gz > SHA256SUMS)
     mv -T "$tmp" "$target"
     echo "Created ${target##*/}"
     ;;
-  restore)
+  restore|restore-stage|restore-finish)
     [[ ${1:-} =~ ^[0-9]{8}T[0-9]{6}Z-[0-9]+$ ]] || { echo 'restore expects a backup directory name' >&2; exit 2; }
     cd "/mnt/tcg-backups/$1"
     sha256sum --check SHA256SUMS
@@ -117,6 +133,7 @@ SQL
     if [[ -d $staging ]]; then
       [[ $(cat "$staging/backup-name") == "$1" ]] || { echo 'Finish the active backup restore first.' >&2; exit 1; }
     else
+      [[ $cmd != restore-finish ]] || { echo 'Missing staged restore.' >&2; exit 1; }
       [[ $blank == t && -z $(find "$state/media" "$state/spool" -mindepth 1 -print -quit) ]] || {
         echo 'Restore requires a fresh database and empty media and spool directories.' >&2; exit 1;
       }
@@ -127,9 +144,13 @@ SQL
       echo "$1" > "$temp/backup-name"
       mv -T "$temp" "$staging"
     fi
-    if [[ $blank == t ]]; then
+    if [[ $cmd == restore-stage ]]; then exit 0; fi
+    if [[ $cmd == restore && $blank == t ]]; then
       admin_db pg_restore --exit-on-error --single-transaction --dbname="$PGDATABASE" db.dump
     fi
+    [[ $(admin_db psql -XAtc "SELECT to_regclass('public.flyway_schema_history') IS NOT NULL") == t ]] || {
+      echo 'Database restore has not completed.' >&2; exit 1;
+    }
     for directory in media spool; do
       if [[ -d $staging/$directory ]]; then mv -T "$staging/$directory" "$state/$directory"; fi
     done

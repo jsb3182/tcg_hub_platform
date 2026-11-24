@@ -37,6 +37,8 @@ echo "$*" >> "$TCG_FIXTURE/calls"
 case "$*" in
 install\ --local)
   digest=$(sha256sum "$TCG_RELEASE_DIR/MANIFEST.sha256" | cut -c1-20)
+  mkdir -p "$PREFIX/var/lib/tcg-hub"
+  echo "$digest" > "$PREFIX/var/lib/tcg-hub/installed-manifest"
   echo "/opt/tcg-hub/releases/$digest" > "$TCG_FIXTURE/installed"
   for service in db api worker tunnel; do
     dir="$PREFIX/var/service/tcg-$service"
@@ -89,6 +91,9 @@ printf '%s  %s\n' "$digest" "$archive" > "$folder/$archive.sha256"
 bash "$script" --proof
 [[ $(grep -Fxc 'install --local' "$fixture/calls") == 1 ]]
 [[ $(grep -Fxc 'start-local' "$fixture/calls") == 2 ]]
+rm -- "$PREFIX/var/lib/tcg-hub/installed-manifest"
+bash "$script" --proof > /dev/null
+[[ $(grep -Fxc 'install --local' "$fixture/calls") == 2 ]]
 python - "$folder/tcg-hub-ready.json" "$digest" <<'PY'
 import json, sys
 from datetime import datetime

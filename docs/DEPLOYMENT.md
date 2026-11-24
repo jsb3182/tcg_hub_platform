@@ -1,6 +1,6 @@
 # Galaxy A90 홈서버 배포
 
-PC에서 Vue 정적 파일과 Java 실행 JAR를 빌드하고, A90에서는 Ubuntu 24.04 ARM64의 PostgreSQL 16·PostGIS 3, Java 17, Python 워커 한 개, Cloudflare 터널을 실행한다. 공용 HTTPS 주소는 하나다. 터널의 HTTP 원본은 `127.0.0.1:8080`이고 PostgreSQL은 `127.0.0.1:5432`에만 바인딩한다. 공유기의 포트포워딩은 사용하지 않는다.
+PC에서 Vue 정적 파일과 Java 실행 JAR를 빌드한다. A90에서는 Ubuntu 24.04 ARM64에서 Java 17과 Python 워커 한 개를 실행하고, 공개 배포 시 Cloudflare 터널을 연결한다. 이 기기의 Google Play판 Termux에서는 PostgreSQL과 PostGIS를 Termux에서 직접 실행한다. 터널의 HTTP 원본은 `127.0.0.1:8080`이며 DB 연결은 `127.0.0.1:5432`로 제한한다.
 
 ## 1. PC에서 배포본 만들기
 
@@ -54,11 +54,22 @@ install -m 700 "$HOME/tcg-release/deploy/tcgctl" "$PREFIX/bin/tcgctl"
 
 ## 4. DB·런타임 준비
 
-아래의 세 값을 2단계에서 정한 실제 HTTPS origin, 팀 도메인, 64자리 앱 AUD로 바꾼다. `tcgctl install`은 Ubuntu 패키지와 가상환경을 설치하고 PostgreSQL을 먼저 기동한다. 비밀번호와 JWT 서명 키를 기기에서 생성해 `/etc/tcg-hub`에 저장하며 재실행할 때 기존 값을 사용한다. [Ubuntu ARM64 PostGIS 패키지](https://packages.ubuntu.com/noble/postgresql-16-postgis-3) · [cloudflared 서명 패키지](https://pkg.cloudflare.com/)
+아래의 세 값을 2단계에서 정한 실제 HTTPS origin, 팀 도메인, 64자리 앱 AUD로 바꾼다. `tcgctl install`은 서비스 패키지와 Python 가상환경을 설치하고 PostgreSQL을 먼저 기동한다. Ubuntu의 `/etc/tcg-hub`에는 앱 DB 암호와 JWT 서명 키를 저장한다. [cloudflared 서명 패키지](https://pkg.cloudflare.com/)
 
 ```bash
 tcgctl install https://cards.example.com your-team.cloudflareaccess.com YOUR_64_HEX_APP_AUD
 ```
+
+### Termux 배포처별 PostgreSQL
+
+| 설치 환경 | PostgreSQL 실행 위치 | 데이터 디렉터리 |
+| --- | --- | --- |
+| A90 Google Play판 신규 설치 | Termux의 `postgresql`·`postgis` 패키지. A90에서 PostgreSQL 18과 PostGIS 3.6 조합을 확인했다. | Termux의 `$PREFIX/var/lib/tcg-hub-native/data` |
+| F-Droid판 신규 설치와 기존 Ubuntu 클러스터 | Ubuntu 24.04의 PostgreSQL 16·PostGIS 3 | Ubuntu의 `/var/lib/postgresql/tcg-hub` |
+
+Play판 PRoot에서 Ubuntu의 `initdb`가 `expected absolute path: "--shm-helper"`로 실패할 수 있다. PRoot가 공유 메모리 도우미를 `/proc/self/exe`로 시작할 때 이 경로가 Android 링커를 가리키기 때문이다. Termux의 PostgreSQL 패키지는 Android 공유 메모리 라이브러리를 사용한다. 두 구성 모두 Ubuntu의 Spring과 워커가 같은 루프백 주소로 SCRAM 인증을 수행한다. [PRoot 공유 메모리 구현](https://github.com/termux/proot/blob/v5.1.107.80/src/extension/sysvipc/sysvipc_shm.c#L141-L146) · [Play판 Termux 변경 사항](https://github.com/termux-play-store#readme) · [Ubuntu ARM64 PostGIS 패키지](https://packages.ubuntu.com/noble/postgresql-16-postgis-3)
+
+`tcgctl status`에서 선택한 엔진과 DB 서비스 상태를 확인한다. 설치 시 선택값은 Termux 전용 `$PREFIX/var/lib/tcg-hub/db-engine`에 기록된다. 신규 설치에서 엔진을 지정할 때는 `TCG_DB_ENGINE=native tcgctl install --local` 또는 `TCG_DB_ENGINE=guest tcgctl install --local`을 실행한다. 기존 DB를 다른 엔진으로 옮길 때는 7단계의 논리 백업과 새 설치 복구를 사용한다. 네이티브 DB의 관리 암호 파일은 `$PREFIX/var/lib/tcg-hub-native/auth/postgres.pw`에 모드 0600으로 저장된다. Termux 패키지 업데이트로 PostgreSQL의 메이저 버전이 바뀔 예정이면 업데이트 전에 백업한다. 서버와 데이터 디렉터리의 메이저 버전이 다르면 기동 스크립트가 중단된다.
 
 이미 `--local`로 설치한 경우에는 Cloudflare에서 도메인·Access 앱·공개 라우트를 구성한 뒤 아래 명령으로 전환한다. `configure-public`은 커넥터를 설치하고 공개 식별자만 `/etc/tcg-hub/access.env`에 기록하므로 기존 DB, JWT 서명 키와 소스 토큰을 보존한다. `tcgctl start`와 재부팅 시 터널 서비스 모두 HTTPS origin·Access 팀 도메인·AUD·커넥터 토큰을 확인한다. Access 정책과 터널 라우트의 실제 적용 여부는 5단계에서 외부 회선으로 확인한다.
 
@@ -103,7 +114,7 @@ tcgctl status
 | 항목 | 기본값과 확인 방법 |
 | --- | --- |
 | Spring | `-Xms256m -Xmx1024m -XX:ActiveProcessorCount=2`, Hikari 최대 4개, Tomcat 최대 16개. RSS에는 힙 외에 스레드·클래스·네이티브 메모리가 포함된다. |
-| PostgreSQL | `shared_buffers=96MB`, `work_mem=2MB`, 최대 연결 16개, 병렬 쿼리 워커 0개. DB 파일은 Ubuntu의 `/var/lib/postgresql/tcg-hub`에 저장한다. |
+| PostgreSQL | 네이티브·Ubuntu 구성 모두 `shared_buffers=96MB`, `work_mem=2MB`, `maintenance_work_mem=32MB`, 최대 연결 16개, 병렬 쿼리 워커 0개. `work_mem`은 정렬·해시 같은 개별 쿼리 연산에 적용된다. |
 | Python | 프로세스 1개에서 도감 작업 1건과 소식 작업 1건을 병행한다. 이미지 처리와 워커 상태 갱신을 담당하는 루프는 유휴 시 최대 10초 간격으로 돈다. 공개 WebP는 `/var/lib/tcg-hub/media`, 비공개 이미지 대기열은 `spool`, 다시 받을 수 있는 원천 자료는 `catalog-cache`에 둔다. |
 | 로그 | Termux의 `$PREFIX/var/log/tcg-{db,api,worker,tunnel}/current`. 서비스별 1 MiB 단위·이전 로그 4개 회전. |
 | 제어 | `tcgctl status`, `tcgctl maintenance`(DB만 가동), `tcgctl stop`(모두 중지), `tcgctl start`(DB→API→워커·터널). 재부팅 시 마지막 활성화 상태를 복원한다. |
@@ -111,6 +122,8 @@ tcgctl status
 실기기에서는 스프라이트 한 시트를 처리하면서 Termux의 `top`과 Android 설정의 메모리·배터리 사용량을 확인한다. 화면을 끈 상태, Wi-Fi 재연결 후, 재부팅·잠금 해제 후에 외부 카드 조회와 워커 동작을 각각 확인한다. Android 12 이상은 백그라운드 프로세스 수나 CPU 사용량에 따라 Termux 프로세스를 종료할 수 있다. [Android Doze](https://developer.android.com/training/monitoring-device-state/doze-standby) · [Termux Android 12 안내](https://github.com/termux/termux-app#readme)
 
 ## 7. 백업·복구·업데이트
+
+백업은 DB 데이터 디렉터리와 독립적인 논리 덤프다. 선택한 서버에 맞는 `pg_dump`와 `pg_restore`를 사용한다. PostgreSQL 18 서버를 Ubuntu 기본 클라이언트 16으로 덤프하면 버전 검사에서 실패한다. PostgreSQL 16에서 만든 덤프를 18로 옮길 때에는 대상에 호환되는 PostGIS를 설치한 뒤 복구한다. 반대 방향의 메이저 버전 다운그레이드는 PostgreSQL이 복원을 보장하지 않는다. 새 엔진에서 PostGIS 버전, 도감 수와 스프라이트를 확인할 때까지 원본 백업을 보관한다. [pg_dump 버전 호환성](https://www.postgresql.org/docs/18/app-pgdump.html#PG-DUMP-NOTES) · [pg_restore](https://www.postgresql.org/docs/18/app-pgrestore.html)
 
 - **백업** — `tcgctl backup`은 터널·워커·API를 잠시 중지하고 PostgreSQL custom-format dump, 공개 미디어와 미처리 spool, SHA-256 목록을 `$HOME/tcg-backups/<백업명>/`에 만든 뒤 이전 서비스 활성 상태를 복원한다. 백업 중에는 서비스가 잠시 오프라인이다. 개인 콘텐츠와 인증 해시가 들어 있으므로 기기 밖에 보관할 복사본은 암호화한다. 터널 토큰·DB 비밀번호·JWT 키는 별도로 관리한다.
 - **복구** — 새 설치의 4단계에서 `tcgctl install`까지만 실행한다. 백업 디렉터리를 Termux 전용 `$HOME/tcg-backups/`로 옮기고 `tcgctl restore 20261124T120000Z-1234`처럼 실제 백업명을 전달한다. 자신이 생성해 보관한 백업을 사용한다. 복구는 빈 미디어 디렉터리와 아직 Flyway를 실행하지 않은 전용 DB에서 동작한다. 중간에 끊기면 같은 백업명으로 재실행한다. 이어서 `tcgctl start-local`로 카드 수·이미지·계정 및 대기열을 확인하고, 새 토큰을 입력한 뒤 `tcgctl start`로 공개한다.

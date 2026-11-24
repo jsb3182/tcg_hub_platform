@@ -6,11 +6,85 @@ svroot="$PREFIX/var/service"
 release="${TCG_RELEASE_DIR:-$HOME/tcg-release}"
 backups="$HOME/tcg-backups"
 guest_script=/opt/tcg-hub/current/deploy/ubuntu.sh
+engine_file="$PREFIX/var/lib/tcg-hub/db-engine"
+native_state="$PREFIX/var/lib/tcg-hub-native"
+native_script="$PREFIX/libexec/tcg-hub/native-db.sh"
 mkdir -p "$backups" "$HOME/tcg-import"
 exec 9>"$HOME/.tcg-control.lock"
 flock -n 9 || { echo 'Another TCG management command is active.' >&2; exit 1; }
+engine=guest
+if [[ -e $engine_file ]]; then
+  engine=$(cat "$engine_file")
+  [[ $engine == guest || $engine == native ]] || { echo 'Invalid saved database engine.' >&2; exit 1; }
+fi
 guest() {
   proot-distro login ubuntu-tcg --isolated --user "$1" -- "${@:2}"
+}
+native_db() { "$PREFIX/bin/bash" "$native_script" "$@"; }
+choose_engine() {
+  local requested=${TCG_DB_ENGINE:-} old_data
+  [[ -z $requested || $requested == guest || $requested == native ]] || { echo 'TCG_DB_ENGINE must be guest or native.' >&2; return 2; }
+  if [[ -e $engine_file ]]; then
+    [[ -z $requested || $requested == "$engine" ]] || { echo 'An existing database engine is already selected.' >&2; return 1; }
+    [[ $engine == native ]] || return 0
+  fi
+  old_data=$(guest root /bin/sh -ec 'dir=/var/lib/postgresql/tcg-hub; if [ -d "$dir" ]; then find "$dir" -mindepth 1 -print -quit; fi')
+  if [[ ! -e $engine_file ]]; then
+    if [[ -n $requested ]]; then engine=$requested
+    elif [[ -n $old_data || -e $svroot/tcg-db/run ]]; then engine=guest
+    elif [[ ${TERMUX_VERSION:-} == googleplay.* || ${TERMUX_APK_RELEASE:-} == GOOGLE_PLAY_STORE ]]; then engine=native
+    fi
+  fi
+  if [[ $engine == native ]]; then
+    [[ -z $old_data ]] || { echo 'The Ubuntu data directory contains files. Preserve the existing database and use a logical migration.' >&2; return 1; }
+    if [[ -e $native_state/data ]]; then
+      [[ -s $native_state/data/PG_VERSION && -s $native_state/auth/postgres.pw ]] &&
+        guest root /bin/sh -ec 'test -s /etc/tcg-hub/runtime.env && test -s /etc/tcg-hub/postgres.pw' || {
+          echo 'Existing native data requires its original Termux and Ubuntu database credentials.' >&2; return 1;
+        }
+    fi
+    if [[ -e $svroot/tcg-db/run ]] && ! grep -Fq "$native_script" "$svroot/tcg-db/run"; then
+      [[ -e $svroot/tcg-db/down ]] || { echo 'Stop the previous database service with tcgctl stop first.' >&2; return 1; }
+      if [[ -p $svroot/tcg-db/supervise/control ]]; then sv -w 60 stop "$svroot/tcg-db"; fi
+    fi
+  elif [[ -e $native_state/data ]]; then
+    echo 'A native data directory already exists. Check its database engine before continuing.' >&2; return 1
+  fi
+}
+install_native() {
+  local package status
+  for package in postgresql postgis; do
+    status=$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null) || status=''
+    if [[ $status != 'install ok installed' ]]; then
+      [[ ! -e $native_state/data ]] || { echo 'Existing native cluster needs matching PostgreSQL and PostGIS packages.' >&2; return 1; }
+      pkg install -y postgresql postgis
+      break
+    fi
+  done
+  install -d -m 0700 "$native_state" "$native_state/auth" "$(dirname "$native_script")"
+  [[ ! -e $native_state/data || -s $native_state/auth/postgres.pw ]] || { echo 'Existing native cluster requires its original private password.' >&2; return 1; }
+  local tmp
+  tmp=$(mktemp "${native_script}.XXXXXX")
+  install -m 0700 "$release/deploy/native-db.sh" "$tmp"
+  mv -f "$tmp" "$native_script"
+  proot-distro login ubuntu-tcg --isolated --bind "$native_state/auth:/mnt/tcg-auth" -- /bin/bash "$guest_script" native-auth
+  native_db init
+  dpkg-query -W postgresql postgis
+}
+prepare_db() {
+  if [[ $engine == native ]]; then native_db ready; fi
+  guest root /bin/bash "$guest_script" prepare-db
+}
+write_native_service() {
+  local dir=$1 op target tmp
+  mkdir -p "$dir/control"
+  for op in run stop; do
+    if [[ $op == run ]]; then target="$dir/run"; else target="$dir/control/t"; fi
+    tmp=$(mktemp "${target}.XXXXXX")
+    printf '#!%s/bin/sh\nexec 2>&1\nexec "%s/bin/bash" "%s" "%s"\n' "$PREFIX" "$PREFIX" "$native_script" "$op" > "$tmp"
+    chmod 0700 "$tmp"
+    mv -f "$tmp" "$target"
+  done
 }
 enable() {
   rm -f "$svroot/tcg-$1/down"
@@ -60,11 +134,18 @@ case "$cmd" in
         echo 'Make a backup and run tcgctl maintenance before upgrading.' >&2; exit 1;
       }
     done
-    proot-distro login ubuntu-tcg --isolated --bind "$release:/mnt/tcg-release" -- /bin/bash /mnt/tcg-release/deploy/install-ubuntu.sh "$@"
+    choose_engine
+    proot-distro login ubuntu-tcg --isolated --bind "$release:/mnt/tcg-release" -- /usr/bin/env "TCG_DB_ENGINE=$engine" /bin/bash /mnt/tcg-release/deploy/install-ubuntu.sh "$@"
+    if [[ $engine == native ]]; then install_native; fi
+    install -d -m 0700 "$(dirname "$engine_file")"
+    marker_tmp=$(mktemp "${engine_file}.XXXXXX")
+    printf '%s\n' "$engine" > "$marker_tmp"
+    mv -f "$marker_tmp" "$engine_file"
     mkdir -p "$HOME/.termux/boot" "$svroot"
     for member in db:postgres api:tcgapp worker:tcgapp tunnel:tcgtunnel; do
       add_service "${member%:*}" "${member#*:}"
     done
+    if [[ $engine == native ]]; then write_native_service "$svroot/tcg-db"; fi
     cat > "$HOME/.termux/boot/30-tcg-services" <<BOOT
 #!$PREFIX/bin/sh
 termux-wake-lock
@@ -77,7 +158,10 @@ BOOT
       sleep 1
     done
     enable db
-    guest root /bin/bash "$guest_script" prepare-db
+    prepare_db
+    completed=$(mktemp "$(dirname "$engine_file")/installed.XXXXXX")
+    sha256sum "$release/MANIFEST.sha256" | cut -c1-20 > "$completed"
+    mv -f "$completed" "$(dirname "$engine_file")/installed-manifest"
     echo 'Database prepared. Use tcgctl start-local for local access or restore a backup first.'
     ;;
   token)
@@ -108,7 +192,7 @@ BOOT
       disable tunnel
     fi
     enable db
-    guest root /bin/bash "$guest_script" prepare-db
+    prepare_db
     enable api
     for (( n=0; n<120; n++ )); do
       if curl -fsS --max-time 2 http://127.0.0.1:8080/internal/ready >/dev/null 2>&1; then break; fi
@@ -119,6 +203,7 @@ BOOT
     if [[ $cmd == start ]]; then enable tunnel; fi
     ;;
   status)
+    echo "Database engine: $engine"
     for member in db api worker tunnel; do sv status "$svroot/tcg-$member"; done
     ;;
   maintenance) hold_writers;;
@@ -133,14 +218,29 @@ BOOT
     resume() { for member in "${members[@]}"; do sv up "$svroot/tcg-$member" || true; done; }
     trap resume EXIT
     for member in tunnel worker api; do sv -w 60 stop "$svroot/tcg-$member"; done
-    proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" backup
+    if [[ $engine == native ]]; then
+      work=$(mktemp -d "$native_state/.dump.XXXXXX")
+      trap 'rm -rf -- "$work"; resume' EXIT
+      native_db dump "$work/db.dump"
+      proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" --bind "$work:/mnt/tcg-native" -- /bin/bash "$guest_script" backup --native
+    else
+      proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" backup
+    fi
     ;;
   restore)
     for member in tunnel worker api; do
       [[ -e $svroot/tcg-$member/down ]] || { echo 'Use tcgctl maintenance before restore.' >&2; exit 1; }
       sv -w 60 stop "$svroot/tcg-$member"
     done
-    proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" restore "$@"
+    restore_guest() { proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" "$@"; }
+    if [[ $engine == native ]]; then
+      [[ $# == 1 && $1 =~ ^[0-9]{8}T[0-9]{6}Z-[0-9]+$ ]] || { echo 'Expected a backup directory name.' >&2; exit 2; }
+      restore_guest restore-stage "$1"
+      native_db restore "$backups/$1/db.dump"
+      restore_guest restore-finish "$1"
+    else
+      restore_guest restore "$@"
+    fi
     ;;
   *) echo 'tcgctl install [--local]|configure-public|token|x-token|start-local|start|status|maintenance|stop|account|media|backup|restore'; exit 2;;
 esac

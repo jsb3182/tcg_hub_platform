@@ -40,7 +40,8 @@ if guest test -f "$app/tcg-hub.jar"; then
   current=$(guest readlink -f "$app")
   [[ $current == "/opt/tcg-hub/releases/$manifest_id" ]] || { echo 'Another release is installed. Use the documented update procedure.' >&2; exit 1; }
   guest /bin/bash "$app/deploy/ubuntu.sh" check-local || { echo 'Bootstrap requires a loopback-only installation.' >&2; exit 1; }
-  installed=true
+  complete="$PREFIX/var/lib/tcg-hub/installed-manifest"
+  if [[ -f $complete && $(cat "$complete") == "$manifest_id" ]]; then installed=true; fi
   for service in db api worker tunnel; do
     [[ -x $PREFIX/var/service/tcg-$service/run ]] || installed=false
   done
