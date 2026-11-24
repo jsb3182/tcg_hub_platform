@@ -1,0 +1,128 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+umask 077
+: "${PREFIX:?Run from Termux}"
+svroot="$PREFIX/var/service"
+release="${TCG_RELEASE_DIR:-$HOME/tcg-release}"
+backups="$HOME/tcg-backups"
+guest_script=/opt/tcg-hub/current/deploy/ubuntu.sh
+mkdir -p "$backups" "$HOME/tcg-import"
+exec 9>"$HOME/.tcg-control.lock"
+flock -n 9 || { echo 'Another TCG management command is active.' >&2; exit 1; }
+guest() {
+  proot-distro login ubuntu-tcg --isolated --user "$1" -- "${@:2}"
+}
+enable() {
+  rm -f "$svroot/tcg-$1/down"
+  sv up "$svroot/tcg-$1"
+}
+disable() {
+  touch "$svroot/tcg-$1/down"
+  sv -w 60 stop "$svroot/tcg-$1"
+}
+hold_writers() {
+  for member in tunnel worker api; do disable "$member"; done
+}
+add_service() {
+  local svc=$1 user=$2 path="$svroot/tcg-$1" log="$PREFIX/var/log/tcg-$1"
+  if [[ -d $path ]]; then return; fi
+  local staged
+  staged=$(mktemp -d "$svroot/.tcg-$svc.XXXXXX")
+  mkdir -p "$staged/log" "$log"
+  touch "$staged/down"
+  printf 's1048576\nn4\n' > "$log/config"
+  cat > "$staged/run" <<RUN
+#!$PREFIX/bin/sh
+exec 2>&1
+exec "$PREFIX/bin/proot-distro" login ubuntu-tcg --isolated --user "$user" -- /bin/bash "$guest_script" "$svc"
+RUN
+  cat > "$staged/log/run" <<RUN
+#!$PREFIX/bin/sh
+exec "$PREFIX/bin/svlogd" -tt "$log"
+RUN
+  chmod 0700 "$staged/run" "$staged/log/run"
+  if [[ $svc == db ]]; then
+    mkdir -p "$staged/control"
+    cat > "$staged/control/t" <<RUN
+#!$PREFIX/bin/sh
+exec "$PREFIX/bin/proot-distro" login ubuntu-tcg --isolated --user postgres -- /usr/lib/postgresql/16/bin/pg_ctl -D /var/lib/postgresql/tcg-hub -m fast -w -t 45 stop
+RUN
+    chmod 0700 "$staged/control/t"
+  fi
+  mv -T "$staged" "$path"
+}
+cmd=${1:-help}
+shift || true
+case "$cmd" in
+  install)
+    for member in api worker tunnel; do
+      [[ ! -d $svroot/tcg-$member || -e $svroot/tcg-$member/down ]] || {
+        echo 'Make a backup and run tcgctl maintenance before upgrading.' >&2; exit 1;
+      }
+    done
+    proot-distro login ubuntu-tcg --isolated --bind "$release:/mnt/tcg-release" -- /bin/bash /mnt/tcg-release/deploy/install-ubuntu.sh "$@"
+    mkdir -p "$HOME/.termux/boot" "$svroot"
+    for member in db:postgres api:tcgapp worker:tcgapp tunnel:tcgtunnel; do
+      add_service "${member%:*}" "${member#*:}"
+    done
+    cat > "$HOME/.termux/boot/30-tcg-services" <<BOOT
+#!$PREFIX/bin/sh
+termux-wake-lock
+. "$PREFIX/etc/profile.d/start-services.sh"
+BOOT
+    chmod 0700 "$HOME/.termux/boot/30-tcg-services"
+    (exec 9>&-; bash "$HOME/.termux/boot/30-tcg-services")
+    for (( n=0; n<20; n++ )); do
+      if [[ -p $svroot/tcg-db/supervise/control ]]; then break; fi
+      sleep 1
+    done
+    enable db
+    guest root /bin/bash "$guest_script" prepare-db
+    echo 'Database prepared. Use tcgctl start-local for local access or restore a backup first.'
+    ;;
+  token)
+    read -rsp 'Cloudflare tunnel token: ' token
+    echo
+    [[ -n $token ]] || exit 2
+    printf '%s' "$token" | guest root /bin/bash -c 'set -e; umask 077; tmp=$(mktemp /etc/tcg-hub/token.XXXXXX); cat > "$tmp"; chown tcgtunnel:tcgtunnel "$tmp"; mv -f "$tmp" /etc/tcg-hub/tunnel.token'
+    ;;
+  start|start-local)
+    guest root test ! -e /var/lib/tcg-hub/restore-in-progress || { echo 'Finish the pending restore first.' >&2; exit 1; }
+    if [[ $cmd == start ]]; then guest tcgtunnel test -s /etc/tcg-hub/tunnel.token || { echo 'Run tcgctl token first.' >&2; exit 1; }; fi
+    enable db
+    guest root /bin/bash "$guest_script" prepare-db
+    enable api
+    for (( n=0; n<120; n++ )); do
+      if curl -fsS --max-time 2 http://127.0.0.1:8080/internal/ready >/dev/null 2>&1; then break; fi
+      sleep 2
+    done
+    curl -fsS --max-time 4 http://127.0.0.1:8080/internal/ready >/dev/null
+    enable worker
+    if [[ $cmd == start ]]; then enable tunnel; else disable tunnel; fi
+    ;;
+  status)
+    for member in db api worker tunnel; do sv status "$svroot/tcg-$member"; done
+    ;;
+  maintenance) hold_writers;;
+  stop) hold_writers; disable db;;
+  account) guest tcgapp /bin/bash "$guest_script" account "$@";;
+  media) proot-distro login ubuntu-tcg --isolated --user tcgapp --bind "$HOME/tcg-import:/mnt/tcg-source" -- /bin/bash "$guest_script" media "$@";;
+  backup)
+    members=()
+    for member in api worker tunnel; do
+      if [[ ! -e $svroot/tcg-$member/down ]]; then members+=("$member"); fi
+    done
+    resume() { for member in "${members[@]}"; do sv up "$svroot/tcg-$member" || true; done; }
+    trap resume EXIT
+    for member in tunnel worker api; do sv -w 60 stop "$svroot/tcg-$member"; done
+    proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" backup
+    ;;
+  restore)
+    for member in tunnel worker api; do
+      [[ -e $svroot/tcg-$member/down ]] || { echo 'Use tcgctl maintenance before restore.' >&2; exit 1; }
+      sv -w 60 stop "$svroot/tcg-$member"
+    done
+    proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" restore "$@"
+    ;;
+  *) echo 'tcgctl install|token|start-local|start|status|maintenance|stop|account|media|backup|restore'; exit 2;;
+esac
