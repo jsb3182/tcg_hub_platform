@@ -19,7 +19,7 @@ class WebRoutes {
         this.db = db;
     }
 
-    @GetMapping({"/","/cards","/cards/{id:[0-9]+}","/login","/admin","/admin/"})
+    @GetMapping({"/","/cards","/cards/{id:[0-9]+}","/news","/login","/admin","/admin/"})
     String app() { return "forward:/index.html"; }
 
     @GetMapping("/internal/ready")

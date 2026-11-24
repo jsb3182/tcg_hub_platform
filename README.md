@@ -1,22 +1,25 @@
 # TCG 허브
 
-다섯 TCG의 카드를 모바일과 PC에서 검색하는 한국어 PWA다. 1단계에서는 공개 카드 도감, 계정 인증, 기존 유희왕 도감 이관, WebP 스프라이트 생성이 동작한다. 운영 대상은 Galaxy A90 5G의 Termux·Ubuntu다.
+유희왕, 바이스 슈발츠, 포켓몬 TCG, 니벨아레나, 리프트바운드의 카드와 최신 소식을 조회하는 한국어 PWA다. Python 워커가 출처별 일정에 따라 카드 데이터와 공지를 갱신한다. 운영자는 휴대폰의 관리자 화면에서 수집 상태를 확인하고 작업을 제어한다. 운영 대상은 Galaxy A90 5G의 Termux·Ubuntu다.
 
 | 작업 | 시작점 |
 |---|---|
 | 전체 아키텍처, 데이터 흐름, API, 후속 기능 설계 | [시스템 설계](docs/ARCHITECTURE.md) |
 | 테이블·외래 키·공간 인덱스와 덱 규칙 | [Flyway SQL](backend/src/main/resources/db/migration/) |
 | PC 빌드, A90 설치, Cloudflare Tunnel·Access, 백업·복구 | [배포 가이드](docs/DEPLOYMENT.md) |
+| Windows PC에서 API와 자동 수집 워커 함께 실행 | [Windows 실행 가이드](deploy/WINDOWS.md) |
 | 로컬 카드 데이터 이관, 이미지 추가, 작업 재시도 | [워커 운영 가이드](crawler-middleware/README.md) |
+| 자동 수집, 외부 소스 설정, 모바일 관리 | [수집과 운영](docs/COLLECTION.md) |
+| 게임별 카드 언어, 판본 범위, 원본 출처와 갱신 방식 | [도감 출처](docs/CARD_SOURCES.md) |
 
 ### 개발 환경
 
 1. Java 17과 Maven, Node.js 22.12 이상, Python 3.12, PostGIS를 설치한 전용 PostgreSQL DB를 준비한다.
 2. 배포 가이드에 따라 `DB_URL`(JDBC), `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`(난수 32바이트 이상의 Base64), `MEDIA_ROOT`를 설정한다. Vite 개발 서버 사용 시 `PUBLIC_ORIGIN=http://localhost:5173`으로 설정한다.
 3. `backend`에서 `mvn spring-boot:run`을 실행한다. Flyway가 마이그레이션을 적용하고 Spring이 루프백 8080에서 대기한다. `frontend`에서 `npm ci`, `npm run dev`를 실행하고 브라우저에서 `http://localhost:5173`을 연다.
-4. 기존 정적 사이트의 `js/app.js`, `imgd/`, `pk/`를 한 폴더에 준비한다. 워커의 `check-legacy`로 건수와 시트를 확인하고 `import-legacy`를 실행한다. 원본이 없어도 다섯 게임의 빈 도감부터 시작할 수 있다.
+4. [워커 운영 가이드](crawler-middleware/README.md)에 따라 Python 환경을 설치한 뒤 `python -m tcg_worker run`을 실행한다. 다섯 게임 도감과 발행처 공지의 초기 수집이 시작된다. 기존 정적 사이트의 `js/app.js`, `imgd/`, `pk/`도 사용할 경우 `check-legacy`로 건수와 시트를 확인하고 `import-legacy`로 이관한다.
 
-PWA 설치와 오프라인 동작은 배포 빌드에서 확인한다. PC 운영자 화면은 Cloudflare Access로 인증한 뒤 관리자 계정으로 조회한다. 계정은 A90의 관리 명령으로 만든다.
+PWA 설치와 오프라인 동작은 배포 빌드에서 확인한다. 운영자는 모바일·PC에서 Cloudflare Access와 관리자 계정으로 `/admin`에 접속한다. 계정은 A90의 관리 명령으로 만든다.
 
 ### 검증
 

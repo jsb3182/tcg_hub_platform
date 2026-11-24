@@ -19,18 +19,23 @@ interface CardRepository extends Repository<Card, Long> {
         String getRarity();
         String getEffect();
         java.time.LocalDate getReleaseDate();
+        String getSourceUrl();
+        String getSourceName();
     }
     String SELECT = """
         select c.id, c.game_code as "gameCode", c.pack_id as "packId", p.name as "packName",
                c.name, c.original_name as "originalName", c.number, c.rarity, c.effect,
-               c.release_date as "releaseDate" from card c left join pack p on p.id=c.pack_id
+               c.release_date as "releaseDate", c.source_url as "sourceUrl", src.label as "sourceName"
+          from card c left join pack p on p.id=c.pack_id left join feed_source src on src.id=c.source_id
         """;
     String FILTER = """
          where c.status='PUBLISHED' and (:game='' or c.game_code=:game)
            and (cast(:packId as bigint) is null or c.pack_id=:packId)
-           and (:rarity='' or :rarity=any(regexp_split_to_array(c.rarity,'[[:space:]]+'))
+           and (:rarity='' or lower(c.rarity)=lower(:rarity)
+             or lower(:rarity)=any(regexp_split_to_array(lower(c.rarity),'[[:space:]]+'))
              or exists (select 1 from card_variant v where v.card_id=c.id
-                 and :rarity=any(regexp_split_to_array(v.rarity,'[[:space:]]+'))))
+                 and (lower(v.rarity)=lower(:rarity)
+                      or lower(:rarity)=any(regexp_split_to_array(lower(v.rarity),'[[:space:]]+')))))
            and (:q='' or strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.effect)),lower(:q))>0)
         """;
 

@@ -18,14 +18,16 @@
                                 │                     └─ 파일 시트 ┘
                                 └── Termux:Boot와 runit 서비스 감독
 
-후속 외부 소스 ── 제한된 스케줄러 ── 소스별 어댑터 ── 수집·검수 / 시세 테이블
+카드 제공자 5곳 ──── 도감 수집 작업 ───┐
+발행처·X·TCG 갤러리 ─ 공지 수집 작업 ───┴── Python 워커 ── PostgreSQL
+휴대폰 /admin ── Access + 관리자 JWT ── 운영 API ── 수집 요청 · 검수 · 감사 기록
 ```
 
 | 디렉터리 | 책임 |
 |---|---|
-| `frontend/` | Vue Composition API, Router와 Pinia, 공개 도감·로그인·PC 관리자 상태 조회, 설치형 PWA |
+| `frontend/` | Vue Composition API, Router와 Pinia, 공개 도감·새 소식·로그인·모바일 관리자 화면, 설치형 PWA |
 | `backend/` | 조회 API, 인증·인가, 원본 미디어 제공, 계정 생성 CLI, Flyway |
-| `crawler-middleware/` | 로컬 정적 사이트 이관, 이미지 유효성 확인, DB 작업 큐와 WebP 패킹 |
+| `crawler-middleware/` | 게임별 카드 어댑터, 발행처·X·갤러리 수집, 로컬 정적 사이트 이관, 이미지 검증과 WebP 패킹 |
 | `deploy/` | PC 릴리스 빌드, Ubuntu 구성, Termux 서비스와 운영 명령 |
 
 운영 서버 한 대에서 PostgreSQL이 조회 데이터와 작업 큐를 함께 보관한다. 브라우저는 같은 출처에서 API와 미디어를 사용한다. 이미지 처리에는 외부 요청을 받는 HTTP 포트가 필요하지 않다.
@@ -62,6 +64,8 @@ WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3
 | `POST /api/v1/auth/login` | JSON `email,password`를 받는다. `accessToken,role,email`과 갱신 쿠키를 발급한다. |
 | `POST /api/v1/auth/refresh` · `logout` | 같은 출처와 `X-TCG-Request: 1` 헤더를 확인한다. 갱신은 기존 쿠키를 한 번만 사용할 수 있고 로그아웃은 해당 갱신 세션을 폐기한다. |
 | `GET /api/v1/admin/status` | 유효한 Cloudflare Access 서명·발급처·대상과 Spring의 `ROLE_ADMIN`을 모두 확인한 후 상태를 반환한다. 운영자 화면은 `/admin`이다. |
+| `GET /api/v1/news` | 게임별 공개 뉴스·원문 링크를 페이지로 반환한다. |
+| `/api/v1/admin/operations`, `sources`, `worker`, `review` | 서버 상태, 수집 일시정지·재개·예약, 워커 재시작과 뉴스 검수를 제공한다. [요청 규격](COLLECTION.md) |
 
 1. 운영자가 원본 폴더를 이관한다. 기존 4×3 시트는 바이트를 그대로 보관하고 실제 셀 크기를 기록한다. 원본 섹션 ID와 항목 ID 또는 고정 순번으로 재실행 시 중복을 방지한다.
 2. 새 이미지는 `enqueue VARIANT_ID FILE`로 등록한다. 워커가 한 번에 최대 12개 셀을 처리한다. 300×438 셀을 비율 유지·패딩한 뒤 1200×1314 WebP 품질 80으로 저장한다. 한 장만 들어온 마지막 묶음도 반영한다.
@@ -70,8 +74,8 @@ WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3
 
 ## 후속 기능 구현 순서
 
-1. **PC 등록·검수** — 팩·카드 편집, 크롭, 비공개 검수용 미리보기, 승인·반려를 연결한다. 공개 시트에는 승인된 그림만 넣는다. 이미 공개한 이미지를 철회할 때는 같은 시트의 보존 대상 이미지를 재패킹하고 기존 URL과 캐시를 갱신한다.
-2. **소스 수집·시세** — X 계정·디시인사이드 갤러리별로 커서와 처리한 원문 ID를 저장한다. 연결 가능한 소스의 정식 인터페이스·접근 권한을 확인해 어댑터를 등록한다. 검수 기본값은 `PENDING`, 승인 또는 소스별 자동 게시 시 `PUBLISHED`로 전환한다. 시세 어댑터는 DB TTL·호출 한도·재시도 대기 시간을 적용하고 KREAM 등 거래소의 실제 상품 식별자를 사용한다.
+1. **PC 카드 편집** — 팩·카드 편집, 크롭, 비공개 이미지 검수용 미리보기를 연결한다. 공개 시트에는 승인된 그림만 넣는다. 이미 공개한 이미지를 철회할 때는 같은 시트의 보존 대상 이미지를 재패킹하고 기존 URL과 캐시를 갱신한다.
+2. **시세** — 시세 어댑터에 DB TTL·호출 한도·재시도 대기 시간을 적용하고 KREAM 등 거래소의 실제 상품 식별자를 사용한다.
 3. **GIS·캘린더** — OpenLayers 지도에 반경·취급 게임 조건과 매장 길찾기를 연결한다. 매장 공지에서 추출한 일정과 사용자의 개인 일정을 표시하고 즐겨찾기 매장의 알림을 제공한다.
 4. **덱·게시판** — 게임별 규칙 검증, 덱 공유·`html-to-image` 저장, 자유·건의·거래 글, 카드 태그, 댓글·대댓글, 신고 처리를 연다.
 

@@ -38,7 +38,7 @@ apt-get clean
 id tcgapp >/dev/null 2>&1 || useradd --system --create-home --user-group tcgapp
 id tcgtunnel >/dev/null 2>&1 || useradd --system --create-home --user-group tcgtunnel
 install -d -m 0755 "$config" "$base" "$base/releases"
-install -d -m 0700 -o tcgapp -g tcgapp /var/lib/tcg-hub /var/lib/tcg-hub/{media,spool}
+install -d -m 0700 -o tcgapp -g tcgapp /var/lib/tcg-hub /var/lib/tcg-hub/{media,spool,catalog-cache}
 install -d -m 0700 -o postgres -g postgres /var/lib/postgresql/tcg-hub
 if [[ ! -s $config/postgres.pw ]]; then
   [[ ! -e /var/lib/postgresql/tcg-hub/PG_VERSION ]] || { echo 'Existing cluster needs its original postgres.pw.' >&2; exit 1; }
@@ -74,7 +74,8 @@ digest=$(sha256sum MANIFEST.sha256 | cut -c 1-20)
 dest="$base/releases/$digest"
 if [[ ! -f $dest/.installed ]]; then
   install -d -m 0755 "$dest"
-  cp -R tcg-hub.jar crawler-middleware deploy MANIFEST.sha256 "$dest/"
+  cp -R tcg-hub.jar crawler-middleware deploy docs MANIFEST.sha256 "$dest/"
+  (cd "$dest" && sha256sum --quiet --check MANIFEST.sha256)
   python3 -m venv "$dest/venv"
   "$dest/venv/bin/pip" install --no-cache-dir --only-binary=:all: -r "$dest/crawler-middleware/requirements.txt"
   chmod -R a+rX "$dest"

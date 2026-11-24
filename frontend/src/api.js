@@ -7,6 +7,7 @@ export class ApiError extends Error {
       401: '로그인이 필요합니다.',
       403: '이 작업에 필요한 권한이 없습니다.',
       404: '요청한 정보를 찾을 수 없습니다.',
+      409: '다른 작업에서 상태를 변경했습니다. 최신 상태를 다시 확인해 주세요.',
       429: '요청이 많습니다. 잠시 뒤 다시 시도해 주세요.',
     }
     super(descriptions[status] || '서버에 연결할 수 없습니다. 잠시 뒤 다시 시도해 주세요.')
@@ -43,5 +44,13 @@ export function mediaPath(rawPath) {
   try {
     const url = new URL(rawPath, location.origin)
     return url.origin === location.origin && url.pathname.startsWith('/media/') ? url.href : ''
+  } catch { return '' }
+}
+
+export function sourceLink(rawUrl) {
+  if (typeof rawUrl !== 'string' || !rawUrl) return ''
+  try {
+    const url = new URL(rawUrl)
+    return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : ''
   } catch { return '' }
 }

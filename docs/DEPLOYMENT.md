@@ -80,7 +80,7 @@ tcgctl status
 | --- | --- |
 | Spring | `-Xms256m -Xmx1024m -XX:ActiveProcessorCount=2`, Hikari 최대 4개, Tomcat 최대 16개. RSS에는 힙 외에 스레드·클래스·네이티브 메모리가 포함된다. |
 | PostgreSQL | `shared_buffers=96MB`, `work_mem=2MB`, 최대 연결 16개, 병렬 쿼리 워커 0개. DB 파일은 Ubuntu의 `/var/lib/postgresql/tcg-hub`에 저장한다. |
-| Python | 워커 1개, 유휴 시 15초 폴링. 공개 WebP는 `/var/lib/tcg-hub/media`, 처리 대기 원본은 전용 `spool`에 둔다. |
+| Python | 프로세스 1개에서 도감 작업 1건과 소식 작업 1건을 병행한다. 이미지 처리와 워커 상태 갱신을 담당하는 루프는 유휴 시 최대 10초 간격으로 돈다. 공개 WebP는 `/var/lib/tcg-hub/media`, 비공개 이미지 대기열은 `spool`, 다시 받을 수 있는 원천 자료는 `catalog-cache`에 둔다. |
 | 로그 | Termux의 `$PREFIX/var/log/tcg-{db,api,worker,tunnel}/current`. 서비스별 1 MiB 단위·이전 로그 4개 회전. |
 | 제어 | `tcgctl status`, `tcgctl maintenance`(DB만 가동), `tcgctl stop`(모두 중지), `tcgctl start`(DB→API→워커·터널). 재부팅 시 마지막 활성화 상태를 복원한다. |
 
@@ -91,3 +91,23 @@ tcgctl status
 - **백업** — `tcgctl backup`은 터널·워커·API를 잠시 중지하고 PostgreSQL custom-format dump, 공개 미디어와 미처리 spool, SHA-256 목록을 `$HOME/tcg-backups/<백업명>/`에 만든 뒤 이전 서비스 활성 상태를 복원한다. 백업 중에는 서비스가 잠시 오프라인이다. 개인 콘텐츠와 인증 해시가 들어 있으므로 기기 밖에 보관할 복사본은 암호화한다. 터널 토큰·DB 비밀번호·JWT 키는 별도로 관리한다.
 - **복구** — 새 설치의 4단계에서 `tcgctl install`까지만 실행한다. 백업 디렉터리를 Termux 전용 `$HOME/tcg-backups/`로 옮기고 `tcgctl restore 20261124T120000Z-1234`처럼 실제 백업명을 전달한다. 자신이 생성해 보관한 백업을 사용한다. 복구는 빈 미디어 디렉터리와 아직 Flyway를 실행하지 않은 전용 DB에서 동작한다. 중간에 끊기면 같은 백업명으로 재실행한다. 이어서 `tcgctl start-local`로 카드 수·이미지·계정 및 대기열을 확인하고, 새 토큰을 입력한 뒤 `tcgctl start`로 공개한다.
 - **업데이트** — PC에서 새 릴리스를 생성하고 A90에서 `tcgctl backup`, `tcgctl maintenance` 순으로 실행한다. 새 빈 디렉터리(예: `$HOME/tcg-release-next`)에 검증한 배포본을 풀고 그 안의 `deploy/tcgctl`을 `$PREFIX/bin/tcgctl`에 설치한다. `TCG_RELEASE_DIR="$HOME/tcg-release-next" tcgctl install` 후 `tcgctl start`로 새 마이그레이션을 적용한다. 스키마를 변경한 버전의 롤백은 이전 릴리스와 배포 직전 백업을 새 설치에 복원한다.
+
+## 8. 자동 수집과 모바일 운영
+
+관리자로 로그인해 관리 화면에서 소스별 지난 성공·실패 시각, 실제로 확인한 행 수, 새로 저장한 행 수, 다음 실행 시각을 본다. 지금 실행과 재시도는 큐에 요청을 남긴다. 제공자의 호출 제한이 남아 있으면 그 이후 실행한다. 일시정지는 이미 커밋한 카드와 소식을 유지한다. 긴 도감 수집은 배치 사이에서 중단되고 다음 실행에서 기존 카드 키와 대조한다.
+
+워커 재시작은 DB에 요청을 남기고 실행 중인 워커가 안전한 시점에 종료하면 runit이 새 프로세스를 띄운다. 대량 도감을 받는 동안에도 소식 수집과 heartbeat가 진행된다. 마지막 heartbeat가 오래된 경우 Termux에서 `tcgctl status`와 워커 로그를 확인한다. `tcgctl stop`으로 명시적으로 중단한 서비스는 `tcgctl start`로 다시 활성화한다. Windows에서 포그라운드 서비스를 실행하는 절차는 [Windows 실행 가이드](../deploy/WINDOWS.md)에 있다.
+
+| 소식 출처 | 수집하는 내용 |
+| --- | --- |
+| 유희왕 | 코나미 영문판 공지 목록의 제목, 일자, 원문 링크. [Konami](https://www.yugioh-card.com/en/news/) |
+| 포켓몬 | 공식 일본어 카드게임 뉴스 목록. 같은 상품의 여러 발표는 제목과 날짜로 구분한다. [포켓몬 카드](https://www.pokemon-card.com/info/) |
+| 바이스 슈발츠 | 영어판 공식 공지 RSS의 최근 40개 제목과 원문 링크. [Bushiroad](https://en.ws-tcg.com/information/feed/) |
+| 니벨아레나 | 한국어 공식 홈페이지의 공지 목록과 발행사가 직접 올린 일본 게임마켓 부스 공지. 한국어 홈페이지는 공개 HTTP를 사용한다. [한국 공식 공지](http://nivelarena.co.kr/bbs/board.php?bo_table=notice) · [발행사 부스](https://www.gamemarket.jp/booth/blog/5657) |
+| 리프트바운드 | Riot 공식 발행 목록에 실린 게임 공지 제목과 발행시각. [Riftbound](https://playriftbound.com/en-us/news/) |
+
+**X 공식 계정**은 X API 접근 권한이 있는 프로젝트의 app-only Bearer Token을 사용한다. A90의 Termux에서 `tcgctl x-token`을 실행해 비밀 입력으로 등록한 후 관리 화면에서 워커를 재시작하고 해당 소스를 재시도한다. 워커는 `/etc/tcg-hub/x.token`을 `X_BEARER_TOKEN`으로 읽는다. 첫 실행은 최근 타임라인 한 페이지를 가져오고 이후 `since_id`와 페이지 토큰으로 중단 지점을 이어 간다. 뉴스에는 계정명, 분류, 게시시각과 원문 링크를 저장한다. 토큰 누락, 이용권한·크레딧 부족, 호출 제한은 해당 소스 상태에 표시된다. [X 계정 타임라인 API](https://docs.x.com/x-api/users/get-posts)
+
+**디시인사이드 TCG 갤러리**는 디시인사이드의 사전 서면 동의가 있을 때 운영한다. 동의 범위에 `tcggame` 목록의 자동 수집이 포함된 경우 Ubuntu의 `/etc/tcg-hub/feeds.env`에 `export DCINSIDE_WRITTEN_PERMISSION=tcggame`을 설정하고 파일 소유자를 `tcgapp`, 모드를 0600으로 지정한다. 워커를 재시작한 뒤 소스를 재시도한다. 수집기는 매회 robots 정책을 확인하고 공개 목록의 게시번호·제목·일시·원문 링크를 저장한다. 기본 검수 상태는 `PENDING`이다. [서비스 이용약관 제16조](https://nstatic.dcinside.com/dc/w/policy/policy_index.html) · [갤러리 robots 정책](https://gall.dcinside.com/robots.txt)
+
+현장에서 소스 하나를 점검할 때는 `tcgctl media check-feed OFFICIAL_NEWS nivel-notice-kr`처럼 실행한다. 이 명령은 실제 한 번의 조회 결과와 첫 원문 링크를 출력한다. 정상적인 예약 수집은 DB 체크포인트·중복 제거·백오프를 적용한다. 이미지 권리가 확인된 운영자 파일은 5단계 `enqueue`로 처리하고, 외부 도감은 출처와 메타데이터를 저장한다.

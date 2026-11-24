@@ -48,6 +48,109 @@ class DatabaseTests(unittest.TestCase):
         ).fetchone()[0]
         return self.db.execute("INSERT INTO card_variant(card_id) VALUES (%s) RETURNING id", (card_id,)).fetchone()[0]
 
+    def test_sync_keeps_moderation_and_artwork_across_refresh(self):
+        from tcg_worker.feeds import Headline
+        from tcg_worker.sync import save_cards, save_news
+
+        with self.db.transaction(force_rollback=True):
+            sid = self.db.execute("SELECT id FROM feed_source WHERE provider='CATALOG' AND source_key='POKEMON'").fetchone()[0]
+            source = {"id": sid, "game_code": "POKEMON", "auto_publish": False}
+            record = {"external_id": "fixture", "source_url": "https://example.org/cards/1", "name": "first",
+                      "pack_code": "test", "pack_name": "Test Pack"}
+            self.assertEqual(save_cards(self.db, source, [record]), 1)
+            sheet = self.db.execute("INSERT INTO image_sheet(storage_key,cell_width,cell_height) VALUES ('sync-fixture',10,10) RETURNING id").fetchone()[0]
+            cid = self.db.execute("UPDATE card SET status='REJECTED' WHERE source_id=%s RETURNING id", (sid,)).fetchone()[0]
+            self.db.execute("UPDATE card_variant SET sheet_id=%s,col_idx=1,row_idx=2 WHERE card_id=%s", (sheet, cid))
+            self.assertEqual(save_cards(self.db, source, [{**record, "name": "revised"}]), 0)
+            row = self.db.execute("SELECT c.name,c.status,v.sheet_id,v.col_idx,v.row_idx FROM card c JOIN card_variant v ON v.card_id=c.id WHERE c.id=%s", (cid,)).fetchone()
+            self.assertEqual(row, ("revised", "REJECTED", sheet, 1, 2))
+            item = Headline("post-1", "Title", "https://example.org/post", None)
+            self.assertEqual(save_news(self.db, source, [item]), 1)
+            self.db.execute("UPDATE feed_item SET status='REJECTED' WHERE source_id=%s", (sid,))
+            self.assertEqual(save_news(self.db, source, [item]), 0)
+            self.assertEqual(self.db.execute("SELECT status FROM feed_item WHERE source_id=%s", (sid,)).fetchone()[0], "REJECTED")
+
+    def test_reused_pack_code_keeps_product_and_card_ids(self):
+        from tcg_worker.sync import save_cards
+
+        def run(order, existing):
+            with self.db.transaction(force_rollback=True):
+                sid = self.db.execute("SELECT id FROM feed_source WHERE provider='CATALOG' AND game_code='WEISS'").fetchone()[0]
+                source = {"id": sid, "game_code": "WEISS", "auto_publish": True}
+                rows = [{"name": "Fixture " + str(i), "external_id": "fixture" + str(i), "pack_code": "WX",
+                         "pack_name": name, "source_url": "https://example.org/test"}
+                        for i, name in enumerate(["Trial Deck", "Booster Pack", "Booster  Pack", "Trial Deck"])]
+                if existing:
+                    pack_id = self.db.execute(
+                        "INSERT INTO pack(game_code,name,code,legacy_key) VALUES ('WEISS','Trial Deck','WX','catalog:WEISS:WX') RETURNING id"
+                    ).fetchone()[0]
+                    card_id = self.db.execute(
+                        """INSERT INTO card(game_code,name,legacy_key,pack_id) VALUES
+                           ('WEISS','Fixture','catalog:WEISS:fixture1',%s) RETURNING id""", (pack_id,)
+                    ).fetchone()[0]
+                for index in order:
+                    save_cards(self.db, source, [rows[index]])
+
+                def snapshot():
+                    return self.db.execute(
+                        """SELECT c.id,p.id,p.legacy_key FROM card c JOIN pack p ON p.id=c.pack_id
+                           WHERE c.source_id=%s ORDER BY c.legacy_key""", (sid,)
+                    ).fetchall()
+
+                first = snapshot()
+                self.assertNotEqual(first[0][1], first[1][1])
+                self.assertEqual(first[1][1], first[2][1])
+                self.assertEqual(first[0][1], first[3][1])
+                if existing:
+                    self.assertEqual((first[0][1], first[1][0]), (pack_id, card_id))
+                self.assertEqual(save_cards(self.db, source, reversed(rows)), 0)
+                self.assertEqual(first, snapshot())
+                return [r[2] for r in first]
+
+        self.assertEqual(run(range(4), False), run(reversed(range(4)), False))
+        run(range(4), True)
+
+    def test_claim_honors_provider_floor_and_pause_for_manual_requests(self):
+        from tcg_worker.sync import claim
+
+        with self.db.transaction(force_rollback=True):
+            self.db.execute("UPDATE feed_source SET enabled=false")
+            sid = self.db.execute("""
+                INSERT INTO feed_source(provider,source_key,requested_at,next_fetch_at,retry_after_at)
+                VALUES ('X','fixture',now(),now(),now()+interval '1 hour') RETURNING id
+            """).fetchone()[0]
+            self.assertIsNone(claim(self.db, False))
+            self.db.execute("UPDATE feed_source SET retry_after_at=NULL,enabled=false WHERE id=%s", (sid,))
+            self.assertIsNone(claim(self.db, False))
+            self.db.execute("UPDATE feed_source SET enabled=true WHERE id=%s", (sid,))
+            row = claim(self.db, False)
+            self.assertEqual(row["id"], sid)
+            self.assertEqual(row["state"], "RUNNING")
+            self.assertIsNone(row["requested_at"])
+            self.assertIsNone(claim(self.db, False))
+
+    def test_restart_recovers_interrupted_source_without_clearing_rate_limit(self):
+        import threading
+        import psycopg
+        from tcg_worker.sync import run
+
+        schema = self.db.execute("SELECT current_schema()").fetchone()[0]
+        sid = self.db.execute("""
+            INSERT INTO feed_source(provider,source_key,state,enabled,retry_after_at,cursor_value)
+            VALUES ('X','restart_fixture','RUNNING',false,now()+interval '1 day','{"since":"100"}') RETURNING id
+        """).fetchone()[0]
+        self.db.execute("UPDATE worker_heartbeat SET restart_requested_at=now() WHERE id='tcg-worker'")
+        before = self.db.execute("SELECT restart_count FROM worker_heartbeat WHERE id='tcg-worker'").fetchone()[0]
+        with psycopg.connect(os.environ["TCG_TEST_DSN"], options=f"-c search_path={schema},public") as worker:
+            run(worker, self.media, self.spool, threading.Event(), 1)
+        self.assertEqual(self.db.execute("""
+            SELECT restart_requested_at IS NULL,seen_at IS NOT NULL,restart_count
+              FROM worker_heartbeat WHERE id='tcg-worker'
+        """).fetchone(), (True, True, before + 1))
+        self.assertEqual(self.db.execute("""
+            SELECT state,enabled,retry_after_at>now(), cursor_value FROM feed_source WHERE id=%s
+        """, (sid,)).fetchone(), ("IDLE", False, True, '{"since":"100"}'))
+
     def test_existing_deck_section_migrates_to_version_one(self):
         import psycopg
 

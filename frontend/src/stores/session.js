@@ -49,8 +49,8 @@ export const useSession = defineStore('session', () => {
       error.value = ''
     })
   }
-  async function adminStatus() {
-    const load = () => request('/admin/status', { token: account.value?.accessToken, privateRequest: true })
+  async function adminRequest(path, options = {}) {
+    const load = () => request('/admin' + path, { ...options, token: account.value?.accessToken, privateRequest: true })
     try { return await load() }
     catch (cause) {
       if (cause.status !== 401) throw cause
@@ -58,5 +58,5 @@ export const useSession = defineStore('session', () => {
       return load()
     }
   }
-  return { account, ready, isAdmin, error, initialize, login, logout, adminStatus }
+  return { account, ready, isAdmin, error, initialize, login, logout, adminRequest }
 })

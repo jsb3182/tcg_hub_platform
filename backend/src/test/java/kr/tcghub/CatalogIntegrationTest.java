@@ -50,6 +50,9 @@ class CatalogIntegrationTest {
                 .andExpect(jsonPath("$.name").value(keyword)).andExpect(jsonPath("$.variants[0].image.col").value(3))
                 .andExpect(jsonPath("$.variants[0].image.row").value(2));
         api.perform(get("/api/v1/cards/" + hidden)).andExpect(status().isNotFound());
+        db.sql("update card_variant set rarity='Super Rare' where card_id=?").param(card).update();
+        api.perform(get("/api/v1/cards").param("q",keyword).param("rarity","super rare"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
         api.perform(get("/api/v1/cards").param("size","101")).andExpect(status().isBadRequest());
     }
 

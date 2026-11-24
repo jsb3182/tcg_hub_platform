@@ -34,7 +34,7 @@ class SecurityConfig {
                         new AuthorizationDecision(auth.get().getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))
                                 && access.admits(ctx.getRequest())))
                 .requestMatchers(HttpMethod.POST,"/api/v1/auth/login","/api/v1/auth/refresh","/api/v1/auth/logout").permitAll()
-                .requestMatchers(HttpMethod.GET,"/api/v1/games","/api/v1/packs","/api/v1/cards","/api/v1/cards/*").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/games","/api/v1/packs","/api/v1/cards","/api/v1/cards/*","/api/v1/news").permitAll()
                 .requestMatchers("/api/**").denyAll()
                 .requestMatchers("/internal/ready").access((auth,ctx) -> {
                     var request = ctx.getRequest();

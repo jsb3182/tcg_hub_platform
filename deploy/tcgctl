@@ -86,6 +86,13 @@ BOOT
     [[ -n $token ]] || exit 2
     printf '%s' "$token" | guest root /bin/bash -c 'set -e; umask 077; tmp=$(mktemp /etc/tcg-hub/token.XXXXXX); cat > "$tmp"; chown tcgtunnel:tcgtunnel "$tmp"; mv -f "$tmp" /etc/tcg-hub/tunnel.token'
     ;;
+  x-token)
+    read -rsp 'Official X API bearer token: ' token
+    echo
+    [[ -n $token ]] || exit 2
+    printf '%s' "$token" | guest root /bin/bash -c 'set -e; umask 077; tmp=$(mktemp /etc/tcg-hub/xtoken.XXXXXX); cat > "$tmp"; chown tcgapp:tcgapp "$tmp"; mv -f "$tmp" /etc/tcg-hub/x.token'
+    echo 'Restart the worker to load its new token.'
+    ;;
   start|start-local)
     guest root test ! -e /var/lib/tcg-hub/restore-in-progress || { echo 'Finish the pending restore first.' >&2; exit 1; }
     if [[ $cmd == start ]]; then guest tcgtunnel test -s /etc/tcg-hub/tunnel.token || { echo 'Run tcgctl token first.' >&2; exit 1; }; fi
@@ -124,5 +131,5 @@ BOOT
     done
     proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" restore "$@"
     ;;
-  *) echo 'tcgctl install|token|start-local|start|status|maintenance|stop|account|media|backup|restore'; exit 2;;
+  *) echo 'tcgctl install|token|x-token|start-local|start|status|maintenance|stop|account|media|backup|restore'; exit 2;;
 esac

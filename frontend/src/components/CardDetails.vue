@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { mediaPath, request } from '../api'
+import { mediaPath, request, sourceLink } from '../api'
 
 const props = defineProps({ cardId: { type: [Number, String], required: true }, lazy: Boolean })
 const host = ref()
@@ -83,6 +83,10 @@ watch(() => props.cardId, () => { if (!props.lazy || accordion?.open) load() })
           <div v-if="card.number"><small>카드 번호</small><p>{{ card.number }}</p></div>
           <div v-if="card.packName"><small>수록 팩</small><p>{{ card.packName }}</p></div>
           <div v-if="card.releaseDate"><small>발매일</small><p>{{ card.releaseDate }}</p></div>
+          <div v-if="card.sourceName || sourceLink(card.sourceUrl)"><small>정보 출처</small>
+            <p><a v-if="sourceLink(card.sourceUrl)" :href="sourceLink(card.sourceUrl)" target="_blank" rel="noopener noreferrer">{{ card.sourceName || '원문 보기' }}</a>
+              <span v-else>{{ card.sourceName }}</span></p>
+          </div>
           <div v-if="current?.rarity || card.rarity"><small>레어도</small><p>{{ current?.rarity || card.rarity }}</p></div>
           <RouterLink v-if="lazy" :to="{ name: 'card', params: { id: card.id } }">상세 페이지 열기</RouterLink>
         </div>

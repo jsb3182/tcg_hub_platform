@@ -1,5 +1,7 @@
 # 카드 도감 이관과 이미지 워커
 
+다섯 게임의 실데이터 제공자, 언어 범위와 갱신 방식은 [도감 출처](../docs/CARD_SOURCES.md)에서 확인할 수 있다.
+
 Spring Boot가 Flyway 마이그레이션을 마친 후 이 폴더에서 실행한다. Ubuntu에서는 Python 3.12와 PostgreSQL 클라이언트 라이브러리(`libpq5`)를 사용한다. Pillow는 WebP를 지원해야 한다.
 
 ```sh

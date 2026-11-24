@@ -38,6 +38,7 @@ async function logout() {
       </RouterLink>
       <nav aria-label="주 메뉴">
         <RouterLink to="/">카드 도감</RouterLink>
+        <RouterLink to="/news">새 소식</RouterLink>
         <a v-if="session.isAdmin" href="/admin">관리자</a>
         <span class="divider" aria-hidden="true"></span>
         <button v-if="session.account" type="button" class="text-button" :disabled="busy" @click="logout">로그아웃</button>

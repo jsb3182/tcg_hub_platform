@@ -5,6 +5,7 @@ import App from './App.vue'
 import CatalogView from './views/CatalogView.vue'
 import './styles/tokens.css'
 import './styles/app.css'
+import './styles/operations.css'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -12,6 +13,7 @@ const router = createRouter({
     { path: '/', alias: '/cards', name: 'catalog', component: CatalogView, meta: { title: '카드 도감' } },
     { path: '/cards/:id(\\d+)', name: 'card', component: () => import('./views/CardView.vue'), meta: { title: '카드 상세' } },
     { path: '/login', name: 'login', component: () => import('./views/LoginView.vue'), meta: { title: '로그인' } },
+    { path: '/news', name: 'news', component: () => import('./views/NewsView.vue'), meta: { title: '새 소식' } },
     { path: '/admin', name: 'admin', component: () => import('./views/AdminView.vue'), meta: { title: '관리자' } },
     { path: '/:pathMatch(.*)*', component: () => import('./views/NotFound.vue'), meta: { title: '페이지를 찾을 수 없습니다' } },
   ],

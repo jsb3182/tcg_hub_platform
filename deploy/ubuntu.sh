@@ -22,6 +22,14 @@ if [[ $cmd == tunnel ]]; then
   exec cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20241 run --token-file "$config/tunnel.token"
 fi
 source "$config/runtime.env"
+if [[ $cmd == worker || $cmd == media ]]; then
+  export CATALOG_CACHE_ROOT=/var/lib/tcg-hub/catalog-cache
+  if [[ -r $config/feeds.env ]]; then source "$config/feeds.env"; fi
+  if [[ -r $config/x.token ]]; then
+    X_BEARER_TOKEN=$(cat "$config/x.token")
+    export X_BEARER_TOKEN
+  fi
+fi
 admin_db() {
   PGUSER=postgres PGPASSWORD="$(cat "$config/postgres.pw")" "$@"
 }

@@ -19,9 +19,21 @@ def main():
     enqueue_command.add_argument("image", type=Path)
     commands.add_parser("once")
     commands.add_parser("run")
+    probe = commands.add_parser("check-feed", help="Read one supported source without saving to the database")
+    probe.add_argument("provider", choices=("OFFICIAL_NEWS", "X", "DCINSIDE"))
+    probe.add_argument("key")
     args = parser.parse_args()
     if args.command == "check-legacy":
         print(json.dumps(check(args.source), ensure_ascii=False))
+        return
+    if args.command == "check-feed":
+        from .feeds import FetchError, fetch_feed
+        try:
+            page = fetch_feed(args.provider, args.key, {})
+        except FetchError as error:
+            parser.exit(2, str(error) + "\n")
+        print(json.dumps({"count": len(page.items), "latest": page.items[0].url if page.items else None},
+                         ensure_ascii=False))
         return
 
     from .jobs import connect, enqueue, process_once
@@ -42,9 +54,8 @@ def main():
             stop = threading.Event()
             for sig in (signal.SIGINT, signal.SIGTERM):
                 signal.signal(sig, lambda *_: stop.set())
-            while not stop.is_set():
-                if not process_once(db, media, spool):
-                    stop.wait(interval)
+            from .sync import run
+            run(db, media, spool, stop, interval)
 
 
 if __name__ == "__main__":
