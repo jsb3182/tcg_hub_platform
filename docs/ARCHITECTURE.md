@@ -67,7 +67,7 @@ WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3
 | `GET /api/v1/auth/admin-mode` | 현재 접속 경로에서 사용할 관리자 인증 방식을 반환한다. |
 | `POST /api/v1/auth/local-admin` | A90 내부에서 관리자 액세스 토큰과 인증 앱의 6자리 코드로 단기 관리자 쿠키를 발급한다. |
 | `GET /api/v1/admin/status` | Spring의 `ROLE_ADMIN`과 추가 인증을 확인한다. 로컬 전용 설치에서는 같은 계정의 TOTP 세션을, 공개 배포에서는 서명·발급처·대상이 유효한 Cloudflare Access 토큰을 요구한다. |
-| `GET /api/v1/news` | 게임별 공개 뉴스·원문 링크를 페이지로 반환한다. |
+| `GET /api/v1/news` | 게임별 공개 뉴스·원문 링크를 페이지로 반환한다. `lang=ko`가 기본이며 `en`, `ja`를 지원한다. 제목·요약의 표시 언어와 번역 준비 상태가 포함된다. |
 | `/api/v1/admin/operations`, `sources`, `worker`, `review` | 서버 상태, 수집 일시정지·재개·예약, 워커 재시작과 뉴스 검수를 제공한다. [요청 규격](COLLECTION.md) |
 
 1. 운영자가 원본 폴더를 이관한다. 기존 4×3 시트는 바이트를 그대로 보관하고 실제 셀 크기를 기록한다. 원본 섹션 ID와 항목 ID 또는 고정 순번으로 재실행 시 중복을 방지한다.

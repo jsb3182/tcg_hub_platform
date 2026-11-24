@@ -19,7 +19,7 @@ def main():
     enqueue_command.add_argument("image", type=Path)
     commands.add_parser("once")
     commands.add_parser("run")
-    probe = commands.add_parser("check-feed", help="Read one supported source without saving to the database")
+    probe = commands.add_parser("check-feed", help="Read a source without storing posts. A configured X worker shares its rate limit.")
     probe.add_argument("provider", choices=("OFFICIAL_NEWS", "X", "DCINSIDE"))
     probe.add_argument("key")
     args = parser.parse_args()
@@ -29,7 +29,15 @@ def main():
     if args.command == "check-feed":
         from .feeds import FetchError, fetch_feed
         try:
-            page = fetch_feed(args.provider, args.key, {})
+            if args.provider == "X" and os.getenv("X_BEARER_TOKEN") and any(
+                    os.getenv(name) for name in ("DATABASE_URL", "PGDATABASE", "PGSERVICE", "PGHOST")):
+                from .jobs import connect
+                from .sync import fetch_x_with_limits
+                with connect() as db:
+                    db.autocommit = True
+                    page = fetch_x_with_limits(db, args.key, {})
+            else:
+                page = fetch_feed(args.provider, args.key, {})
         except FetchError as error:
             parser.exit(2, str(error) + "\n")
         print(json.dumps({"count": len(page.items), "latest": page.items[0].url if page.items else None},

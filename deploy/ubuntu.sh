@@ -18,11 +18,15 @@ if [[ $cmd == db ]]; then
     -c shared_buffers=96MB -c work_mem=2MB -c maintenance_work_mem=32MB \
     -c max_connections=16 -c max_parallel_workers=0 -c max_wal_senders=0
 fi
-if [[ $cmd == tunnel || $cmd == check-public ]]; then
+if [[ $cmd == tunnel || $cmd == check-public || $cmd == check-public-origin ]]; then
   require_public_settings
-  [[ -s $config/tunnel.token ]] && command -v cloudflared >/dev/null || { echo 'Public start requires an installed connector and its token.' >&2; exit 1; }
+  [[ -f $config/tunnel.token && -r $config/tunnel.token && -s $config/tunnel.token ]] && command -v cloudflared >/dev/null || { echo 'Public start requires an installed connector and a readable, nonempty token file.' >&2; exit 1; }
   if [[ $cmd == check-public ]]; then exit 0; fi
-  until curl -fsS --max-time 4 http://127.0.0.1:8080/internal/ready >/dev/null 2>&1; do sleep 5; done
+  if [[ $cmd == check-public-origin ]]; then
+    public_origin_ready || { echo 'The running API must be ready and use Cloudflare Access before public start.' >&2; exit 1; }
+    exit 0
+  fi
+  until public_origin_ready; do sleep 5; done
   exec cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20241 run --token-file "$config/tunnel.token"
 fi
 if [[ $cmd == totp ]]; then

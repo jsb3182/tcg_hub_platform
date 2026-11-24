@@ -26,6 +26,13 @@ require_public_settings() {
   }
 }
 
+public_origin_ready() {
+  local origin=http://127.0.0.1:8080
+  curl --noproxy '*' -fsS --max-time 4 "$origin/internal/ready" >/dev/null 2>&1 &&
+    curl --noproxy '*' -fsS --max-time 4 "$origin/api/v1/auth/admin-mode" 2>/dev/null |
+    python3 -c 'import json, sys; sys.exit(json.load(sys.stdin).get("mode") != "CLOUDFLARE")' 2>/dev/null
+}
+
 require_local_settings() {
   source "$config/access.env"
   [[ ${PUBLIC_ORIGIN:-} == http://127.0.0.1:8080 && -z ${CF_TEAM_DOMAIN:-} && -z ${CF_AUDIENCE:-} ]] || {

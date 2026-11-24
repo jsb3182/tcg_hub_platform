@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.client.ExpectedCount.manyTimes;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -104,6 +105,30 @@ class OperationsIntegrationTest {
         assertTrue(db.sql("select restart_requested_at is not null from worker_heartbeat where id='tcg-worker'").query(Boolean.class).single());
     }
 
+    @Test void dashboardPreservesProviderCooldownForManualRequests() throws Exception {
+        db.sql("""
+            insert into feed_provider_cooldown(provider,retry_after_at) values('X','2099-02-02T00:00:00Z')
+            on conflict(provider) do update set retry_after_at=excluded.retry_after_at
+            """).update();
+        long xSource = db.sql("""
+            insert into feed_source(provider,source_key,retry_after_at) values('X',?,'2099-02-01T00:00:00Z') returning id
+            """).param(UUID.randomUUID().toString()).query(Long.class).single();
+        db.sql("update feed_source set next_fetch_at='2099-02-01T00:00:00Z' where id=?").param(source).update();
+        http.perform(command("/sources/"+xSource+"/run")).andExpect(status().isNoContent());
+
+        String x = "$.sources[?(@.id == " + xSource + ")]";
+        String other = "$.sources[?(@.id == " + source + ")]";
+        var dashboard = get("/api/v1/admin/operations").header(ASSERTION,access).header("Authorization","Bearer "+admin);
+        http.perform(dashboard).andExpect(status().isOk())
+                .andExpect(jsonPath(x+".state").value(contains("QUEUED")))
+                .andExpect(jsonPath(x+".nextFetchAt").value(contains("2099-02-02T00:00:00Z")))
+                .andExpect(jsonPath(other+".nextFetchAt").value(contains("2099-02-01T00:00:00Z")));
+
+        db.sql("update feed_source set retry_after_at='2099-02-03T00:00:00Z' where id=?").param(xSource).update();
+        http.perform(dashboard).andExpect(status().isOk())
+                .andExpect(jsonPath(x+".nextFetchAt").value(contains("2099-02-03T00:00:00Z")));
+    }
+
     @Test void moderationPublishesOnlyApprovedNews() throws Exception {
         db.sql("update feed_source set game_code=null where id=?").param(source).update();
         long before = newsCount();
@@ -127,6 +152,52 @@ class OperationsIntegrationTest {
                     .andExpect(status().isForbidden());
         }
         http.perform(get("/admin").header(ASSERTION,access)).andExpect(forwardedUrl("/index.html"));
+    }
+
+    @Test void translationsFollowRequestedLanguageWithoutPublishingReviewItemsOrReplacingOriginalText() throws Exception {
+        db.sql("""
+            update feed_item set source_published_at='2199-01-01T00:00:00Z',
+                payload='{"kind":"NEWS","title":"Source title","summary":"Source summary"}' where id=?
+            """).param(item).update();
+        db.sql("update feed_item set original_language='en' where id=?").param(item).update();
+        db.sql("insert into feed_item_translation(item_id,lang,title,summary) values(?,'ko','한국어 제목','한국어 요약')")
+                .param(item).update();
+        var news = get("/api/v1/news").param("game","NIVEL");
+        http.perform(news).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.id == "+item+")]").isEmpty());
+        http.perform(get("/api/v1/admin/review").header("Authorization","Bearer "+admin).header(ASSERTION,access)
+                .param("lang","ko")).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(item))
+                .andExpect(jsonPath("$.items[0].translationStatus").value("TRANSLATED"));
+        db.sql("update feed_item set status='PUBLISHED' where id=?").param(item).update();
+        http.perform(news).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(item))
+                .andExpect(jsonPath("$.items[0].title").value("한국어 제목"))
+                .andExpect(jsonPath("$.items[0].summary").value("한국어 요약"))
+                .andExpect(jsonPath("$.items[0].originalTitle").value("Source title"))
+                .andExpect(jsonPath("$.items[0].originalSummary").value("Source summary"))
+                .andExpect(jsonPath("$.items[0].originalLanguage").value("en"))
+                .andExpect(jsonPath("$.items[0].contentLanguage").value("ko"))
+                .andExpect(jsonPath("$.items[0].summaryLanguage").value("ko"))
+                .andExpect(jsonPath("$.items[0].translationStatus").value("TRANSLATED"))
+                .andExpect(jsonPath("$.items[0].sourceUrl").value("https://example.invalid/news"));
+        http.perform(get("/api/v1/news").param("game","NIVEL").param("lang","en"))
+                .andExpect(jsonPath("$.items[0].translationStatus").value("ORIGINAL"))
+                .andExpect(jsonPath("$.items[0].title").value("Source title"))
+                .andExpect(jsonPath("$.items[0].contentLanguage").value("en"));
+        http.perform(get("/api/v1/news").param("game","NIVEL").param("lang","ja"))
+                .andExpect(jsonPath("$.items[0].translationStatus").value("PENDING"))
+                .andExpect(jsonPath("$.items[0].summary").value("Source summary"))
+                .andExpect(jsonPath("$.items[0].contentLanguage").value("en"));
+        db.sql("update feed_item_translation set summary=null where item_id=? and lang='ko'").param(item).update();
+        http.perform(news).andExpect(jsonPath("$.items[0].title").value("한국어 제목"))
+                .andExpect(jsonPath("$.items[0].summary").value("Source summary"))
+                .andExpect(jsonPath("$.items[0].contentLanguage").value("ko"))
+                .andExpect(jsonPath("$.items[0].summaryLanguage").value("en"));
+        db.sql("update feed_item set original_language=null where id=?").param(item).update();
+        http.perform(get("/api/v1/news").param("game","NIVEL").param("lang","ja"))
+                .andExpect(jsonPath("$.items[0].translationStatus").value("PENDING"))
+                .andExpect(jsonPath("$.items[0].contentLanguage").value(org.hamcrest.Matchers.nullValue()));
+        for (String invalid : new String[]{"fr","en-US","","ko' OR 1=1 --"}) {
+            http.perform(get("/api/v1/news").param("lang",invalid)).andExpect(status().isBadRequest());
+        }
     }
 
     private long newsCount() throws Exception {

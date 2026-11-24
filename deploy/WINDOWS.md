@@ -14,6 +14,15 @@ $python = Join-Path $venv 'Scripts\python.exe'
 & $python -m pip install -r (Join-Path $release 'crawler-middleware\requirements.txt') 'psycopg[binary]>=3.2,<4'
 ```
 
+한국어 번역 모델을 릴리스 바깥의 재사용 가능한 폴더에 설치한다. 최초 다운로드 크기는 약 496 MB다. 워커와 같은 PowerShell에서 환경 변수를 설정한다. 이미 받은 네 파일이 다른 폴더에 있다면 설치기에 `--source 'D:\tcg\model-transfer'`를 추가한다.
+
+```powershell
+$env:TCG_TRANSLATION_MODEL = 'D:\tcg\runtime\models\m2m100-418m-int8'
+& $python (Join-Path $release 'deploy\install-translation-model.py') --destination $env:TCG_TRANSLATION_MODEL
+```
+
+설치기는 리비전 `e205afefce2fd6933a1dca3b92b5063894f2f2bb`의 SHA-256을 확인한다. M2M100의 INT8 가중치와 SentencePiece를 사용하는 CPU 번역은 인터넷 연결 없이 실행된다. [모델 출처](https://huggingface.co/auralmira/m2m100-418M-ct2-int8/tree/e205afefce2fd6933a1dca3b92b5063894f2f2bb) · [MIT 라이선스](M2M100-LICENSE.txt)
+
 이미 PostGIS 확장을 설치한 전용 DB와 마이그레이션 권한이 있는 계정을 사용한다. API와 워커에는 같은 DB와 미디어 루트를 지정한다. 워커 이미지를 임시 보관할 폴더는 미디어 루트와 서로 겹치지 않는 절대 경로여야 한다.
 
 새 전용 DB의 `public` 스키마에 PostGIS만 설치했다면 최초 실행 전에 같은 PowerShell에서 `$env:SPRING_FLYWAY_BASELINE_ON_MIGRATE='true'`, `$env:SPRING_FLYWAY_BASELINE_VERSION='0'`을 설정한다. Flyway는 버전 0을 기준으로 V1부터 적용한다.
@@ -24,6 +33,7 @@ $python = Join-Path $venv 'Scripts\python.exe'
 | `PGHOST`, `PGPORT`, `PGDATABASE` | 같은 DB에 대한 워커의 libpq 연결 설정 |
 | `PGUSER`, `PGPASSWORD` | 별도의 워커 계정을 사용할 때 지정한다. 기본값은 API의 DB 계정과 비밀번호다. |
 | `MEDIA_ROOT`, `SPOOL_ROOT` | WebP 저장소와 비공개 작업 디렉터리의 Windows 절대 경로 |
+| `TCG_TRANSLATION_MODEL` | 검증한 한국어 번역 모델 디렉터리의 Windows 절대 경로 |
 | `JWT_SECRET` | 32바이트 이상 랜덤 키의 Base64 값 |
 | `PUBLIC_ORIGIN` | 브라우저가 사용한 정확한 오리진. 로컬 기본값 예시는 `http://localhost:8080`이다. |
 | `PORT` | API의 루프백 포트. 기본값은 8080이다. |

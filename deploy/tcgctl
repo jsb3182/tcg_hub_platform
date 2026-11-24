@@ -113,12 +113,33 @@ stop_service() {
   sv -w "$wait_seconds" stop "$svroot/tcg-$1"
 }
 enable() {
-  rm -f "$svroot/tcg-$1/down"
-  sv up "$svroot/tcg-$1"
+  rm -f "$svroot/tcg-$1/down" && sv up "$svroot/tcg-$1"
 }
 disable() {
   touch "$svroot/tcg-$1/down"
   stop_service "$1"
+}
+edge_ready() {
+  curl --noproxy '*' -fsS --max-time 2 http://127.0.0.1:20241/ready 2>/dev/null |
+    python -c 'import json, sys; r = json.load(sys.stdin); sys.exit(not (r["status"] == 200 and r["readyConnections"] > 0))' 2>/dev/null
+}
+wait_for_edge() {
+  local deadline=$((SECONDS + 60))
+  until edge_ready; do
+    (( SECONDS < deadline )) || return 1
+    sleep 2
+  done
+}
+start_public_tunnel() {
+  local was_disabled=false
+  if [[ -e $svroot/tcg-tunnel/down ]]; then was_disabled=true; fi
+  if enable tunnel && wait_for_edge; then
+    echo 'Cloudflare connector is connected.'
+    return 0
+  fi
+  echo "Cloudflare connection could not be confirmed. See $PREFIX/var/log/tcg-tunnel/current." >&2
+  if [[ $was_disabled == true ]]; then disable tunnel; fi
+  return 1
 }
 hold_writers() {
   for member in tunnel worker api; do disable "$member"; done
@@ -161,7 +182,12 @@ case "$cmd" in
       }
     done
     choose_engine
-    proot-distro login ubuntu-tcg --isolated --bind "$release:/mnt/tcg-release" -- /usr/bin/env "TCG_DB_ENGINE=$engine" /bin/bash /mnt/tcg-release/deploy/install-ubuntu.sh "$@"
+    model_bind=()
+    if [[ -n ${TCG_TRANSLATION_MODEL_SOURCE:-} ]]; then
+      [[ -d $TCG_TRANSLATION_MODEL_SOURCE ]] || { echo 'Missing offline translation model directory.' >&2; exit 1; }
+      model_bind=(--bind "$TCG_TRANSLATION_MODEL_SOURCE:/mnt/tcg-translation-model")
+    fi
+    proot-distro login ubuntu-tcg --isolated --bind "$release:/mnt/tcg-release" "${model_bind[@]}" -- /usr/bin/env "TCG_DB_ENGINE=$engine" /bin/bash /mnt/tcg-release/deploy/install-ubuntu.sh "$@"
     if [[ $engine == native ]]; then install_native; fi
     install -d -m 0700 "$(dirname "$engine_file")"
     marker_tmp=$(mktemp "${engine_file}.XXXXXX")
@@ -223,16 +249,20 @@ BOOT
     prepare_db
     enable api
     for (( n=0; n<120; n++ )); do
-      if curl -fsS --max-time 2 http://127.0.0.1:8080/internal/ready >/dev/null 2>&1; then break; fi
+      if curl --noproxy '*' -fsS --max-time 2 http://127.0.0.1:8080/internal/ready >/dev/null 2>&1; then break; fi
       sleep 2
     done
-    curl -fsS --max-time 4 http://127.0.0.1:8080/internal/ready >/dev/null
+    curl --noproxy '*' -fsS --max-time 4 http://127.0.0.1:8080/internal/ready >/dev/null
+    if [[ $cmd == start ]]; then guest tcgtunnel /bin/bash "$guest_script" check-public-origin; fi
     enable worker
-    if [[ $cmd == start ]]; then enable tunnel; fi
+    if [[ $cmd == start ]]; then start_public_tunnel; fi
     ;;
   status)
     echo "Database engine: $engine"
     for member in db api worker tunnel; do sv status "$svroot/tcg-$member"; done
+    if [[ ! -e $svroot/tcg-tunnel/down ]]; then
+      if edge_ready; then echo 'Cloudflare connector is connected.'; else echo 'Cloudflare connection has not been confirmed.'; fi
+    fi
     ;;
   maintenance) hold_writers;;
   stop) hold_writers; disable db;;

@@ -26,7 +26,7 @@ class FeedTests(unittest.TestCase):
              patch.object(feeds, "check_robots"), patch.object(feeds, "download") as get:
             get.side_effect = [gallery([104, 103]), gallery([103, 102]), gallery([101, 100])]
             page = feeds.dc_news("tcggame", {"latest": 100})
-            self.assertEqual(page.cursor, {"latest": 100, "high": 104, "page": 2})
+            self.assertEqual((page.cursor["latest"], page.cursor["high"], page.cursor["page"]), (100, 104, 2))
             page = feeds.dc_news("tcggame", page.cursor)
             self.assertEqual(page.cursor["page"], 3)
             page = feeds.dc_news("tcggame", page.cursor)
@@ -50,9 +50,20 @@ class FeedTests(unittest.TestCase):
             self.assertIn("pagination_token=page2", get.call_args.args[0])
 
     def test_conditional_response_keeps_prior_validator(self):
-        cursor = {"etag": '"snapshot"'}
+        cursor = {"etag": '"snapshot"', "excerpts": 1}
         with patch.object(feeds, "check_robots"), patch.object(feeds, "download", return_value=(None, {})) as get:
             page = feeds.publisher_news("weiss-en", cursor)
             self.assertEqual(page.items, [])
             self.assertEqual(page.cursor, cursor)
             self.assertEqual(get.call_args.args[1], {"If-None-Match": '"snapshot"'})
+
+    def test_existing_rss_cursor_fetches_publisher_excerpt_once(self):
+        rss = b"""<rss><channel><item><link>https://en.ws-tcg.com/information/fixture</link>
+                  <title>Booster set update</title><description><![CDATA[<p>Sample <b>release</b> news.</p>
+                  <script>skip()</script>]]></description></item></channel></rss>"""
+        with patch.object(feeds, "check_robots", return_value=0), patch.object(feeds, "download",
+                return_value=(rss, {"ETag": '"new"'})) as get:
+            page = feeds.publisher_news("weiss-en", {"etag": '"old"'})
+        self.assertEqual(get.call_args.args[1], {})
+        self.assertEqual(page.items[0].summary, "Sample release news.")
+        self.assertEqual(page.cursor["excerpts"], 1)
