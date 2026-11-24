@@ -52,9 +52,10 @@ class OperationsApi {
                    case when not enabled then 'PAUSED' when state='RUNNING' then state
                         when requested_at is not null then 'QUEUED' else state end as state,
                    last_started_at,last_success_at,last_error_at,last_error,
-                   greatest(next_fetch_at,retry_after_at) as next_fetch_at,requested_at as run_requested_at,
+                   greatest(s.next_fetch_at,s.retry_after_at,p.retry_after_at) as next_fetch_at,requested_at as run_requested_at,
                    last_seen as last_count,last_added as added_count
-            from feed_source order by provider,game_code nulls last,id
+            from feed_source s left join feed_provider_cooldown p using (provider)
+            order by provider,game_code nulls last,id
             """).query(Source.class).list();
         File mount = media;
         while (!mount.exists() && mount.getParentFile() != null) mount = mount.getParentFile();

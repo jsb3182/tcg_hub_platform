@@ -70,6 +70,59 @@ class DatabaseTests(unittest.TestCase):
             self.assertEqual(save_news(self.db, source, [item]), 0)
             self.assertEqual(self.db.execute("SELECT status FROM feed_item WHERE source_id=%s", (sid,)).fetchone()[0], "REJECTED")
 
+    def test_reimport_preserves_manual_review_snapshot(self):
+        from datetime import datetime, timezone
+        from tcg_worker.feeds import Headline
+        from tcg_worker.sync import save_news
+
+        original = Headline("42", "Reviewed text", "https://example.org/reviewed", None, "Original summary")
+        edited = Headline("42", "Edited upstream", "https://example.org/edited",
+                          datetime(2026, 11, 1, tzinfo=timezone.utc), "Edited summary")
+        with self.db.transaction(force_rollback=True):
+            sid = self.db.execute("SELECT id FROM feed_source WHERE provider='DCINSIDE' AND source_key='tcggame'").fetchone()[0]
+            source = {"id": sid, "auto_publish": False}
+            self.assertEqual(save_news(self.db, source, [original]), 1)
+            item = self.db.execute("SELECT id FROM feed_item WHERE source_id=%s", (sid,)).fetchone()[0]
+            self.db.execute("INSERT INTO feed_item_translation(item_id,lang,title) VALUES (%s,'ko','검수한 번역')", (item,))
+            reviewer = self.db.execute("SELECT id FROM app_user WHERE email='fixture@example.test'").fetchone()[0]
+            for status in ("PENDING", "PUBLISHED", "REJECTED"):
+                with self.subTest(status=status):
+                    decision_by = None if status == "PENDING" else reviewer
+                    self.db.execute("UPDATE feed_item SET status=%s,reviewer_id=%s WHERE id=%s", (status, decision_by, item))
+                    self.assertEqual(save_news(self.db, source, [edited]), 0)
+                    row = self.db.execute("""
+                        SELECT i.status,i.reviewer_id,i.payload->>'title',i.payload->>'summary',i.source_url,
+                               i.source_published_at,t.title FROM feed_item i
+                        LEFT JOIN feed_item_translation t ON t.item_id=i.id AND t.lang='ko' WHERE i.id=%s
+                    """, (item,)).fetchone()
+                    self.assertEqual(row, (status, decision_by, original.title, original.summary,
+                                           original.url, None, "검수한 번역"))
+
+    def test_automatic_official_edits_refresh_only_unreviewed_published_text(self):
+        from tcg_worker.feeds import Headline
+        from tcg_worker.sync import save_news
+
+        with self.db.transaction(force_rollback=True):
+            sid = self.db.execute("SELECT id FROM feed_source WHERE provider='OFFICIAL_NEWS' AND source_key='weiss-en'").fetchone()[0]
+            source = {"id": sid, "auto_publish": True}
+            first = Headline("feed1", "Publisher headline", "https://example.org/original", None)
+            with_excerpt = Headline("feed1", first.title, first.url, None, "Publisher excerpt")
+            self.assertEqual(save_news(self.db, source, [first]), 1)
+            item = self.db.execute("SELECT id FROM feed_item WHERE source_id=%s", (sid,)).fetchone()[0]
+            self.db.execute("INSERT INTO feed_item_translation(item_id,lang,title) VALUES (%s,'ko','초기 번역')", (item,))
+            self.assertEqual(save_news(self.db, source, [with_excerpt]), 0)
+            row = self.db.execute("""
+                SELECT payload->>'summary',translation_due_at IS NOT NULL,
+                       EXISTS(SELECT 1 FROM feed_item_translation WHERE item_id=%s) FROM feed_item WHERE id=%s
+            """, (item, item)).fetchone()
+            self.assertEqual(row, (with_excerpt.summary, True, False))
+            self.db.execute("""
+                UPDATE feed_item SET reviewer_id=(SELECT id FROM app_user WHERE email='fixture@example.test') WHERE id=%s
+            """, (item,))
+            self.assertEqual(save_news(self.db, source, [first]), 0)
+            self.assertEqual(self.db.execute("SELECT payload->>'summary' FROM feed_item WHERE id=%s", (item,)).fetchone(),
+                             (with_excerpt.summary,))
+
     def test_reused_pack_code_keeps_product_and_card_ids(self):
         from tcg_worker.sync import save_cards
 
@@ -128,6 +181,66 @@ class DatabaseTests(unittest.TestCase):
             self.assertEqual(row["state"], "RUNNING")
             self.assertIsNone(row["requested_at"])
             self.assertIsNone(claim(self.db, False))
+
+    def test_x_limit_survives_failed_page_and_applies_to_other_accounts(self):
+        import psycopg
+        from tcg_worker.feeds import FetchError
+        from tcg_worker.sync import claim, fetch_x_with_limits
+
+        schema = self.db.execute("SELECT current_schema()").fetchone()[0]
+        self.addCleanup(self.db.execute, "DELETE FROM feed_provider_cooldown WHERE provider='X'")
+
+        def interrupted_fetch(provider, key, cursor, *, on_x_limit):
+            on_x_limit(180)
+            on_x_limit(30)
+            raise ValueError("fixture malformed after rate-limit headers")
+
+        with psycopg.connect(os.environ["TCG_TEST_DSN"], autocommit=True,
+                             options=f"-c search_path={schema},public") as worker:
+            with patch("tcg_worker.sync.fetch_feed", side_effect=interrupted_fetch), self.assertRaises(ValueError):
+                fetch_x_with_limits(worker, "first_account", {})
+        with patch("tcg_worker.sync.fetch_feed") as fetch, self.assertRaises(FetchError) as raised:
+            fetch_x_with_limits(self.db, "another_account", {})
+        self.assertGreater(raised.exception.retry_after, 150)
+        fetch.assert_not_called()
+        with self.db.transaction(force_rollback=True):
+            self.db.execute("UPDATE feed_source SET enabled=(provider='X'),next_fetch_at=now(),requested_at=now()")
+            self.assertIsNone(claim(self.db, False))
+            self.db.execute("UPDATE feed_source SET enabled=true WHERE provider='OFFICIAL_NEWS'")
+            self.assertEqual(claim(self.db, False)["provider"], "OFFICIAL_NEWS")
+            self.db.execute("UPDATE feed_source SET enabled=false WHERE provider='OFFICIAL_NEWS'")
+            self.db.execute("UPDATE feed_provider_cooldown SET retry_after_at=now()-interval '1 second'")
+            self.assertEqual(claim(self.db, False)["provider"], "X")
+
+    def test_news_page_and_checkpoint_roll_back_when_completion_fails(self):
+        import threading
+        import psycopg
+        from psycopg.rows import dict_row
+        from tcg_worker.feeds import FeedPage, Headline
+        from tcg_worker.sync import sync_source
+
+        schema = self.db.execute("SELECT current_schema()").fetchone()[0]
+        with self.db.cursor(row_factory=dict_row) as cur:
+            source = cur.execute("""
+                INSERT INTO feed_source(provider,source_key,state,cursor_value)
+                VALUES ('OFFICIAL_NEWS','atomic_check','RUNNING','{}') RETURNING *
+            """).fetchone()
+        self.addCleanup(self.db.execute, "DELETE FROM feed_source WHERE id=%s", (source["id"],))
+        self.db.execute("""
+            ALTER TABLE feed_source ADD CONSTRAINT fixture_finish_error
+            CHECK (source_key <> 'atomic_check' OR state <> 'OK')
+        """)
+        self.addCleanup(self.db.execute, "ALTER TABLE feed_source DROP CONSTRAINT fixture_finish_error")
+        item = Headline("item", "Sample", "https://example.org/post", None)
+        with patch("tcg_worker.sync.connect", lambda: psycopg.connect(
+                os.environ["TCG_TEST_DSN"], options=f"-c search_path={schema},public")), \
+             patch("tcg_worker.sync.fetch_feed", return_value=FeedPage([item], {"page": 2}, more=True)):
+            sync_source(source, threading.Event())
+        row = self.db.execute("SELECT state,cursor_value,last_added FROM feed_source WHERE id=%s",
+                              (source["id"],)).fetchone()
+        self.assertEqual(row, ("ERROR", "{}", 0))
+        self.assertEqual(self.db.execute("SELECT count(*) FROM feed_item WHERE source_id=%s",
+                                         (source["id"],)).fetchone()[0], 0)
 
     def test_restart_recovers_interrupted_source_without_clearing_rate_limit(self):
         import threading

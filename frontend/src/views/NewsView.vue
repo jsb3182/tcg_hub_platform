@@ -6,6 +6,20 @@ import NewsItem from '../components/NewsItem.vue'
 
 const route = useRoute()
 const router = useRouter()
+const languages = { ko: '한국어', en: 'English', ja: '日本語' }
+const preferenceKey = 'tcg.news.language'
+function supportedLanguage(value) {
+  return typeof value === 'string' && Object.hasOwn(languages, value)
+}
+function savedLanguage() {
+  try {
+    const value = localStorage.getItem(preferenceKey)
+    if (supportedLanguage(value)) return value
+  } catch { /* Storage can be unavailable in private browsing. */ }
+  return 'ko'
+}
+const preference = ref(savedLanguage())
+const language = computed(() => supportedLanguage(route.query.lang) ? route.query.lang : preference.value)
 const games = ref([])
 const items = ref([])
 const total = ref(0)
@@ -17,12 +31,23 @@ const selected = computed(() => typeof route.query.game === 'string' ? route.que
 const page = computed(() => Math.max(0, Math.min(1000000, parseInt(route.query.page, 10) || 0)))
 const pageSize = 20
 const pages = computed(() => Math.ceil(total.value / pageSize))
-function navigate(game, index) {
-  const query = {}
+function navigate(game, index, lang = language.value) {
+  const query = { lang }
   if (game) query.game = game
   if (index) query.page = String(index)
   router.push({ name: 'news', query })
 }
+function selectLanguage(value) {
+  if (!supportedLanguage(value)) return
+  preference.value = value
+  try { localStorage.setItem(preferenceKey, value) } catch { /* The URL retains this choice. */ }
+  navigate(selected.value, page.value, value)
+}
+watch(() => route.fullPath, () => {
+  if (route.name === 'news' && !supportedLanguage(route.query.lang)) {
+    router.replace({ name: 'news', query: { ...route.query, lang: preference.value }, hash: route.hash })
+  }
+}, { immediate: true })
 watch(retry, async (_, __, cleanup) => {
   const controller = new AbortController()
   cleanup(() => controller.abort())
@@ -30,15 +55,16 @@ watch(retry, async (_, __, cleanup) => {
   try { games.value = await request('/games', {signal: controller.signal}) }
   catch (cause) { if (!controller.signal.aborted) gameError.value = cause.message }
 }, {immediate: true})
-watch([selected, page, retry], async (_, __, cleanup) => {
+watch([selected, page, language, retry], async (_, __, cleanup) => {
   const controller = new AbortController()
   cleanup(() => controller.abort())
   busy.value = true
   error.value = ''
-  const query = new URLSearchParams({page: page.value, size: pageSize})
+  const query = new URLSearchParams({page: page.value, size: pageSize, lang: language.value})
   if (selected.value) query.set('game', selected.value)
   try {
     const result = await request('/news?' + query, {signal: controller.signal})
+    if (controller.signal.aborted) return
     items.value = result.items
     total.value = result.total
   } catch (cause) { if (!controller.signal.aborted) error.value = cause.message }
@@ -47,7 +73,14 @@ watch([selected, page, retry], async (_, __, cleanup) => {
 </script>
 
 <template>
-  <header class="page-heading"><h1>새 소식</h1></header>
+  <header class="page-heading news-heading">
+    <h1>새 소식</h1>
+    <label class="news-language">게시글 언어
+      <select :value="language" @change="selectLanguage($event.target.value)">
+        <option v-for="(name, code) in languages" :key="code" :value="code" :lang="code">{{ name }}</option>
+      </select>
+    </label>
+  </header>
   <nav class="game-tabs" aria-label="소식 게임별 보기">
     <button type="button" :aria-pressed="!selected" @click="navigate('', 0)">전체</button>
     <button v-for="game in games" :key="game.code" type="button" :aria-pressed="selected === game.code" @click="navigate(game.code, 0)">{{ game.name }}</button>

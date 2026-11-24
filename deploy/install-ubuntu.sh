@@ -59,6 +59,12 @@ id tcgapp >/dev/null 2>&1 || useradd --system --create-home --user-group tcgapp
 id tcgtunnel >/dev/null 2>&1 || useradd --system --create-home --user-group tcgtunnel
 install -d -m 0755 "$config" "$base" "$base/releases"
 install -d -m 0700 -o tcgapp -g tcgapp /var/lib/tcg-hub /var/lib/tcg-hub/{media,spool,catalog-cache}
+models=/var/lib/tcg-hub/models
+install -d -m 0700 -o tcgapp -g tcgapp "$models"
+model_args=()
+if [[ -d /mnt/tcg-translation-model ]]; then model_args=(--source /mnt/tcg-translation-model); fi
+python3 "$release/deploy/install-translation-model.py" --destination "$models/m2m100-418m-int8" "${model_args[@]}"
+chown -R tcgapp:tcgapp "$models/m2m100-418m-int8"
 if [[ ${TCG_DB_ENGINE:-guest} == guest ]]; then
   install -d -m 0700 -o postgres -g postgres /var/lib/postgresql/tcg-hub
 fi

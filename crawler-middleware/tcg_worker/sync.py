@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import threading
+import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from itertools import islice
@@ -19,6 +20,7 @@ from .jobs import connect, process_once
 LOG = logging.getLogger(__name__)
 WORKER = "tcg-worker"
 LOCK = 73401851
+X_REQUEST_LOCK = 73401852
 
 
 def claim(db, catalog):
@@ -29,6 +31,8 @@ def claim(db, catalog):
                WHERE enabled AND state <> 'RUNNING' AND (provider='CATALOG')=%s
                  AND coalesce(next_fetch_at,'-infinity') <= now()
                  AND coalesce(retry_after_at,'-infinity') <= now()
+                 AND NOT EXISTS (SELECT 1 FROM feed_provider_cooldown p
+                                  WHERE p.provider=feed_source.provider AND p.retry_after_at>now())
                ORDER BY requested_at NULLS LAST, next_fetch_at NULLS FIRST,
                         CASE WHEN provider='CATALOG' THEN 1 ELSE 0 END,id
                LIMIT 1 FOR UPDATE SKIP LOCKED
@@ -39,10 +43,38 @@ def claim(db, catalog):
         """, (catalog,)).fetchone()
 
 
+def fetch_x_with_limits(db, key, cursor):
+    # The worker and an operator's check-feed command can use the same X app simultaneously.
+    if not db.execute("SELECT pg_try_advisory_lock(%s)", (X_REQUEST_LOCK,)).fetchone()[0]:
+        raise FetchError("다른 X 조회가 진행 중입니다.", retry_after=15)
+    try:
+        remaining = db.execute("""
+            SELECT ceil(extract(epoch FROM retry_after_at-now()))::bigint
+            FROM feed_provider_cooldown WHERE provider='X' AND retry_after_at>now()
+        """).fetchone()
+        if remaining:
+            raise FetchError("X 앱의 호출 제한 해제 시각을 기다립니다.", retry_after=remaining[0])
+
+        def remember(seconds):
+            # Both callers use autocommit so a crash while parsing the page preserves this deadline.
+            db.execute("""
+                INSERT INTO feed_provider_cooldown(provider,retry_after_at)
+                VALUES ('X',now()+make_interval(secs=>%s))
+                ON CONFLICT(provider) DO UPDATE SET retry_after_at=
+                    greatest(feed_provider_cooldown.retry_after_at,EXCLUDED.retry_after_at)
+            """, (seconds,))
+
+        return fetch_feed("X", key, cursor, on_x_limit=remember)
+    finally:
+        db.execute("SELECT pg_advisory_unlock(%s)", (X_REQUEST_LOCK,))
+
+
 def save_news(db, source, items):
     added = 0
     for item in items:
         payload = {"kind": "NEWS", "title": item.title}
+        if item.summary:
+            payload["summary"] = item.summary
         if item.published:
             payload["publishedAt"] = item.published.isoformat()
         row = db.execute("""
@@ -52,6 +84,20 @@ def save_news(db, source, items):
         """, (source["id"], item.external_id, item.url, Jsonb(payload), item.published,
               "PUBLISHED" if source["auto_publish"] else "PENDING")).fetchone()
         added += int(row is not None)
+        if row is None and source["auto_publish"]:
+            # A moderation decision applies to the exact text and link presented for review.
+            # Only automatically published official news may take subsequent publisher edits.
+            db.execute("""
+                UPDATE feed_item SET payload=(payload-'summary') || %s,source_url=%s,
+                       source_published_at=coalesce(%s,source_published_at)
+                 WHERE source_id=%s AND external_id=%s AND payload->>'kind'='NEWS'
+                   AND status='PUBLISHED' AND reviewer_id IS NULL
+                   AND EXISTS (SELECT 1 FROM feed_source s WHERE s.id=feed_item.source_id
+                               AND s.provider='OFFICIAL_NEWS' AND s.auto_publish)
+                   AND (payload->>'title',payload->>'summary',source_url,source_published_at)
+                       IS DISTINCT FROM (%s,%s,%s,coalesce(%s,source_published_at))
+            """, (Jsonb(payload), item.url, item.published, source["id"], item.external_id,
+                  item.title, item.summary, item.url, item.published))
     return added
 
 
@@ -156,6 +202,7 @@ def sync_source(source, stop):
         try:
             cursor = json.loads(source["cursor_value"] or "{}")
             more, floor = False, 0
+            page = None
             if source["provider"] == "CATALOG":
                 from .catalog_sources import iter_catalog
                 total = 0
@@ -175,20 +222,24 @@ def sync_source(source, stop):
                     raise FetchError("카드 목록이 비어 있습니다. 기존 카드 자료를 유지합니다.")
                 cursor = {"count": total}
             else:
-                page = fetch_feed(source["provider"], source["source_key"], cursor)
+                if source["provider"] == "X":
+                    page = fetch_x_with_limits(db, source["source_key"], cursor)
+                else:
+                    page = fetch_feed(source["provider"], source["source_key"], cursor)
                 cursor, more, floor = page.cursor, page.more, page.retry_after
-                with db.transaction():
-                    interrupted(db, sid, stop)
+            with db.transaction():
+                interrupted(db, sid, stop)
+                if page is not None:
                     added = save_news(db, source, page.items)
-                    db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s,cursor_value=%s WHERE id=%s",
-                               (len(page.items), added, json.dumps(cursor), sid))
-            db.execute("""
-                UPDATE feed_source SET state='OK',last_finished_at=now(),last_success_at=now(),
-                  last_error=NULL,failure_count=0,retry_after_at=CASE WHEN %s > 0 THEN now()+make_interval(secs=>%s) END,cursor_value=%s,
-                  next_fetch_at=CASE WHEN requested_at IS NOT NULL THEN now() ELSE
-                    now()+make_interval(secs => CASE WHEN %s THEN 60 ELSE interval_seconds END) END
-                WHERE id=%s
-            """, (floor, floor, json.dumps(cursor), more, sid))
+                    db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s WHERE id=%s",
+                               (len(page.items), added, sid))
+                db.execute("""
+                    UPDATE feed_source SET state='OK',last_finished_at=now(),last_success_at=now(),
+                      last_error=NULL,failure_count=0,retry_after_at=CASE WHEN %s > 0 THEN now()+make_interval(secs=>%s) END,cursor_value=%s,
+                      next_fetch_at=CASE WHEN requested_at IS NOT NULL THEN now() ELSE
+                        now()+make_interval(secs => CASE WHEN %s THEN 60 ELSE interval_seconds END) END
+                    WHERE id=%s
+                """, (floor, floor, json.dumps(cursor), more, sid))
         except Interrupted:
             db.execute("UPDATE feed_source SET state='IDLE',last_finished_at=now(),next_fetch_at=now() WHERE id=%s", (sid,))
         except Exception as error:
@@ -227,16 +278,19 @@ def run(db, media, spool, stop, interval):
           WHERE state='RUNNING'
     """)
     cancel = threading.Event()
-    # Each lane owns one connection. A slow catalog snapshot leaves news, media and heartbeats available.
+    from .translation import model_directory, translate_pending
+    next_translation_check = 0
+    translating = None
+    # Independent lanes keep slow imports and local inference out of the heartbeat loop.
     active = {}
-    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="tcg-sync") as pool:
+    with ThreadPoolExecutor(max_workers=3, thread_name_prefix="tcg-sync") as pool:
         try:
             while not stop.is_set():
                 restart = db.execute("UPDATE worker_heartbeat SET seen_at=now() WHERE id=%s RETURNING restart_requested_at",
                                      (WORKER,)).fetchone()[0]
                 if restart:
                     cancel.set()
-                    if any(not task.done() for task in active.values()):
+                    if any(not task.done() for task in active.values()) or (translating and not translating.done()):
                         stop.wait(1)
                         continue
                     db.execute("""
@@ -251,6 +305,16 @@ def run(db, media, spool, stop, interval):
                         source = claim(db, catalog)
                         if source:
                             active[catalog] = pool.submit(sync_source, source, cancel)
+                if translating is not None and translating.done():
+                    translating.result()
+                    translating = None
+                if translating is None and time.monotonic() >= next_translation_check:
+                    next_translation_check = time.monotonic() + 30
+                    if (model_directory() / "model.bin").is_file() and db.execute("""
+                            SELECT EXISTS (SELECT 1 FROM feed_item
+                                           WHERE translation_due_at<=now() AND status <> 'REJECTED')
+                            """).fetchone()[0]:
+                        translating = pool.submit(translate_pending, cancel)
                 media_count = process_once(db, media, spool)
                 stop.wait(0.2 if media_count else min(interval, 3 if active else 10))
         finally:

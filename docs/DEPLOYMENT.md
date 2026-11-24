@@ -26,10 +26,12 @@ d=/sdcard/Download/tcg-hub/DIGEST12; [ -r "$d/bootstrap-termux.sh" ] || { termux
 
 ## 2. 외부 공개용 Cloudflare 계정 준비
 
-1. Cloudflare DNS로 관리할 도메인을 추가하고 서비스 호스트명(예: `cards.example.com`)을 정한다. Zero Trust에서 조직의 팀 도메인과 관리자용 IdP를 확인한다.
+1. 소유하거나 관리 권한이 있는 도메인을 Cloudflare에 추가해 zone이 **Active**가 되면 그 아래에 서비스 호스트명(예: `cards.example.com`)을 정한다. 이미 운영하는 사이트의 서브도메인을 쓸 수 있다. Zero Trust에서 조직의 팀 도메인과 관리자용 IdP를 확인한다. [공개 호스트용 Access 요건](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/)
 2. **Access → Applications**에서 Self-hosted 앱 한 개를 만든다. 동일 앱의 공개 hostname/path 항목으로 `cards.example.com/admin`, `cards.example.com/admin/*`, `cards.example.com/api/v1/admin`, `cards.example.com/api/v1/admin/*`를 등록한다. 허용할 관리자 계정/그룹과 IdP를 지정하고 IdP의 다중 인증 정책을 적용한다. 이 앱의 Application Audience(AUD)와 `팀명.cloudflareaccess.com`을 복사한다. Spring도 Access 서명·발급자·대상·만료를 검증한다. [Access 경로 규칙](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/)
 3. **Networking → Tunnels**에서 원격 관리형 `cloudflared` 터널을 생성한다. Published application route에서 공개 hostname을 위 주소로, 서비스 유형을 HTTP로, 주소를 `127.0.0.1:8080`으로 지정한다. DNS가 터널을 가리키고 zone의 HTTPS 인증서가 활성 상태인지 확인한다. 커넥터 토큰은 5단계에서 입력한다. 터널은 TCP 또는 UDP 7844 아웃바운드 연결을 사용한다. [터널 네트워크 구성](https://developers.cloudflare.com/tunnel/configuration/) · [토큰 파일 옵션](https://developers.cloudflare.com/tunnel/reference/run-parameters/)
 4. 해당 zone의 SSL/TLS에서 HTTP→HTTPS 리디렉션과 WAF의 managed rules 배포 상태를 확인한다. 무료 플랜은 Free Managed Ruleset이 기본 적용된다. WAF custom rule로 해당 hostname의 `/internal` 및 `/internal/` 하위 경로를 차단한다. 캐시 규칙을 추가했다면 `/admin` 및 하위 경로와 `/api/` 하위 요청을 캐시 우회로 설정한다. [Cloudflare WAF 구성](https://developers.cloudflare.com/waf/get-started/)
+
+개인 기기 몇 대만 연결하는 경우, 도메인 구매 없이 Cloudflare One Client(WARP)에 기기를 등록하고 사설 IP 경로와 허용 정책을 설정할 수 있다. 이 앱의 원본은 A90의 루프백 주소이므로 해당 방식에는 별도의 사설 경로와 원본 연결 설정이 필요하다. Quick Tunnel은 임시 개발용 주소를 발급한다. [사설 네트워크 연결](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/private-net/cloudflared/) · [Quick Tunnel의 용도와 제한](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)
 
 ## 3. A90에 Termux와 Ubuntu 설치
 
@@ -100,6 +102,18 @@ tcgctl account admin@example.com ROLE_ADMIN
 
 공개 HTTPS 배포에서는 Cloudflare Access가 관리자를 인증한다. 로컬 등록 명령은 `http://127.0.0.1:8080` 전용 설치에서만 실행할 수 있다.
 
+### 오프라인 한국어 번역 모델
+
+최초 설치 시 Meta의 M2M100 418M을 INT8로 변환한 모델과 SentencePiece 토크나이저를 받는다. 고정 리비전은 `e205afefce2fd6933a1dca3b92b5063894f2f2bb`이며 네 파일의 합계는 약 496 MB다. 설치기는 파일별 크기와 SHA-256을 확인한 뒤 `/var/lib/tcg-hub/models/m2m100-418m-int8`에 배치한다. 이후 설치에서 같은 파일이 확인되면 기존 모델을 사용한다. CTranslate2와 SentencePiece가 기기 안에서 추론한다. [원본 모델과 언어 목록](https://huggingface.co/facebook/m2m100_418M) · [고정된 INT8 모델](https://huggingface.co/auralmira/m2m100-418M-ct2-int8/tree/e205afefce2fd6933a1dca3b92b5063894f2f2bb) · [MIT 라이선스](../deploy/M2M100-LICENSE.txt)
+
+폰에서 모델을 다운로드하기 어려우면 PC에서 먼저 준비한다. 아래 명령으로 생성한 `m2m100-418m-int8` 폴더를 A90의 `Download/tcg-hub/`로 복사한다.
+
+```bash
+python deploy/install-translation-model.py --destination "$HOME/tcg-models/m2m100-418m-int8"
+```
+
+A90의 Termux에서 `export TCG_TRANSLATION_MODEL_SOURCE="$HOME/storage/downloads/tcg-hub/m2m100-418m-int8"`를 설정한 뒤 1단계 설치 또는 7단계 업데이트를 진행한다. 전송용 복사본과 설치본을 함께 두는 동안 모델만 약 992 MB를 사용한다. 워커는 기기 전용 저장소의 모델을 읽는다. 릴리스 교체와 DB 백업은 이 파일을 유지하며, 새 기기에서는 동일 리비전을 다시 설치할 수 있다.
+
 ## 5. 도감 마이그레이션과 공개
 
 기존 사이트에서 `js/app.js`, `imgd/`, `pk/`를 디렉터리 구조 그대로 Termux의 `$HOME/tcg-import/`에 준비한다. 새로 업로드한 원본을 대기열에 넣을 때도 여기에 파일을 옮긴 뒤 DB의 실제 카드 variant ID를 지정한다.
@@ -116,7 +130,9 @@ tcgctl status
 
 `tcgctl token` 프롬프트에는 커넥터 토큰 값만 붙여 넣는다. 토큰 파일은 전용 계정 소유·모드 0600이며 `cloudflared tunnel run --token-file`로 읽는다. 터널을 교체하면 `tcgctl maintenance` → `tcgctl token` → `tcgctl start` 순서로 적용한다.
 
-모바일 회선에서 공개 PWA 설치, 카드 검색과 이미지 표시를 확인한다. 비로그인 창에서 `/admin`과 `/api/v1/admin` 하위 요청이 Access 인증을 요구하는지, 일반 계정으로 관리자 API에 접근하면 거부되는지, 허용된 관리자 계정에서만 관리 상태 조회가 성공하는지 확인한다. 공개 `/internal/ready`는 거부되고 기기 내부 readiness는 성공해야 한다.
+`tcgctl start`는 실행 중인 Spring이 DB에 연결되고 관리자 인증 모드를 `CLOUDFLARE`로 보고하는지 검사한다. 커넥터가 Cloudflare에 연결되는지도 로컬 지표에서 최대 60초간 확인한다. 처음 활성화할 때 연결에 실패하면 터널을 다시 비활성화하므로 로그와 네트워크를 확인한 뒤 명령을 재실행한다. 앞서 활성화한 터널은 일시적으로 연결이 끊겨도 재접속을 시도한다. 기기 재부팅 후에도 터널 서비스는 같은 원본 검사를 통과한 뒤 연결한다. `tcgctl status`에서 현재 연결을 확인할 수 있다. [커넥터 준비 상태](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/deployment-guides/kubernetes/)
+
+외부 공개 설정은 **휴대전화 데이터 회선에서** 확인한다. 공개 주소의 `/api/v1/games`가 HTTP 200과 다섯 종목을 반환하는지, 브라우저에서 PWA 설치·카드 검색·이미지 표시가 동작하는지 확인한다. 비로그인 창에서 `/admin`과 `/api/v1/admin/operations`를 열면 Access 인증 또는 접근 거부가 나타나야 한다. 허용된 관리자 계정으로 로그인해 관리 상태 조회를 확인한다. 외부 `/internal/ready`에는 WAF의 HTTP 403이, A90 내부 `http://127.0.0.1:8080/internal/ready`에는 HTTP 200이 기대된다.
 
 ## 6. 메모리와 서비스 상태
 

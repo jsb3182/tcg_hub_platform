@@ -39,12 +39,17 @@ class FetchError(Exception):
         self.retry_after = retry_after
 
 
+class InvalidXPage(FetchError):
+    """The timeline explicitly rejected the pagination token."""
+
+
 @dataclass
 class Headline:
     external_id: str
     title: str
     url: str
     published: datetime | None
+    summary: str | None = None
 
 
 @dataclass
@@ -77,27 +82,71 @@ def backoff(headers):
     return max(0, int(reset) - int(time.time()) + 1) if reset.isdigit() else 0
 
 
-def download(url, headers=None, limit=3_000_000, *, robots_file=False):
+def x_cooldown(headers, status):
+    retry = headers.get("Retry-After")
+    exhausted = headers.get("x-rate-limit-remaining") == "0" or status == 429
+    if not exhausted and not retry:
+        return 0
+    wait = backoff({"Retry-After": retry}) if retry else 0
+    if exhausted:
+        reset = headers.get("x-rate-limit-reset", "")
+        if reset.isdigit():
+            wait = max(wait, int(reset) - int(time.time()) + 1)
+        if wait <= 0:
+            wait = 60
+    return wait
+
+
+def invalid_x_page(payload):
+    if not isinstance(payload, dict):
+        return False
+    errors = payload.get("errors")
+    for entry in [payload, *(errors if isinstance(errors, list) else [])]:
+        if not isinstance(entry, dict):
+            continue
+        explanation = " ".join(v for k in ("title", "detail", "message")
+                               if isinstance(v := entry.get(k), str)).lower()
+        params = entry.get("parameters")
+        targets_page = (isinstance(params, dict) and "pagination_token" in params
+                        or re.search(r"\bpagination[ _-]token\b", explanation))
+        if targets_page and re.search(r"\b(invalid|expired|malformed|not valid)\b", explanation):
+            return True
+    return False
+
+
+def download(url, headers=None, limit=3_000_000, *, robots_file=False, x_api=False, on_x_limit=None):
     request = Request(url, headers={"User-Agent": AGENT, **(headers or {})})
     try:
         with build_opener(SameOrigin()).open(request, timeout=15) as response:
+            if x_api and on_x_limit and (wait := x_cooldown(response.headers, response.status)):
+                on_x_limit(wait)
             body = response.read(limit + 1)
             if len(body) > limit:
                 raise FetchError("응답이 크기 제한을 초과했습니다.")
             return body, response.headers
     except HTTPError as error:
         with error:
+            code = error.code
+            wait = x_cooldown(error.headers, code) if x_api else max(backoff(error.headers), 60 if code == 429 else 0)
+            if x_api and wait and on_x_limit:
+                on_x_limit(wait)
+            if x_api and code in (400, 422):
+                try:
+                    problem = json.loads(error.read(16384))
+                except (UnicodeError, ValueError):
+                    problem = None
+                if invalid_x_page(problem):
+                    raise InvalidXPage("X API 페이지 토큰을 다시 설정합니다.", retry_after=wait) from None
             if error.code == 304:
                 return None, error.headers
             if robots_file and error.code in (404, 410):
                 return b"", error.headers
-            code = error.code
             message = {
                 401: "인증 정보를 확인하세요.", 402: "API 이용 권한 또는 크레딧을 확인하세요.",
                 403: "제공자가 접근을 거부했습니다.", 429: "제공자의 호출 한도에 도달했습니다.",
             }.get(code, "제공자에서 요청에 실패했습니다.")
             raise FetchError(f"HTTP {code} · {message}", blocked=code in (401, 402, 403),
-                             retry_after=max(backoff(error.headers), 60 if code == 429 else 0)) from None
+                             retry_after=wait) from None
     except (URLError, TimeoutError, OSError):
         raise FetchError("제공자에 연결할 수 없습니다. 네트워크 및 TLS 상태를 확인하세요.") from None
 
@@ -142,23 +191,39 @@ def published(value, zone=UTC):
     return stamp if stamp.tzinfo else stamp.replace(tzinfo=zone)
 
 
-def headline(base, href, title, date=None, *, key=None):
+def headline(base, href, title, date=None, *, key=None, summary=None):
     url = urljoin(base, href or "")
     if urlsplit(url)[:2] != urlsplit(base)[:2] or not href or not title:
         return None
     text = " ".join(title.split())[:400]
     if not text:
         return None
-    return Headline(key or hashlib.sha256(url.encode()).hexdigest(), text, url, date)
+    return Headline(key or hashlib.sha256(url.encode()).hexdigest(), text, url, date, summary)
+
+
+def rss_excerpt(description):
+    if not description:
+        return None
+    soup = BeautifulSoup(description, "html.parser")
+    for node in soup.select("script,style"):
+        node.decompose()
+    text = " ".join(soup.get_text(" ", strip=True).split())
+    if not text:
+        return None
+    # Keep a bounded excerpt from the publisher's feed and link to the full notice.
+    if len(text) <= 220:
+        return text
+    cut = text[:219].rsplit(" ", 1)[0].rstrip(".,:;- ")
+    return cut + "…"
 
 
 def parse_news(key, body):
     base = NEWS[key]
     if key == "weiss-en":
-        # Read only titles, canonical URLs and dates from the publisher's dedicated RSS feed.
         root = ElementTree.fromstring(body)
         for item in root.findall("./channel/item")[:40]:
-            yield headline(base, item.findtext("link"), item.findtext("title"), published(item.findtext("pubDate")))
+            yield headline(base, item.findtext("link"), item.findtext("title"), published(item.findtext("pubDate")),
+                           summary=rss_excerpt(item.findtext("description")))
         return
     soup = BeautifulSoup(body.decode("utf-8-sig"), "html.parser")
     if key == "yugioh-en":
@@ -210,14 +275,44 @@ def publisher_news(key, cursor):
         raise FetchError("등록되지 않은 공식 소식 출처입니다.", blocked=True)
     url = NEWS[key]
     gap = check_robots(url)
-    body, headers = download(url, validators(cursor))
+    # A pre-excerpt Weiss cursor could otherwise get a 304 before we have imported any excerpts.
+    use_validators = key != "weiss-en" or cursor.get("excerpts") == 1
+    body, headers = download(url, validators(cursor) if use_validators else {})
     if body is None:
         return FeedPage([], cursor, retry_after=gap)
     items = [item for item in parse_news(key, body) if item]
     if not items:
         raise FetchError("공식 뉴스 목록에서 항목을 찾지 못했습니다. 페이지 형식을 확인하세요.")
     items.sort(key=lambda item: item.published.timestamp() if item.published else 0, reverse=True)
-    return FeedPage(items, {"etag": headers.get("ETag"), "modified": headers.get("Last-Modified")}, retry_after=gap)
+    checkpoint = {"etag": headers.get("ETag"), "modified": headers.get("Last-Modified")}
+    if key == "weiss-en":
+        checkpoint["excerpts"] = 1
+    return FeedPage(items, checkpoint, retry_after=gap)
+
+
+def dc_rows(body, latest, high, page):
+    soup = BeautifulSoup(body.decode("utf-8-sig"), "html.parser")
+    ids, items = [], {}
+    for row in soup.select("tr.ub-content[data-no]"):
+        number = row.get("data-no", "")
+        display = row.select_one(".gall_num")
+        if not re.fullmatch(r"[1-9][0-9]{0,19}", number) or (display and not display.get_text(strip=True).isdecimal()):
+            continue
+        post_id = int(number)
+        if post_id <= latest or (high is not None and post_id > high):
+            ids.append(post_id)
+            continue
+        anchor = row.select_one(".gall_tit a[href]")
+        title = anchor.get_text(" ", strip=True) if anchor else ""
+        if not title:
+            raise FetchError("게시번호에 해당하는 제목이 없어 갤러리 체크포인트를 보존합니다.")
+        day = row.select_one(".gall_date[title]")
+        link = f"https://gall.dcinside.com/mgallery/board/view/?id=tcggame&no={number}"
+        items[post_id] = Headline(number, title[:400], link, published(day.get("title") if day else None, JST))
+        ids.append(post_id)
+    if not ids and not (page > 1 and soup.select_one("table.gall_list tbody")):
+        raise FetchError("갤러리 목록 항목을 확인할 수 없습니다.")
+    return ids, items
 
 
 def dc_news(key, cursor):
@@ -225,38 +320,70 @@ def dc_news(key, cursor):
         raise FetchError("지정된 TCG 갤러리만 지원합니다.", blocked=True)
     if os.getenv("DCINSIDE_WRITTEN_PERMISSION") != "tcggame":
         raise FetchError("디시인사이드 이용약관 제16조에 따른 사전 서면 동의가 필요합니다.", blocked=True)
-    page = int(cursor.get("page", 1))
+    latest = int(cursor.get("latest", 0))
+    high = int(cursor["high"]) if "high" in cursor else None
+    # Old offset-only cursors lack continuity evidence. Replay their frozen interval.
+    scan = cursor if cursor.get("scan_version") == 1 else {}
+    page = int(scan.get("page", 1))
+    if not 1 <= page <= 200:
+        raise FetchError("유효하지 않은 갤러리 페이지 체크포인트입니다.", blocked=True)
     url = DC_LIST + (f"&page={page}" if page > 1 else "")
     gap = check_robots(url)
     body, _ = download(url)
-    soup = BeautifulSoup(body.decode("utf-8-sig"), "html.parser")
-    items, ids = [], []
-    latest = int(cursor.get("latest", 0))
-    for row in soup.select("tr.ub-content[data-no]"):
-        number = row.get("data-no", "")
-        display = row.select_one(".gall_num")
-        if not re.fullmatch(r"[1-9]\d{0,19}", number) or (display and not display.get_text(strip=True).isdecimal()):
-            continue
-        ids.append(int(number))
-        anchor = row.select_one(".gall_tit a[href]")
-        if not anchor or int(number) <= latest:
-            continue
-        day = row.select_one(".gall_date[title]")
-        title = anchor.get_text(" ", strip=True)
-        link = f"https://gall.dcinside.com/mgallery/board/view/?id=tcggame&no={number}"
-        if title:
-            items.append(Headline(number, title[:400], link, published(day.get("title") if day else None, JST)))
-    if not ids and not (page > 1 and soup.select_one("table.gall_list tbody")):
-        raise FetchError("갤러리 목록 항목을 확인할 수 없습니다.")
-    high = int(cursor.get("high") or max([latest, *ids]))
-    if latest and ids and min(ids) > latest:
+    ids, records = dc_rows(body, latest, high, page)
+    if high is None:
+        high = max([latest, *records])
+    items = list(records.values())
+    at_floor = not ids or min(ids) <= latest
+    if not latest or (page == 1 and at_floor):
+        return FeedPage(items, {"latest": high}, retry_after=gap)
+
+    # Page offsets can shift as posts are added or removed. Hash distinct IDs in descending
+    # order across pages; ordinary overlap does not change the digest or double-count a post.
+    boundary = int(scan.get("boundary", high + 1))
+    digest = bytes.fromhex(scan.get("digest", "00" * 32))
+    count = int(scan.get("count", 0))
+    for post_id in sorted(records, reverse=True):
+        if post_id < boundary:
+            digest = hashlib.sha256(digest + str(post_id).encode("ascii")).digest()
+            count += 1
+            boundary = post_id
+    previous = scan.get("previous")
+    attempt = int(scan.get("attempt", 1))
+    base = {"latest": latest, "high": high, "scan_version": 1}
+    if not at_floor:
         if page >= 200:
             raise FetchError("갤러리 200페이지 한도를 넘었습니다. 이전 체크포인트를 보존합니다.", blocked=True)
-        return FeedPage(items, {"latest": latest, "high": high, "page": page + 1}, more=True, retry_after=gap)
-    return FeedPage(items, {"latest": high}, retry_after=gap)
+        checkpoint = {**base, "page": page + 1, "digest": digest.hex(), "boundary": boundary,
+                      "count": count, "previous": previous, "attempt": attempt}
+        return FeedPage(items, checkpoint, more=True, retry_after=gap)
+    if count == high - latest or previous == digest.hex():
+        return FeedPage(items, {"latest": high}, retry_after=gap)
+    # A sparse interval needs a matching second sweep. Persist each recovered page through
+    # the usual moderation/dedup transaction and use the regular poll interval after churn.
+    rapid = attempt < 3
+    checkpoint = {**base, "previous": digest.hex(), "attempt": attempt + 1 if rapid else 1}
+    return FeedPage(items, checkpoint, more=rapid, retry_after=gap if rapid else max(gap, 3600))
 
 
-def x_news(username, cursor):
+def x_id(value):
+    return isinstance(value, str) and re.fullmatch(r"[1-9][0-9]{0,19}", value) is not None
+
+
+def x_payload(raw):
+    try:
+        return json.loads(raw) if raw else None
+    except (UnicodeError, ValueError):
+        raise FetchError("X API가 올바른 JSON 응답을 반환하지 않았습니다.") from None
+
+
+def x_restart(user_id, since, wait):
+    # Repeat from the last completed poll. Bounded, exclusive until_id requests
+    # replace the rejected opaque token; duplicate post IDs are harmless in the DB.
+    return FeedPage([], {"uid": user_id, "since": since, "id_pages": True}, more=True, retry_after=wait)
+
+
+def x_news(username, cursor, *, on_x_limit=None):
     if not re.fullmatch(r"[A-Za-z0-9_]{1,15}", username):
         raise FetchError("유효한 X 계정 이름이 필요합니다.", blocked=True)
     token = os.getenv("X_BEARER_TOKEN")
@@ -266,25 +393,51 @@ def x_news(username, cursor):
     api = "https://api.x.com/2/users/"
     user_id = cursor.get("uid")
     if not user_id:
-        raw, _ = download(api + "by/username/" + username, auth)
-        user_id = json.loads(raw).get("data", {}).get("id")
-    if not re.fullmatch(r"[0-9]{1,24}", str(user_id)):
+        raw, headers = download(api + "by/username/" + username, auth, x_api=True, on_x_limit=on_x_limit)
+        lookup = x_payload(raw)
+        record = lookup.get("data") if isinstance(lookup, dict) and not lookup.get("errors") else None
+        user_id = record.get("id") if isinstance(record, dict) else None
+        if x_id(user_id) and (floor := x_cooldown(headers, 200)):
+            return FeedPage([], {**cursor, "uid": user_id}, more=True, retry_after=floor)
+    if not x_id(user_id):
         raise FetchError("X API가 계정 ID를 반환하지 않았습니다.", blocked=True)
+    since, until = cursor.get("since"), cursor.get("until")
+    if any(value is not None and not x_id(value) for value in (since, until, cursor.get("high"), cursor.get("oldest"))):
+        raise FetchError("저장된 X 게시물 번호를 확인하세요.")
     query = {"max_results": 25, "tweet.fields": "created_at", "exclude": "replies,retweets"}
-    if cursor.get("since"):
-        query["since_id"] = cursor["since"]
+    if since:
+        query["since_id"] = since
+    if until:
+        query["until_id"] = until
     if cursor.get("page"):
         query["pagination_token"] = cursor["page"]
-    raw, headers = download(api + user_id + "/tweets?" + urlencode(query), auth)
-    floor = backoff(headers) if headers.get("x-rate-limit-remaining") == "0" else 0
-    payload = json.loads(raw)
-    if payload.get("errors") or "meta" not in payload:
+    try:
+        raw, headers = download(api + user_id + "/tweets?" + urlencode(query), auth, x_api=True,
+                                on_x_limit=on_x_limit)
+    except InvalidXPage as error:
+        if cursor.get("page") and since:
+            return x_restart(user_id, since, error.retry_after)
+        raise
+    floor = x_cooldown(headers, 200)
+    payload = x_payload(raw)
+    if cursor.get("page") and since and invalid_x_page(payload):
+        return x_restart(user_id, since, floor)
+    if not isinstance(payload, dict) or payload.get("errors") or not isinstance(payload.get("meta"), dict):
         raise FetchError("X API가 타임라인을 완전히 반환하지 않았습니다.")
+    meta = payload["meta"]
+    posts, next_token = payload.get("data", []), meta.get("next_token")
+    if not isinstance(posts, list) or (next_token is not None and (not isinstance(next_token, str) or not next_token)):
+        raise FetchError("X API 타임라인 페이지 형식을 확인하세요.")
+    count = meta.get("result_count")
+    if ((not posts and (count != 0 or next_token or meta.get("newest_id") or meta.get("oldest_id")))
+            or ("result_count" in meta and (type(count) is not int or count != len(posts)))
+            or (posts and "result_count" not in meta and "newest_id" not in meta)):
+        raise FetchError("X API가 불완전한 페이지를 반환했습니다. 체크포인트를 보존합니다.")
     items = []
-    for post in payload.get("data", []):
-        post_id = str(post["id"])
-        if not post_id.isdecimal():
-            raise ValueError("Invalid X post ID")
+    for post in posts:
+        post_id = post.get("id") if isinstance(post, dict) else None
+        if not x_id(post_id) or (since and int(post_id) <= int(since)) or (until and int(post_id) >= int(until)):
+            raise FetchError("X API가 요청 범위 밖의 게시물 번호를 반환했습니다.")
         # Keep original posts on X. Classify locally and persist a link and attribution.
         text = post.get("text", "").lower()
         category = next((label for pattern, label in (
@@ -293,19 +446,33 @@ def x_news(username, cursor):
         ) if re.search(pattern, text)), "새 게시물")
         items.append(Headline(post_id, f"@{username} · {category}", f"https://x.com/{username}/status/{post_id}",
                               published(post.get("created_at"))))
-    meta = payload["meta"]
-    high = cursor.get("high") or meta.get("newest_id") or cursor.get("since")
-    if high is not None and not str(high).isdecimal():
-        raise ValueError("Invalid X high-water mark")
+    ids = [int(item.external_id) for item in items]
+    if ids and (meta.get("newest_id", str(max(ids))) != str(max(ids))
+                or meta.get("oldest_id", str(min(ids))) != str(min(ids))):
+        raise FetchError("X API 페이지 경계와 게시물 번호가 일치하지 않습니다.")
+    high = cursor.get("high") or (str(max(ids)) if ids else since)
     # The first subscription imports the latest page. Subsequent runs finish incremental pagination.
-    if cursor.get("since") and meta.get("next_token"):
-        return FeedPage(items, {"uid": user_id, "since": cursor["since"], "high": high,
-                                "page": meta["next_token"]}, more=True, retry_after=floor)
+    if since and next_token:
+        continuation = {"uid": user_id, "since": since, "high": high}
+        no_progress = cursor.get("oldest") and min(ids) >= int(cursor["oldest"])
+        if no_progress or next_token == cursor.get("page"):
+            return x_restart(user_id, since, floor)
+        if cursor.get("id_pages"):
+            if min(ids) <= int(since) + 1:
+                return FeedPage(items, {"uid": user_id, "since": high}, retry_after=floor)
+            continuation.update(id_pages=True, until=str(min(ids)))
+        else:
+            continuation["page"] = next_token
+            if cursor.get("page"):
+                continuation["oldest"] = str(min(ids))
+        return FeedPage(items, continuation, more=True, retry_after=floor)
     return FeedPage(items, {"uid": user_id, "since": high}, retry_after=floor)
 
 
-def fetch_feed(provider, key, cursor):
-    adapters = {"X": x_news, "DCINSIDE": dc_news, "OFFICIAL_NEWS": publisher_news}
+def fetch_feed(provider, key, cursor, *, on_x_limit=None):
+    if provider == "X":
+        return x_news(key, cursor, on_x_limit=on_x_limit)
+    adapters = {"DCINSIDE": dc_news, "OFFICIAL_NEWS": publisher_news}
     if provider not in adapters:
         raise FetchError("지원하지 않는 수집기입니다.", blocked=True)
     return adapters[provider](key, cursor)
