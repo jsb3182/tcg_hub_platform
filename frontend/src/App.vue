@@ -42,7 +42,7 @@ async function logout() {
         <a v-if="session.isAdmin" href="/admin">관리자</a>
         <span class="divider" aria-hidden="true"></span>
         <button v-if="session.account" type="button" class="text-button" :disabled="busy" @click="logout">로그아웃</button>
-        <RouterLink v-else to="/login">로그인</RouterLink>
+        <RouterLink v-else :to="{name: 'login', query: $route.name === 'admin' ? {to: 'admin'} : {}}">로그인</RouterLink>
       </nav>
     </div>
   </header>

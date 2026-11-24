@@ -10,9 +10,21 @@ JDK 17의 `java`·`jar`, Maven 3.9, Node 22.12 이상, npm, GNU tar·coreutils, 
 bash deploy/build-release.sh
 ```
 
-스크립트는 격리된 임시 디렉터리에서 Vue 생산 빌드를 JAR에 넣고 Maven의 package 단계를 수행한다. DB 통합 테스트는 별도 테스트 DB와 `TCG_TEST_DB=1`을 설정했을 때 실행된다. `backend/target/tcg-hub.jar`, `dist/tcg-hub-release.tar.gz`, `dist/tcg-hub-release.tar.gz.sha256`를 생성한다. 마지막 두 파일을 USB로 A90의 Download에 복사한다. 배포본에는 워커·설치 스크립트·이 가이드가 들어 있다. 기존 도감 데이터는 5단계에서 가져온다.
+스크립트는 격리된 임시 디렉터리에서 Vue 생산 빌드를 JAR에 넣고 Maven의 package 단계를 수행한다. DB 통합 테스트는 별도 테스트 DB와 `TCG_TEST_DB=1`을 설정했을 때 실행된다. `backend/target/tcg-hub.jar`와 `dist`의 세 파일 `tcg-hub-release.tar.gz`, `tcg-hub-release.tar.gz.sha256`, `bootstrap-termux.sh`를 생성한다. PC에서 이 세 파일을 A90의 `Download/tcg-hub/<압축 파일 SHA-256 앞 12자리>/`에 함께 복사한다. 기존 도감 데이터는 5단계에서 가져온다.
 
-## 2. Cloudflare 계정 준비
+### Cloudflare 등록 전 A90에서 먼저 열기
+
+3단계에서 사용하는 배포처에 맞춰 Termux를 한 번 연다. 아래 한 줄에서 `DIGEST12`를 PC에서 복사한 **이번 릴리스의 12자리 폴더명**으로 바꾼 뒤 A90의 Termux에 붙여 넣는다. Android 저장공간 권한 창이 표시되면 허용하고 Termux로 돌아와 Enter를 누른다. 설치 중에는 전원과 인터넷 연결을 유지한다.
+
+```bash
+d=/sdcard/Download/tcg-hub/DIGEST12; [ -r "$d/bootstrap-termux.sh" ] || { termux-setup-storage; read -rp 'Allow storage, then press Enter: '; }; bash "$d/bootstrap-termux.sh" --proof
+```
+
+스크립트가 앱 전용 저장소의 복사본에서 압축 파일과 내부 매니페스트를 검증하고, 옆에 있는 실행 스크립트도 패키지의 원본과 대조한다. 필요한 Termux 패키지와 Ubuntu 24.04를 준비한 뒤 `tcgctl install --local`, `tcgctl start-local`을 실행한다. 폰의 브라우저에서 `http://127.0.0.1:8080/`을 연다. 루프백으로만 카드·뉴스 조회가 열리고, Access 설정이 없는 동안 관리자 화면과 관리자 API는 접근을 거부한다. 이 설치로 Cloudflare 계정이나 터널 토큰을 만들지 않는다.
+
+`--proof`를 주면 정상 readiness 응답과 5종목 목록을 실제로 조회한 후 같은 폴더에 `tcg-hub-ready.json`을 원자적으로 기록한다. 파일에는 압축 파일의 SHA-256, 상태, 게임 수와 UTC 확인 시각이 들어간다. PC에서는 이번 전송 이후의 확인 시각과 동일한 릴리스 해시를 대조한다. 기록이 필요 없으면 `--proof`를 생략한다. 같은 로컬 릴리스에서 다시 실행하면 DB와 기존 데이터를 보존한다.
+
+## 2. 외부 공개용 Cloudflare 계정 준비
 
 1. Cloudflare DNS로 관리할 도메인을 추가하고 서비스 호스트명(예: `cards.example.com`)을 정한다. Zero Trust에서 조직의 팀 도메인과 관리자용 IdP를 확인한다.
 2. **Access → Applications**에서 Self-hosted 앱 한 개를 만든다. 동일 앱의 공개 hostname/path 항목으로 `cards.example.com/admin`, `cards.example.com/admin/*`, `cards.example.com/api/v1/admin`, `cards.example.com/api/v1/admin/*`를 등록한다. 허용할 관리자 계정/그룹과 IdP를 지정하고 IdP의 다중 인증 정책을 적용한다. 이 앱의 Application Audience(AUD)와 `팀명.cloudflareaccess.com`을 복사한다. Spring도 Access 서명·발급자·대상·만료를 검증한다. [Access 경로 규칙](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/)
@@ -21,7 +33,9 @@ bash deploy/build-release.sh
 
 ## 3. A90에 Termux와 Ubuntu 설치
 
-동일한 배포처의 Termux와 Termux:Boot를 설치하고 각각 한 번 연다. Android 설정에서 두 앱의 배터리 제한을 해제하고 상시 전원과 Wi-Fi를 준비한다. 기기를 재부팅하면 첫 잠금 해제가 필요할 수 있다. PRoot에는 독립적인 커널이나 systemd가 없으므로 Termux의 runit이 포그라운드 프로세스를 감독한다. [Termux 설치](https://github.com/termux/termux-app#installation) · [Termux:Boot 설정](https://github.com/termux/termux-boot#how-to-use) · [PRoot-Distro](https://github.com/termux/proot-distro) · [termux-services](https://github.com/termux/termux-services)
+이 A90에 설치된 Google Play판 Termux에는 부팅 실행 기능이 내장되어 있다. Termux를 한 번 열고 Android 설정에서 이 앱의 배터리 제한을 해제한다. F-Droid판을 사용하는 기기는 Termux와 Termux:Boot를 모두 F-Droid에서 받아 각각 한 번 열고 두 앱의 배터리 제한을 해제한다. [Google Play판 부팅 기능](https://github.com/termux-play-store) · [F-Droid판 Termux:Boot 설정](https://github.com/termux/termux-boot#how-to-use)
+
+상시 전원과 Wi-Fi를 준비한다. 기기를 재부팅하면 첫 잠금 해제가 필요할 수 있다. PRoot에는 독립적인 커널이나 systemd가 없으므로 Termux의 runit이 포그라운드 프로세스를 감독한다. [Termux 설치](https://github.com/termux/termux-app#installation) · [PRoot-Distro](https://github.com/termux/proot-distro) · [termux-services](https://github.com/termux/termux-services)
 
 다음은 **Termux** 셸에서 실행한다. 저장소 권한 팝업에서 Download 읽기를 허용한다. DB, 미디어, 토큰 및 백업은 Termux 전용 저장공간에 둔다. PRoot 사용자와 파일 소유권은 에뮬레이션되며, Android의 앱 샌드박스가 다른 앱과의 실제 격리 경계다. [PRoot 제약 사항](https://github.com/termux/proot-distro#limitations)
 
@@ -31,6 +45,7 @@ pkg install proot-distro termux-services util-linux curl coreutils tar
 termux-setup-storage
 proot-distro install ubuntu:24.04 --name ubuntu-tcg
 cd "$HOME/storage/downloads"
+cd "tcg-hub/DIGEST12"
 sha256sum -c tcg-hub-release.tar.gz.sha256
 mkdir -p "$HOME/tcg-release"
 tar -xzf tcg-hub-release.tar.gz -C "$HOME/tcg-release"
@@ -39,10 +54,19 @@ install -m 700 "$HOME/tcg-release/deploy/tcgctl" "$PREFIX/bin/tcgctl"
 
 ## 4. DB·런타임 준비
 
-아래의 세 값을 2단계에서 정한 실제 HTTPS origin, 팀 도메인, 64자리 앱 AUD로 바꾼다. `tcgctl install`은 Ubuntu 패키지와 가상환경을 설치하고 PostgreSQL을 먼저 기동한다. 비밀번호와 JWT 서명 키를 기기에서 생성해 `/etc/tcg-hub`에 저장하며 재실행할 때 기존 값을 사용한다. 기존 설정 변경은 Ubuntu 내부의 `runtime.env`에서 수행하고 서비스 재시작으로 반영한다. [Ubuntu ARM64 PostGIS 패키지](https://packages.ubuntu.com/noble/postgresql-16-postgis-3) · [cloudflared 서명 패키지](https://pkg.cloudflare.com/)
+아래의 세 값을 2단계에서 정한 실제 HTTPS origin, 팀 도메인, 64자리 앱 AUD로 바꾼다. `tcgctl install`은 Ubuntu 패키지와 가상환경을 설치하고 PostgreSQL을 먼저 기동한다. 비밀번호와 JWT 서명 키를 기기에서 생성해 `/etc/tcg-hub`에 저장하며 재실행할 때 기존 값을 사용한다. [Ubuntu ARM64 PostGIS 패키지](https://packages.ubuntu.com/noble/postgresql-16-postgis-3) · [cloudflared 서명 패키지](https://pkg.cloudflare.com/)
 
 ```bash
 tcgctl install https://cards.example.com your-team.cloudflareaccess.com YOUR_64_HEX_APP_AUD
+```
+
+이미 `--local`로 설치한 경우에는 Cloudflare에서 도메인·Access 앱·공개 라우트를 구성한 뒤 아래 명령으로 전환한다. `configure-public`은 커넥터를 설치하고 공개 식별자만 `/etc/tcg-hub/access.env`에 기록하므로 기존 DB, JWT 서명 키와 소스 토큰을 보존한다. `tcgctl start`와 재부팅 시 터널 서비스 모두 HTTPS origin·Access 팀 도메인·AUD·커넥터 토큰을 확인한다. Access 정책과 터널 라우트의 실제 적용 여부는 5단계에서 외부 회선으로 확인한다.
+
+```bash
+tcgctl maintenance
+tcgctl configure-public https://cards.example.com your-team.cloudflareaccess.com YOUR_64_HEX_APP_AUD
+tcgctl token
+tcgctl start
 ```
 
 설치 전용 PostgreSQL 계정이 전용 DB `tcg_hub`와 PostGIS를 만들고 `tcg_app`에는 DB 접속과 public 스키마의 객체 생성 권한을 준다. Spring Flyway가 이 계정으로 마이그레이션을 실행한다. 새 DB에는 이미 PostGIS 객체가 있으므로 배포 프로필에서 Flyway baseline 버전을 **0**으로 설정해 V1부터 적용한다. 초기화 스크립트가 기존 업무 테이블을 발견하면 중단한다. 복구 설치는 다음 시작 명령을 실행하기 전에 7단계를 따른다.

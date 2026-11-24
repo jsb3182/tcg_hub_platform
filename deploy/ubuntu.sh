@@ -7,6 +7,7 @@ app=/opt/tcg-hub/current
 config=/etc/tcg-hub
 state=/var/lib/tcg-hub
 cd "$app"
+source "$app/deploy/exposure.sh"
 cmd=${1:-}
 shift || true
 if [[ $cmd == db ]]; then
@@ -17,11 +18,15 @@ if [[ $cmd == db ]]; then
     -c shared_buffers=96MB -c work_mem=2MB -c maintenance_work_mem=32MB \
     -c max_connections=16 -c max_parallel_workers=0 -c max_wal_senders=0
 fi
-if [[ $cmd == tunnel ]]; then
+if [[ $cmd == tunnel || $cmd == check-public ]]; then
+  require_public_settings
+  [[ -s $config/tunnel.token ]] && command -v cloudflared >/dev/null || { echo 'Public start requires an installed connector and its token.' >&2; exit 1; }
+  if [[ $cmd == check-public ]]; then exit 0; fi
   until curl -fsS --max-time 4 http://127.0.0.1:8080/internal/ready >/dev/null 2>&1; do sleep 5; done
   exec cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20241 run --token-file "$config/tunnel.token"
 fi
 source "$config/runtime.env"
+source "$config/access.env"
 if [[ $cmd == worker || $cmd == media ]]; then
   export CATALOG_CACHE_ROOT=/var/lib/tcg-hub/catalog-cache
   if [[ -r $config/feeds.env ]]; then source "$config/feeds.env"; fi
@@ -34,6 +39,15 @@ admin_db() {
   PGUSER=postgres PGPASSWORD="$(cat "$config/postgres.pw")" "$@"
 }
 case "$cmd" in
+  configure-public)
+    [[ $# == 3 ]] && valid_public_settings "$1" "$2" "$3" || { echo 'Expected HTTPS_ORIGIN TEAM.cloudflareaccess.com APP_AUD.' >&2; exit 2; }
+    export DEBIAN_FRONTEND=noninteractive
+    install_tunnel_package
+    write_access_settings "$1" "$2" "$3"
+    ;;
+  check-local)
+    [[ $PUBLIC_ORIGIN == http://127.0.0.1:8080 && -z $CF_TEAM_DOMAIN && -z $CF_AUDIENCE ]]
+    ;;
   prepare-db)
     for (( n=0; n<90; n++ )); do
       if admin_db pg_isready -q -d postgres; then break; fi

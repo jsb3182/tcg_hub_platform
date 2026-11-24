@@ -39,7 +39,7 @@ let timer
 let mounted = false
 
 async function loadSnapshot() {
-  if (!session.isAdmin) return
+  if (!session.isAdmin || session.adminAccessBlocked) return
   snapshotController?.abort()
   const controller = snapshotController = new AbortController()
   snapshotBusy.value = true
@@ -54,7 +54,7 @@ async function loadSnapshot() {
   finally { if (!controller.signal.aborted) snapshotBusy.value = false }
 }
 async function loadReview() {
-  if (!session.isAdmin) return
+  if (!session.isAdmin || session.adminAccessBlocked) return
   reviewController?.abort()
   const controller = reviewController = new AbortController()
   reviewBusy.value = true
@@ -81,7 +81,7 @@ function refreshWhenVisible() {
       !activeAction.value && !snapshotBusy.value) loadSnapshot()
 }
 async function act(path, body, message) {
-  if (!session.isAdmin || activeAction.value) return
+  if (!session.isAdmin || session.adminAccessBlocked || activeAction.value) return
   activeAction.value = path
   notice.value = ''
   actionError.value = ''
@@ -110,14 +110,14 @@ async function decide(item, publish) {
   if (done) delete reviewGames.value[item.id]
 }
 function stopReads() { snapshotController?.abort(); reviewController?.abort(); gamesController?.abort() }
-watch(() => session.isAdmin, async admin => {
+watch([() => session.isAdmin, () => session.adminAccessBlocked], async ([admin, blocked]) => {
   stopReads()
   snapshot.value = null
   reviewItems.value = []
   reviewGames.value = {}
   notice.value = ''
   actionError.value = ''
-  if (!admin) return
+  if (!admin || blocked) return
   loadSnapshot()
   if (tab.value === 'review') loadReview()
   const controller = gamesController = new AbortController()
@@ -147,6 +147,10 @@ onBeforeUnmount(() => {
     <section v-if="!session.ready" class="state" role="status">로그인 상태를 확인하는 중입니다.</section>
     <section v-else-if="!session.account" class="state"><p>관리자 계정으로 로그인해 주세요.</p><RouterLink :to="{name: 'login', query: {to: 'admin'}}">로그인</RouterLink></section>
     <p v-else-if="!session.isAdmin" role="alert" class="state">관리자 권한이 필요합니다.</p>
+    <section v-else-if="session.adminAccessBlocked" class="state" role="alert">
+      <p>관리자 접근 권한을 다시 확인해 주세요.</p>
+      <a href="/admin">Cloudflare Access 인증 다시 열기</a>
+    </section>
     <template v-else>
       <nav class="game-tabs admin-tabs" aria-label="관리 메뉴"><button v-for="(title, key) in tabs" :key="key" :aria-pressed="tab === key" :disabled="!!activeAction" @click="tab = key">{{ title }}</button></nav>
       <div class="ops-heading"><h2>{{ tabs[tab] }}</h2>

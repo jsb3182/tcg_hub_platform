@@ -11,11 +11,28 @@ cd "$release"
 sha256sum --quiet --check MANIFEST.sha256
 config=/etc/tcg-hub
 base=/opt/tcg-hub
-if [[ ! -s $config/runtime.env ]]; then
-  [[ ${1:-} =~ ^https://[A-Za-z0-9.-]+$ && ${2:-} =~ ^[A-Za-z0-9-]+\.cloudflareaccess\.com$ && ${3:-} =~ ^[[:xdigit:]]{64}$ ]] || {
-    echo 'Usage (first install): bash deploy/install-ubuntu.sh https://PUBLIC_HOST TEAM.cloudflareaccess.com APP_AUD' >&2
-    exit 2
-  }
+source "$release/deploy/exposure.sh"
+local_origin=http://127.0.0.1:8080
+if [[ -s $config/runtime.env ]]; then
+  # Pre-access.env releases kept the three settings in the private runtime file.
+  source "$config/runtime.env"
+  if [[ -r $config/access.env ]]; then source "$config/access.env"; fi
+  if [[ $# == 1 && $1 == --local ]]; then
+    [[ ${PUBLIC_ORIGIN:-} == "$local_origin" && -z ${CF_TEAM_DOMAIN:-} && -z ${CF_AUDIENCE:-} ]] || {
+      echo 'This installation already has public settings.' >&2; exit 2;
+    }
+  elif [[ $# != 0 ]] && ! { [[ $# == 3 ]] && [[ $1 == "${PUBLIC_ORIGIN:-}" && $2 == "${CF_TEAM_DOMAIN:-}" && $3 == "${CF_AUDIENCE:-}" ]]; }; then
+    echo 'Use tcgctl configure-public to change Access settings on an existing installation.' >&2; exit 2
+  fi
+elif [[ $# == 1 && $1 == --local ]]; then
+  PUBLIC_ORIGIN=$local_origin CF_TEAM_DOMAIN='' CF_AUDIENCE=''
+elif [[ $# == 3 ]] && valid_public_settings "$1" "$2" "$3"; then
+  PUBLIC_ORIGIN=$1 CF_TEAM_DOMAIN=$2 CF_AUDIENCE=$3
+else
+  echo 'First install requires --local or HTTPS_ORIGIN TEAM.cloudflareaccess.com APP_AUD.' >&2; exit 2
+fi
+if [[ ${PUBLIC_ORIGIN:-} != "$local_origin" || -n ${CF_TEAM_DOMAIN:-} || -n ${CF_AUDIENCE:-} ]]; then
+  valid_public_settings "${PUBLIC_ORIGIN:-}" "${CF_TEAM_DOMAIN:-}" "${CF_AUDIENCE:-}" || { echo 'Invalid existing Access settings.' >&2; exit 2; }
 fi
 export DEBIAN_FRONTEND=noninteractive
 install -d -m 0755 /etc/postgresql-common/createcluster.d /usr/share/keyrings
@@ -27,13 +44,8 @@ if [[ ! -e /usr/sbin/policy-rc.d ]]; then
   trap 'rm -f /usr/sbin/policy-rc.d' EXIT
 fi
 apt-get update
-apt-get install -y --no-install-recommends ca-certificates curl
-curl --fail --silent --show-error --location https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg
-chmod 0644 /usr/share/keyrings/cloudflare-main.gpg
-printf '%s\n' 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared noble main' > /etc/apt/sources.list.d/tcg-cloudflared.list
-chmod 0644 /etc/apt/sources.list.d/tcg-cloudflared.list
-apt-get update
-apt-get install -y --no-install-recommends openjdk-17-jre-headless postgresql-16 postgresql-16-postgis-3 python3-venv libpq5 openssl cloudflared
+apt-get install -y --no-install-recommends ca-certificates curl openjdk-17-jre-headless postgresql-16 postgresql-16-postgis-3 python3-venv libpq5 openssl
+if [[ $PUBLIC_ORIGIN != "$local_origin" ]]; then install_tunnel_package; fi
 apt-get clean
 id tcgapp >/dev/null 2>&1 || useradd --system --create-home --user-group tcgapp
 id tcgtunnel >/dev/null 2>&1 || useradd --system --create-home --user-group tcgtunnel
@@ -46,10 +58,10 @@ if [[ ! -s $config/postgres.pw ]]; then
 fi
 chown postgres:postgres "$config/postgres.pw"
 chmod 0600 "$config/postgres.pw"
+write_access_settings "$PUBLIC_ORIGIN" "${CF_TEAM_DOMAIN:-}" "${CF_AUDIENCE:-}"
 if [[ ! -s $config/runtime.env ]]; then
   temp_env=$(mktemp "$config/runtime.XXXXXX")
   {
-    printf 'export PUBLIC_ORIGIN=%q\nexport CF_TEAM_DOMAIN=%q\nexport CF_AUDIENCE=%q\n' "$1" "$2" "$3"
     echo "export JWT_SECRET=$(openssl rand -base64 48)"
     echo "export DB_PASSWORD=$(openssl rand -hex 32)"
     cat <<'ENV'

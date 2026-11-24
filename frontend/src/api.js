@@ -17,6 +17,7 @@ export class ApiError extends Error {
 
 export async function request(path, options = {}) {
   const { signal, method = 'GET', body, token, privateRequest = false } = options
+  const protectedAdmin = privateRequest && path.startsWith('/admin/')
   const headers = { Accept: 'application/json' }
   if (privateRequest) headers['X-TCG-Request'] = '1'
   if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -27,11 +28,14 @@ export async function request(path, options = {}) {
       method, headers, signal, body: body === undefined ? undefined : JSON.stringify(body),
       credentials: privateRequest ? 'same-origin' : 'omit',
       cache: privateRequest ? 'no-store' : 'default',
+      redirect: protectedAdmin ? 'manual' : 'follow',
     })
   } catch (error) {
     if (error.name === 'AbortError') throw error
     throw new ApiError(0)
   }
+  // An Access challenge requires a top-level page visit to complete sign-in.
+  if (protectedAdmin && response.type === 'opaqueredirect') throw new ApiError(403)
   if (!response.ok) throw new ApiError(response.status)
   if (response.status === 204) return null
   const text = await response.text()

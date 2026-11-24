@@ -16,8 +16,9 @@ async function login() {
   try {
     await session.login(email.value.trim(), password.value)
     password.value = ''
-    if (route.query.to === 'admin' && session.isAdmin) window.location.assign('/admin')
-    else await router.replace('/')
+    if (route.query.to === 'admin') {
+      if (session.isAdmin) window.location.replace('/admin')
+    } else await router.replace('/')
   } catch (cause) { error.value = cause.status === 401 ? '이메일 또는 비밀번호를 확인해 주세요.' : cause.message }
   finally { busy.value = false }
 }
@@ -26,7 +27,11 @@ async function login() {
 <template>
   <div class="compact-page">
     <h1>로그인</h1>
-    <section v-if="session.account" class="panel"><p>{{ session.account.email }} 계정으로 로그인했습니다.</p><RouterLink to="/">도감 열기</RouterLink></section>
+    <section v-if="session.account" class="panel">
+      <p>{{ session.account.email }} 계정으로 로그인했습니다.</p>
+      <a v-if="route.query.to === 'admin' && session.isAdmin" href="/admin">관리자 화면 열기</a>
+      <template v-else><p v-if="route.query.to === 'admin'">이 계정에는 관리자 권한이 없습니다.</p><RouterLink to="/">도감 열기</RouterLink></template>
+    </section>
     <form v-else class="panel" @submit.prevent="login">
       <label>이메일<input v-model="email" type="email" required maxlength="254" autocomplete="username" /></label>
       <label>비밀번호<input v-model="password" type="password" required autocomplete="current-password" /></label>

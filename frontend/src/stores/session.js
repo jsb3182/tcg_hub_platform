@@ -6,6 +6,7 @@ export const useSession = defineStore('session', () => {
   const account = ref(null)
   const ready = ref(false)
   const error = ref('')
+  const adminAccessBlocked = ref(false)
   const isAdmin = computed(() => account.value?.role === 'ROLE_ADMIN')
   let initPromise
   let refreshPromise
@@ -40,23 +41,30 @@ export const useSession = defineStore('session', () => {
   async function login(email, password) {
     await initialize()
     await serialize(async () => { account.value = await post('login', { email, password }) })
+    adminAccessBlocked.value = false
     error.value = ''
   }
   async function logout() {
     await serialize(async () => {
       await post('logout')
       account.value = null
+      adminAccessBlocked.value = false
       error.value = ''
     })
   }
   async function adminRequest(path, options = {}) {
     const load = () => request('/admin' + path, { ...options, token: account.value?.accessToken, privateRequest: true })
-    try { return await load() }
-    catch (cause) {
-      if (cause.status !== 401) throw cause
+    try {
+      try { return await load() }
+      catch (cause) {
+        if (cause.status !== 401) throw cause
+      }
       await refresh()
-      return load()
+      return await load()
+    } catch (cause) {
+      if (isAdmin.value && [401, 403].includes(cause.status)) adminAccessBlocked.value = true
+      throw cause
     }
   }
-  return { account, ready, isAdmin, error, initialize, login, logout, adminRequest }
+  return { account, ready, isAdmin, adminAccessBlocked, error, initialize, login, logout, adminRequest }
 })

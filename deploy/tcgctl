@@ -93,9 +93,20 @@ BOOT
     printf '%s' "$token" | guest root /bin/bash -c 'set -e; umask 077; tmp=$(mktemp /etc/tcg-hub/xtoken.XXXXXX); cat > "$tmp"; chown tcgapp:tcgapp "$tmp"; mv -f "$tmp" /etc/tcg-hub/x.token'
     echo 'Restart the worker to load its new token.'
     ;;
+  configure-public)
+    for member in tunnel api worker; do
+      [[ -f $svroot/tcg-$member/down ]] || { echo 'Run tcgctl maintenance before changing the public origin.' >&2; exit 1; }
+    done
+    guest root /bin/bash "$guest_script" configure-public "$@"
+    echo 'Access settings saved. Use tcgctl token and tcgctl start to enable the tunnel.'
+    ;;
   start|start-local)
     guest root test ! -e /var/lib/tcg-hub/restore-in-progress || { echo 'Finish the pending restore first.' >&2; exit 1; }
-    if [[ $cmd == start ]]; then guest tcgtunnel test -s /etc/tcg-hub/tunnel.token || { echo 'Run tcgctl token first.' >&2; exit 1; }; fi
+    if [[ $cmd == start ]]; then
+      guest tcgtunnel /bin/bash "$guest_script" check-public
+    else
+      disable tunnel
+    fi
     enable db
     guest root /bin/bash "$guest_script" prepare-db
     enable api
@@ -105,7 +116,7 @@ BOOT
     done
     curl -fsS --max-time 4 http://127.0.0.1:8080/internal/ready >/dev/null
     enable worker
-    if [[ $cmd == start ]]; then enable tunnel; else disable tunnel; fi
+    if [[ $cmd == start ]]; then enable tunnel; fi
     ;;
   status)
     for member in db api worker tunnel; do sv status "$svroot/tcg-$member"; done
@@ -131,5 +142,5 @@ BOOT
     done
     proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" restore "$@"
     ;;
-  *) echo 'tcgctl install|token|x-token|start-local|start|status|maintenance|stop|account|media|backup|restore'; exit 2;;
+  *) echo 'tcgctl install [--local]|configure-public|token|x-token|start-local|start|status|maintenance|stop|account|media|backup|restore'; exit 2;;
 esac
