@@ -20,7 +20,8 @@
 
 카드 제공자 5곳 ──── 도감 수집 작업 ───┐
 발행처·X·TCG 갤러리 ─ 공지 수집 작업 ───┴── Python 워커 ── PostgreSQL
-휴대폰 /admin ── Access + 관리자 JWT ── 운영 API ── 수집 요청 · 검수 · 감사 기록
+A90 내부 /admin ── 인증 앱(TOTP) + 관리자 JWT ─┐
+공개 도메인 /admin ── Access + 관리자 JWT ─────┴─ 운영 API ── 수집 요청 · 검수 · 감사 기록
 ```
 
 | 디렉터리 | 책임 |
@@ -63,7 +64,9 @@ WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3
 | `GET /api/v1/cards/{id}` | 공개 수록 항목, `specs`, 일러스트별 `variants`. 그림이 있으면 `image` 안에 `sheetId,col,row,url,cellWidth,cellHeight`가 있다. 누락 상태는 `null`이다. |
 | `POST /api/v1/auth/login` | JSON `email,password`를 받는다. `accessToken,role,email`과 갱신 쿠키를 발급한다. |
 | `POST /api/v1/auth/refresh` · `logout` | 같은 출처와 `X-TCG-Request: 1` 헤더를 확인한다. 갱신은 기존 쿠키를 한 번만 사용할 수 있고 로그아웃은 해당 갱신 세션을 폐기한다. |
-| `GET /api/v1/admin/status` | 유효한 Cloudflare Access 서명·발급처·대상과 Spring의 `ROLE_ADMIN`을 모두 확인한 후 상태를 반환한다. 운영자 화면은 `/admin`이다. |
+| `GET /api/v1/auth/admin-mode` | 현재 접속 경로에서 사용할 관리자 인증 방식을 반환한다. |
+| `POST /api/v1/auth/local-admin` | A90 내부에서 관리자 액세스 토큰과 인증 앱의 6자리 코드로 단기 관리자 쿠키를 발급한다. |
+| `GET /api/v1/admin/status` | Spring의 `ROLE_ADMIN`과 추가 인증을 확인한다. 로컬 전용 설치에서는 같은 계정의 TOTP 세션을, 공개 배포에서는 서명·발급처·대상이 유효한 Cloudflare Access 토큰을 요구한다. |
 | `GET /api/v1/news` | 게임별 공개 뉴스·원문 링크를 페이지로 반환한다. |
 | `/api/v1/admin/operations`, `sources`, `worker`, `review` | 서버 상태, 수집 일시정지·재개·예약, 워커 재시작과 뉴스 검수를 제공한다. [요청 규격](COLLECTION.md) |
 

@@ -237,6 +237,12 @@ BOOT
   maintenance) hold_writers;;
   stop) hold_writers; disable db;;
   account) guest tcgapp /bin/bash "$guest_script" account "$@";;
+  totp)
+    [[ ( $# == 1 || ( $# == 2 && $2 == --rotate ) ) && -t 0 && -t 1 && -t 2 ]] || {
+      echo 'Run tcgctl totp EMAIL [--rotate] interactively in Termux.' >&2; exit 2
+    }
+    guest tcgapp /bin/bash "$guest_script" totp "$@"
+    ;;
   media) proot-distro login ubuntu-tcg --isolated --user tcgapp --bind "$HOME/tcg-import:/mnt/tcg-source" -- /bin/bash "$guest_script" media "$@";;
   backup)
     members=()
@@ -270,5 +276,5 @@ BOOT
       restore_guest restore "$@"
     fi
     ;;
-  *) echo 'tcgctl install [--local]|service-controls|configure-public|token|x-token|start-local|start|status|maintenance|stop|account|media|backup|restore'; exit 2;;
+  *) echo 'tcgctl install [--local]|service-controls|configure-public|token|x-token|start-local|start|status|maintenance|stop|account|totp|media|backup|restore'; exit 2;;
 esac

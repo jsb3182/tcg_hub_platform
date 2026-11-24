@@ -4,6 +4,7 @@ import { request } from '../api'
 import { useSession } from '../stores/session'
 import { bytes, dateTime, providerName } from '../presentation'
 import NewsItem from '../components/NewsItem.vue'
+import AdminAccess from '../components/AdminAccess.vue'
 
 const session = useSession()
 const tab = ref('overview')
@@ -147,10 +148,7 @@ onBeforeUnmount(() => {
     <section v-if="!session.ready" class="state" role="status">로그인 상태를 확인하는 중입니다.</section>
     <section v-else-if="!session.account" class="state"><p>관리자 계정으로 로그인해 주세요.</p><RouterLink :to="{name: 'login', query: {to: 'admin'}}">로그인</RouterLink></section>
     <p v-else-if="!session.isAdmin" role="alert" class="state">관리자 권한이 필요합니다.</p>
-    <section v-else-if="session.adminAccessBlocked" class="state" role="alert">
-      <p>관리자 접근 권한을 다시 확인해 주세요.</p>
-      <a href="/admin">Cloudflare Access 인증 다시 열기</a>
-    </section>
+    <AdminAccess v-else-if="session.adminAccessBlocked" />
     <template v-else>
       <nav class="game-tabs admin-tabs" aria-label="관리 메뉴"><button v-for="(title, key) in tabs" :key="key" :aria-pressed="tab === key" :disabled="!!activeAction" @click="tab = key">{{ title }}</button></nav>
       <div class="ops-heading"><h2>{{ tabs[tab] }}</h2>

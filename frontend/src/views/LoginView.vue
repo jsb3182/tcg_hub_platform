@@ -1,7 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSession } from '../stores/session'
+import AdminAccess from '../components/AdminAccess.vue'
 const session = useSession()
 const route = useRoute()
 const router = useRouter()
@@ -9,16 +10,16 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const busy = ref(false)
+const wantsAdmin = computed(() => route.query.to === 'admin' || ['/admin', '/admin/'].includes(route.query.next))
 
 async function login() {
   busy.value = true
   error.value = ''
   try {
-    await session.login(email.value.trim(), password.value)
+    const attempt = session.login(email.value.trim(), password.value)
     password.value = ''
-    if (route.query.to === 'admin') {
-      if (session.isAdmin) window.location.replace('/admin')
-    } else await router.replace('/')
+    await attempt
+    if (!wantsAdmin.value) await router.replace('/')
   } catch (cause) { error.value = cause.status === 401 ? '이메일 또는 비밀번호를 확인해 주세요.' : cause.message }
   finally { busy.value = false }
 }
@@ -26,11 +27,11 @@ async function login() {
 
 <template>
   <div class="compact-page">
-    <h1>로그인</h1>
-    <section v-if="session.account" class="panel">
+    <h1>{{ wantsAdmin ? '관리자 로그인' : '로그인' }}</h1>
+    <AdminAccess v-if="wantsAdmin && session.isAdmin" entry />
+    <section v-else-if="session.account" class="panel">
       <p>{{ session.account.email }} 계정으로 로그인했습니다.</p>
-      <a v-if="route.query.to === 'admin' && session.isAdmin" href="/admin">관리자 화면 열기</a>
-      <template v-else><p v-if="route.query.to === 'admin'">이 계정에는 관리자 권한이 없습니다.</p><RouterLink to="/">도감 열기</RouterLink></template>
+      <p v-if="wantsAdmin">이 계정에는 관리자 권한이 없습니다.</p><RouterLink to="/">도감 열기</RouterLink>
     </section>
     <form v-else class="panel" @submit.prevent="login">
       <label>이메일<input v-model="email" type="email" required maxlength="254" autocomplete="username" /></label>

@@ -25,6 +25,10 @@ if [[ $cmd == tunnel || $cmd == check-public ]]; then
   until curl -fsS --max-time 4 http://127.0.0.1:8080/internal/ready >/dev/null 2>&1; do sleep 5; done
   exec cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20241 run --token-file "$config/tunnel.token"
 fi
+if [[ $cmd == totp ]]; then
+  require_local_settings
+  exec /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 "$app/venv/bin/python" -I "$app/deploy/enroll-totp.py" "$@"
+fi
 source "$config/runtime.env"
 source "$config/access.env"
 if [[ $cmd == worker || $cmd == media ]]; then
@@ -58,7 +62,7 @@ case "$cmd" in
     write_access_settings "$1" "$2" "$3"
     ;;
   check-local)
-    [[ $PUBLIC_ORIGIN == http://127.0.0.1:8080 && -z $CF_TEAM_DOMAIN && -z $CF_AUDIENCE ]]
+    require_local_settings
     ;;
   prepare-db)
     for (( n=0; n<90; n++ )); do

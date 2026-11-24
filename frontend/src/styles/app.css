@@ -105,6 +105,7 @@ button.atlas { cursor: zoom-in; box-shadow: 0 1px 5px rgba(0,0,0,.28); }
 .compact-page { max-width: 460px; margin: 48px auto; }
 .compact-page h1 { font-size: 2rem; margin-bottom: 18px; }
 .compact-page .specs { margin-bottom: 16px; }
+.admin-verification { max-width: 460px; margin-inline: auto; }
 .footer { border-top: 1px solid var(--bd); margin-block: 24px; padding-top: 16px; }
 @media (max-width: 720px) {
   .shell { width: calc(100% - 32px); }

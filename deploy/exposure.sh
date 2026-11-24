@@ -26,6 +26,13 @@ require_public_settings() {
   }
 }
 
+require_local_settings() {
+  source "$config/access.env"
+  [[ ${PUBLIC_ORIGIN:-} == http://127.0.0.1:8080 && -z ${CF_TEAM_DOMAIN:-} && -z ${CF_AUDIENCE:-} ]] || {
+    echo 'Requires the A90 loopback-only installation.' >&2; return 1
+  }
+}
+
 install_tunnel_package() {
   install -d -m 0755 /usr/share/keyrings
   curl --fail --silent --show-error --location https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg

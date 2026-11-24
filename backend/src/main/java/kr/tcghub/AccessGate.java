@@ -32,6 +32,8 @@ class AccessGate {
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(issuer), audienceValidator));
     }
 
+    boolean configured() { return decoder != null; }
+
     boolean admits(HttpServletRequest request) {
         String assertion = request.getHeader("Cf-Access-Jwt-Assertion");
         if (decoder == null || assertion == null || assertion.isBlank()) return false;
