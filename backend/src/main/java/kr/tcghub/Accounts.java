@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,15 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 class Accounts {
+    private static final String EMAIL_PATTERN = "[^@\\s]+@[^@\\s]+\\.[^@\\s]+";
     record Login(@NotBlank @Email @Size(max=254) String email, @NotBlank @Size(max=72) String password) {}
+    record Registration(@NotBlank @Email @Size(max=254) @Pattern(regexp=EMAIL_PATTERN) String email,
+                        String password) {
+        Registration {
+            if (email != null) email = email.strip().toLowerCase(Locale.ROOT);
+        }
+        @Override public String toString() { return "Registration[redacted]"; }
+    }
     record Account(long id, String email, String passwordHash, String role, boolean enabled) {}
     record Access(String accessToken, String role, String email) {}
     record Session(Access access, String refresh) {}
@@ -37,7 +46,7 @@ class Accounts {
     void provision(Environment environment) {
         String email = environment.getRequiredProperty("provision-account").strip().toLowerCase(Locale.ROOT);
         String role = environment.getProperty("account-role", "ROLE_USER");
-        if (!email.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+") || email.length() > 254 ||
+        if (!email.matches(EMAIL_PATTERN) || email.length() > 254 ||
                 !Set.of("ROLE_USER","ROLE_ADMIN").contains(role)) {
             throw new IllegalArgumentException("Provide a valid email and ROLE_USER or ROLE_ADMIN");
         }
@@ -52,11 +61,27 @@ class Accounts {
         if (password == null || password.length() < 12 || tooLong(password)) {
             throw new IllegalArgumentException("Use at least 12 characters and at most 72 UTF-8 bytes");
         }
-        int created = db.sql("""
-            insert into app_user(email,password_hash,role) values(?,?,?) on conflict(email) do nothing
-            """).param(email).param(passwords.encode(password)).param(role).update();
-        if (created == 0) throw new IllegalStateException("Account already exists");
+        if (createAccount(email, password, role).isEmpty()) throw new IllegalStateException("Account already exists");
         System.out.println("Account created.");
+    }
+
+    @Transactional
+    public Session register(Registration request) {
+        String password = request.password();
+        // Keep password values out of validation errors and logs. BCrypt accepts at most 72 UTF-8 bytes.
+        if (password == null || password.length() > 72 || password.isBlank()
+                || password.codePointCount(0, password.length()) < 12 || tooLong(password))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        var user = createAccount(request.email(), password, "ROLE_USER")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT));
+        return newSession(user);
+    }
+
+    private Optional<Account> createAccount(String email, String password, String role) {
+        return db.sql("""
+            insert into app_user(email,password_hash,role) values(?,?,?) on conflict(email) do nothing
+            returning id,email,password_hash,role,enabled
+            """).param(email).param(passwords.encode(password)).param(role).query(Account.class).optional();
     }
 
     @Transactional

@@ -33,6 +33,12 @@ class AuthApi {
         local.cookie(response, local.verify(request, principal.getName(), input.code()));
     }
 
+    @PostMapping("/auth/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    Accounts.Access register(@Valid @RequestBody Accounts.Registration registration, HttpServletResponse response) {
+        return setSession(accounts.register(registration), response);
+    }
+
     @PostMapping("/auth/login")
     Accounts.Access login(@Valid @RequestBody Accounts.Login login, HttpServletResponse response) {
         return setSession(accounts.login(login), response);

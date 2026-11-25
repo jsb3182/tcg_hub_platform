@@ -62,6 +62,7 @@ WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3
 | `GET /api/v1/packs?game=YUGIOH` | 게임별 팩 배열. 배너 URL과 정밀도가 보존된 발매 표기를 포함한다. |
 | `GET /api/v1/cards` | `game`, `packId`, `q`, `rarity`, 0부터 시작하는 `page`, `size`(기본 24, 최대 100). `items, page, size, total`을 반환한다. |
 | `GET /api/v1/cards/{id}` | 공개 수록 항목, `specs`, 일러스트별 `variants`. 그림이 있으면 `image` 안에 `sheetId,col,row,url,cellWidth,cellHeight`가 있다. 누락 상태는 `null`이다. |
+| `POST /api/v1/auth/register` | 같은 출처의 방문자가 이메일과 비밀번호로 일반 회원(`ROLE_USER`)을 만든다. 성공하면 HTTP 201과 로그인 세션을 반환한다. 이미 사용 중인 이메일은 409로 응답한다. |
 | `POST /api/v1/auth/login` | JSON `email,password`를 받는다. `accessToken,role,email`과 갱신 쿠키를 발급한다. |
 | `POST /api/v1/auth/refresh` · `logout` | 같은 출처와 `X-TCG-Request: 1` 헤더를 확인한다. 갱신은 기존 쿠키를 한 번만 사용할 수 있고 로그아웃은 해당 갱신 세션을 폐기한다. |
 | `GET /api/v1/auth/admin-mode` | 현재 접속 경로에서 사용할 관리자 인증 방식을 반환한다. |
