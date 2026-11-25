@@ -1,9 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="kr.tcghub.control" android:versionCode="2" android:versionName="1.1">
+    package="kr.tcghub.control" android:versionCode="3" android:versionName="1.2">
     <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="35"/>
-    <application android:label="TCG 서버" android:icon="@drawable/ic_server"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false">
-        <activity android:name=".ControlActivity" android:exported="true">
+    <application android:label="TCG 허브" android:icon="@drawable/ic_server"
+        android:theme="@style/HubTheme" android:allowBackup="false">
+        <activity android:name=".ServerActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ControlActivity" android:windowSoftInputMode="adjustResize" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
