@@ -2,6 +2,48 @@
 
 `TCG 서버` 앱에서 로컬 서버나 이미 설정한 Cloudflare 서버를 켜고 끌 수 있다. 상태 화면에는 데이터베이스, 웹 서버, 수집 워커, 터널의 프로세스 상태가 각각 표시된다. 상단의 서버 실행 여부는 내부 웹 서버의 DB 연결 검사 결과다.
 
+## PC 없이 처음 설치하거나 로컬 V9 업그레이드하기
+
+A90의 Termux에서 아래 블록을 실행한다. **신규 설치**는 로컬 서버를 만들고, **기존 로컬 V9**는 운영 중인 DB와 미디어를 백업한 뒤 같은 DB에 새 버전을 설치한다. V9 서버를 꺼 두었다면 먼저 기존 로컬 서버를 켠다. 업그레이드 중에는 조회와 수집이 잠시 중단된다. 이미 Cloudflare에 공개한 기기는 공개 설정을 보존하는 배포 가이드 7단계의 업데이트 절차를 따른다. [배포 가이드](DEPLOYMENT.md#7-백업복구업데이트) · [릴리스 파일](https://github.com/jsb3182/tcg_hub_platform/releases/tag/a90-2026.11.25)
+
+```bash
+(
+  set -euo pipefail
+  umask 077
+  pkg install -y curl coreutils tar
+  base=https://github.com/jsb3182/tcg_hub_platform/releases/download/a90-2026.11.25
+  bundle=$(mktemp -d "$HOME/tcg-release.XXXXXXXX")
+  cd "$bundle"
+  for file in tcg-hub-release.tar.gz tcg-hub-release.tar.gz.sha256 bootstrap-termux.sh; do
+    curl --proto '=https' --proto-redir '=https' -fL --retry 3 "$base/$file" -o "$file"
+  done
+  sha256sum --check tcg-hub-release.tar.gz.sha256
+  export TCG_RELEASE_DIR="$bundle/release"
+  mkdir "$TCG_RELEASE_DIR"
+  tar --no-same-owner -xzf tcg-hub-release.tar.gz -C "$TCG_RELEASE_DIR"
+  (cd "$TCG_RELEASE_DIR" && sha256sum --quiet --check MANIFEST.sha256)
+  bootstrap_hash=$(sha256sum bootstrap-termux.sh | cut -d' ' -f1)
+  printf '%s  %s\n' "$bootstrap_hash" "$TCG_RELEASE_DIR/deploy/bootstrap-termux.sh" | sha256sum --check
+
+  if [[ -x $PREFIX/bin/tcgctl ]]; then
+    proot-distro login ubuntu-tcg --isolated --user tcgapp -- \
+      /bin/bash /opt/tcg-hub/current/deploy/ubuntu.sh check-local
+    install -m 0700 "$TCG_RELEASE_DIR/deploy/tcgctl" "$PREFIX/bin/tcgctl"
+    tcgctl service-controls
+    tcgctl maintenance
+    tcgctl backup
+    tcgctl install --local
+    tcgctl start-local
+  else
+    bash ./bootstrap-termux.sh --proof
+  fi
+  sv status "$PREFIX/var/service/tcg-mobile"
+  curl --noproxy '*' -fsS http://127.0.0.1:8080/internal/ready
+)
+```
+
+마지막에 `tcg-mobile`이 `run:`, 웹 서버가 `{"status":"UP"}`으로 표시되면 A90 브라우저에서 같은 릴리스의 APK를 받아 아래 2단계로 진행한다. 기존 데이터 백업은 `$HOME/tcg-backups/`에 남는다.
+
 ## 처음 연결할 때
 
 1. 최신 서버 배포본으로 A90을 설치 또는 업데이트한다. `tcgctl install`이 Termux 전용 `$HOME/tcg-control` 폴더와 runit 서비스 `tcg-mobile`을 설치한다. 이미 호환되는 서버를 실행 중이라면 검증된 새 배포본을 Termux의 개인 폴더에 풀고 그 디렉터리에서 `bash deploy/install-mobile-control.sh`만 실행해도 된다. Termux를 한 번 열어 둔다.
