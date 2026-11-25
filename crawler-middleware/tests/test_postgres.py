@@ -62,6 +62,9 @@ class DatabaseTests(unittest.TestCase):
             cid = self.db.execute("UPDATE card SET status='REJECTED' WHERE source_id=%s RETURNING id", (sid,)).fetchone()[0]
             self.db.execute("UPDATE card_variant SET sheet_id=%s,col_idx=1,row_idx=2 WHERE card_id=%s", (sheet, cid))
             self.assertEqual(save_cards(self.db, source, [{**record, "name": "revised"}]), 0)
+            self.assertEqual(self.db.execute("SELECT edit_version FROM card WHERE id=%s", (cid,)).fetchone()[0], 2)
+            self.assertEqual(save_cards(self.db, source, [{**record, "name": "revised"}]), 0)
+            self.assertEqual(self.db.execute("SELECT edit_version FROM card WHERE id=%s", (cid,)).fetchone()[0], 2)
             row = self.db.execute("SELECT c.name,c.status,v.sheet_id,v.col_idx,v.row_idx FROM card c JOIN card_variant v ON v.card_id=c.id WHERE c.id=%s", (cid,)).fetchone()
             self.assertEqual(row, ("revised", "REJECTED", sheet, 1, 2))
             item = Headline("post-1", "Title", "https://example.org/post", None)
@@ -299,7 +302,7 @@ class DatabaseTests(unittest.TestCase):
             publish(*args)
             raise RuntimeError("simulated interruption after rename")
 
-        with patch("tcg_worker.jobs.publish", interrupt_after_file), self.assertRaises(RuntimeError):
+        with patch("tcg_worker.atlases.publish", interrupt_after_file), self.assertRaises(RuntimeError):
             process_once(self.db, self.media, self.spool)
         count = self.db.execute("SELECT count(*) FROM media_job WHERE status='PENDING'").fetchone()[0]
         self.assertEqual(count, 13)
@@ -315,6 +318,61 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(len(list(self.media.glob("sheets/*.webp"))), 2)
         self.assertFalse(list(self.spool.iterdir()))
 
+    def test_withdraw_repack_and_republish_shared_cells(self):
+        from tcg_worker.jobs import enqueue, process_once
+
+        def sheet(variant):
+            return self.db.execute("""
+                SELECT s.id,s.storage_key,s.retired,v.col_idx,v.row_idx,c.id
+                  FROM image_sheet s JOIN card_variant v ON s.id=v.sheet_id JOIN card c ON c.id=v.card_id
+                 WHERE v.id=%s""", (variant,)).fetchone()
+
+        with self.db.transaction(force_rollback=True):
+            first, second = self.make_variant(), self.make_variant()
+            enqueue(self.db, self.spool, first, self.input)
+            Image.new("RGB", (300, 438), "blue").save(self.input)
+            enqueue(self.db, self.spool, second, self.input)
+            process_once(self.db, self.media, self.spool)
+            original = sheet(first)
+            self.assertEqual(original[0], sheet(second)[0])
+            self.db.execute("UPDATE card SET status='PENDING' WHERE id=%s", (original[5],))
+            self.assertTrue(sheet(second)[2])
+            process_once(self.db, self.media, self.spool)
+            remaining = sheet(second)
+            self.assertFalse(remaining[2])
+            self.assertNotEqual(remaining[1], original[1])
+            with Image.open(self.media / remaining[1]) as image:
+                self.assertLess(max(image.getpixel((150, 219))[:3]), 40)
+                self.assertGreater(image.getpixel((450, 219))[2], 220)
+            self.assertTrue(sheet(first)[2])
+            self.db.execute("UPDATE card SET status='PUBLISHED' WHERE id=%s", (original[5],))
+            process_once(self.db, self.media, self.spool)
+            restored = sheet(first)
+            self.assertFalse(restored[2])
+            self.assertNotEqual(restored[1], original[1])
+            with Image.open(self.media / restored[1]) as image:
+                self.assertGreater(image.getpixel((150, 219))[0], 220)
+                self.assertLess(max(image.getpixel((450, 219))[:3]), 40)
+            process_once(self.db, self.media, self.spool)
+            self.assertFalse((self.media / original[1]).exists())
+
+    def test_newest_queued_image_wins_without_leaving_superseded_pixels(self):
+        from tcg_worker.jobs import enqueue, process_once
+        with self.db.transaction(force_rollback=True):
+            variant = self.make_variant()
+            prior = enqueue(self.db, self.spool, variant, self.input)
+            Image.new("RGB", (300, 438), "green").save(self.input)
+            newest = enqueue(self.db, self.spool, variant, self.input)
+            process_once(self.db, self.media, self.spool)
+            states = self.db.execute("SELECT status FROM media_job WHERE id IN (%s,%s) ORDER BY id",
+                                     (prior, newest)).fetchall()
+            self.assertEqual(states, [("FAILED",), ("DONE",)])
+            key = self.db.execute("""SELECT s.storage_key FROM card_variant v JOIN image_sheet s ON s.id=v.sheet_id
+                                     WHERE v.id=%s AND v.col_idx=0 AND v.row_idx=0""", (variant,)).fetchone()[0]
+            with Image.open(self.media / key) as image:
+                self.assertGreater(image.getpixel((150, 219))[1], 110)
+                self.assertLess(max(image.getpixel((450, 219))[:3]), 40)
+
     def test_missing_input_can_be_requeued(self):
         from tcg_worker.jobs import enqueue, process_once
 
@@ -326,6 +384,28 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(state, "FAILED")
         self.assertNotEqual(enqueue(self.db, self.spool, variant, self.input), job)
         self.assertEqual(process_once(self.db, self.media, self.spool), 1)
+
+    def test_private_spool_reclaims_only_abandoned_images(self):
+        from tcg_worker.jobs import enqueue, reclaim_orphans
+
+        variant = self.make_variant()
+        job = enqueue(self.db, self.spool, variant, self.input)
+        self.addCleanup(self.db.execute, "DELETE FROM media_job WHERE id=%s", (job,))
+        live = self.spool / self.db.execute("SELECT spool_key FROM media_job WHERE id=%s", (job,)).fetchone()[0]
+        old = self.spool / (uuid.uuid4().hex + ".png")
+        fresh = self.spool / (uuid.uuid4().hex + ".png")
+        other = self.spool / "operator-file.png"
+        interrupted = self.spool / ".tmp-1abcdef2"
+        for path in (old, fresh, other, interrupted):
+            path.touch()
+        for path in (old, live, other, interrupted):
+            os.utime(path, (1, 1))
+        reclaim_orphans(self.db, self.spool)
+        self.assertFalse(old.exists())
+        self.assertFalse(interrupted.exists())
+        self.assertTrue(live.exists())
+        self.assertTrue(fresh.exists())
+        self.assertTrue(other.exists())
 
     def test_unpublished_art_is_excluded(self):
         from tcg_worker.jobs import enqueue, process_once

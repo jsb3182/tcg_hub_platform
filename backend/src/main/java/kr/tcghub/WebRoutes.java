@@ -40,13 +40,14 @@ class WebRoutes {
                   select exists(
                       select 1 from image_sheet s join card_variant v on v.sheet_id=s.id
                         join card c on c.id=v.card_id
-                      where s.storage_key=? group by s.id having bool_and(c.status='PUBLISHED'))
+                      where s.storage_key=? and not s.retired group by s.id having bool_and(c.status='PUBLISHED'))
                   """;
         if (!db.sql(visibilitySql).param(kind + "/" + name).query(Boolean.class).single()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
         return ResponseEntity.ok().contentType(MediaType.parseMediaType("image/webp"))
-                .cacheControl(CacheControl.maxAge(java.time.Duration.ofDays(1)).cachePublic())
+                .cacheControl(kind.equals("sheets") ? CacheControl.noCache()
+                        : CacheControl.maxAge(java.time.Duration.ofDays(1)).cachePublic())
                 .body(new FileSystemResource(path));
     }
 }
