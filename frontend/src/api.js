@@ -8,6 +8,8 @@ export class ApiError extends Error {
       403: '이 작업에 필요한 권한이 없습니다.',
       404: '요청한 정보를 찾을 수 없습니다.',
       409: '다른 작업에서 상태를 변경했습니다. 최신 상태를 다시 확인해 주세요.',
+      413: '파일 크기가 업로드 한도를 초과했습니다.',
+      415: '지원하지 않는 이미지 형식입니다.',
       429: '요청이 많습니다. 잠시 뒤 다시 시도해 주세요.',
     }
     super(descriptions[status] || '서버에 연결할 수 없습니다. 잠시 뒤 다시 시도해 주세요.')
@@ -17,15 +19,16 @@ export class ApiError extends Error {
 
 export async function request(path, options = {}) {
   const { signal, method = 'GET', body, token, privateRequest = false } = options
+  const multipart = body instanceof FormData
   const protectedAdmin = privateRequest && path.startsWith('/admin/')
   const headers = { Accept: 'application/json' }
   if (privateRequest) headers['X-TCG-Request'] = '1'
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  if (body !== undefined && !multipart) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = 'Bearer ' + token
   let response
   try {
     response = await fetch(baseUrl + path, {
-      method, headers, signal, body: body === undefined ? undefined : JSON.stringify(body),
+      method, headers, signal, body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),
       credentials: privateRequest ? 'same-origin' : 'omit',
       cache: privateRequest ? 'no-store' : 'default',
       redirect: protectedAdmin ? 'manual' : 'follow',
