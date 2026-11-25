@@ -3,13 +3,14 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request } from '../api'
 import { useSession } from '../stores/session'
-import { newRound, playGames, playLanguages, playText } from '../play'
+import { newRound, playGames, playLanguages, playText, practiceLanguage, practiceOpening,
+  rememberPracticeLanguage, rememberPracticeOpening, validOpeningSize } from '../play'
 
 const route = useRoute()
 const router = useRouter()
 const session = useSession()
 const game = computed(() => typeof route.query.game === 'string' && Object.hasOwn(playGames, route.query.game) ? route.query.game : 'YUGIOH')
-const lang = computed(() => typeof route.query.lang === 'string' && Object.hasOwn(playLanguages, route.query.lang) ? route.query.lang : 'ko')
+const lang = computed(() => practiceLanguage(route.query.lang))
 const t = computed(() => playText[lang.value])
 const deckId = computed(() => typeof route.query.deck === 'string' && /^[1-9]\d*$/.test(route.query.deck) ? route.query.deck : '')
 const query = ref('')
@@ -27,12 +28,15 @@ const deckName = ref('')
 const cards = ref([])
 const labels = ref({})
 const round = ref(null)
-const opening = ref(5)
+const opening = ref(practiceOpening(game.value))
 const total = computed(() => cards.value.reduce((count, card) => count + card.quantity, 0))
 const ids = computed(() => cards.value.map(card => card.id).join(','))
 const identity = computed(() => session.account?.email || '')
-const validOpening = computed(() => Number.isInteger(opening.value) && opening.value >= 1 && opening.value <= 10)
+const validOpening = computed(() => validOpeningSize(opening.value))
 const zones = ['hand', 'table', 'discard']
+watch(() => route.query.lang, rememberPracticeLanguage, {immediate:true})
+watch(game, code => { opening.value = practiceOpening(code) }, {flush:'sync'})
+watch(opening, size => rememberPracticeOpening(game.value, size), {flush:'sync'})
 
 function selectGame(code) {
   if (game.value !== code) router.push({ name: 'play', query: { game: code, lang: lang.value } })
@@ -130,7 +134,7 @@ function move(from, index, to) {
       <a :href="playGames[game].urls[lang]" target="_blank" rel="noopener noreferrer">{{ t.official }} ↗</a>
       <a :href="'https://play.google.com/store/apps/details?id='+playGames[game].androidPackage+'&hl='+lang" target="_blank" rel="noopener noreferrer">Google Play ↗</a>
     </section>
-    <header class="section-heading"><h2>{{ t.practice }}</h2><RouterLink to="/decks">{{ t.choose }}</RouterLink></header>
+    <header class="section-heading"><h2>{{ t.practice }}</h2><RouterLink :to="{name:'decks',query:{lang}}">{{ t.choose }}</RouterLink></header>
     <p v-if="deckBusy">{{ t.loading }}</p>
     <p v-if="deckId && session.ready && !session.account"><RouterLink :to="{name:'login',query:{next:route.fullPath}}">{{ t.login }}</RouterLink></p>
     <p v-if="deckError" role="alert">{{ t.deckError }} <button @click="deckRetry++">{{ t.retry }}</button></p>

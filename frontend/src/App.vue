@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSession } from './stores/session'
 
@@ -10,6 +10,12 @@ const logoutError = ref('')
 const busy = ref(false)
 const menuOpen = ref(false)
 const menuButton = ref(null)
+const loginTarget = computed(() => {
+  const route = router.currentRoute.value
+  if (route.name === 'admin') return {name:'login',query:{to:'admin'}}
+  if (['binder','decks','deck-new','deck-edit','play','stores'].includes(route.name)) return {name:'login',query:{next:route.fullPath}}
+  return {name:'login'}
+})
 const navigation = [
   {to:'/', label:'카드 도감', pages:['catalog','card']}, {to:'/news', label:'새 소식', pages:['news']},
   {to:'/stores', label:'매장 지도', pages:['stores']}, {to:'/binder', label:'바인더', pages:['binder']},
@@ -56,7 +62,7 @@ async function logout() {
       </nav>
       <div class="account-actions">
         <button v-if="session.account" type="button" class="account-link" :disabled="busy" @click="logout">로그아웃</button>
-        <RouterLink v-else class="account-link" :to="{name:'login', query:$route.name==='admin'?{to:'admin'}:{}}">로그인</RouterLink>
+        <RouterLink v-else class="account-link" :to="loginTarget">로그인</RouterLink>
         <button ref="menuButton" type="button" class="menu-switch" aria-controls="site-navigation"
           :aria-expanded="menuOpen" @click="menuOpen=!menuOpen">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
