@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from .media import COLUMNS, ROWS, publish
+from .media import COLUMNS, ROWS, atomic_write, publish
 
 
 def records(source: Path) -> list[dict]:
@@ -62,15 +62,17 @@ def banner_path(source: Path, name: str) -> Path:
     return source / name
 
 
-def check(source: Path):
-    packs = records(source)
+def _inspect(source: Path, packs):
     sheets = sheet_files(source)
+    sheet_info = {}
     assets = {}
-    for path in sheets.values():
+    for index, path in sheets.items():
         data, (width, height) = read_webp(path)
-        assets[path.relative_to(source).as_posix()] = hashlib.sha256(data).hexdigest()
+        digest = hashlib.sha256(data).hexdigest()
+        assets[path.relative_to(source).as_posix()] = digest
         if width % COLUMNS or height % ROWS:
             raise ValueError(f"Invalid legacy grid {path.name}")
+        sheet_info[index] = (path, "sheets/" + digest + ".webp", width // COLUMNS, height // ROWS)
     cards = images = missing = 0
     unresolved = []
     banners = set()
@@ -101,10 +103,14 @@ def check(source: Path):
                                        "reason": "legacy_image_reference_without_sheet"})
     snapshot_hash = hashlib.sha256((source / "js" / "app.js").read_bytes()).hexdigest()
     manifest = json.dumps(assets, sort_keys=True, separators=(",", ":")).encode()
-    return {"packs": len(packs), "cards": cards, "sheets": len(sheets), "banners": len(banners),
-            "source_app_sha256": snapshot_hash,
-            "source_assets_sha256": hashlib.sha256(manifest).hexdigest(),
-            "variants_with_images": images, "cards_without_images": missing, "unresolved_images": unresolved}
+    stats = {"packs": len(packs), "cards": cards, "sheets": len(sheets), "banners": len(banners),
+             "source_app_sha256": snapshot_hash, "source_assets_sha256": hashlib.sha256(manifest).hexdigest(),
+             "variants_with_images": images, "cards_without_images": missing, "unresolved_images": unresolved}
+    return stats, sheet_info
+
+
+def check(source: Path):
+    return _inspect(source, records(source))[0]
 
 
 def exact_date(value):
@@ -114,19 +120,13 @@ def exact_date(value):
 def import_catalog(db, source: Path, root: Path):
     from psycopg.types.json import Jsonb
 
-    stats = check(source)
     pack_rows = records(source)
+    stats, sheets = _inspect(source, pack_rows)
     with db.transaction():
+        # The repacker can remove a drained source file; hold its publication lock through commit.
+        db.execute("SELECT pg_advisory_xact_lock(83269431)")
         db.execute("SELECT pg_advisory_xact_lock(83269432)")
         sheet_ids = {}
-        for index, path in sheet_files(source).items():
-            data, (width, height) = read_webp(path)
-            key = publish(root, "sheets", data)
-            sheet_ids[index] = db.execute(
-                """INSERT INTO image_sheet(storage_key,cell_width,cell_height) VALUES (%s,%s,%s)
-                   ON CONFLICT(storage_key) DO UPDATE SET storage_key=EXCLUDED.storage_key RETURNING id""",
-                (key, width // COLUMNS, height // ROWS),
-            ).fetchone()[0]
         for pack in pack_rows:
             banner = None
             if pack.get("bg"):
@@ -157,10 +157,35 @@ def import_catalog(db, source: Path, root: Path):
                     sheet_id = col = row = None
                     if variant.get("im") is not None:
                         index, col, row = variant["im"]
+                        if index not in sheet_ids:
+                            _, key, width, height = sheets[index]
+                            sheet_ids[index] = db.execute("""
+                                INSERT INTO image_sheet(storage_key,cell_width,cell_height) VALUES (%s,%s,%s)
+                                ON CONFLICT(storage_key) DO UPDATE SET storage_key=EXCLUDED.storage_key RETURNING id
+                            """, (key, width, height)).fetchone()[0]
                         sheet_id = sheet_ids[index]
                     db.execute(
                         """INSERT INTO card_variant(card_id,position,rarity,sheet_id,col_idx,row_idx)
                            VALUES (%s,%s,%s,%s,%s,%s)""",
                         (inserted[0], position, variant.get("r"), sheet_id, col, row),
                     )
+        if sheet_ids:
+            # Only newly linked raw imports need inspection. Worker-built sheets already have blank unused cells.
+            db.execute("""
+                UPDATE image_sheet SET retired=true,repack_at=now()
+                WHERE id=ANY(%s) AND NOT retired AND NOT atlas_has_all_public_cells(id)
+            """, (list(sheet_ids.values()),))
+
+        sources = {key: path for path, key, _, _ in sheets.values()}
+        required = db.execute("""
+            SELECT s.storage_key FROM image_sheet s WHERE s.storage_key=ANY(%s)
+            AND EXISTS (SELECT 1 FROM card_variant v WHERE v.sheet_id=s.id)
+        """, (list(sources),)).fetchall()
+        for (key,) in required:
+            if not (root / key).is_file():
+                # Verify the exact bytes if an input changed after the inspection pass.
+                data = sources[key].read_bytes()
+                if key != "sheets/" + hashlib.sha256(data).hexdigest() + ".webp":
+                    raise ValueError("Legacy sheet changed during import")
+                atomic_write(root / key, data)
     return stats
