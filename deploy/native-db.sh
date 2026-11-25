@@ -11,7 +11,7 @@ server_major() { "$PREFIX/bin/postgres" --version | awk '{print $NF}' | cut -d. 
 check_data_version() {
   local disk_major
   disk_major=$(cat "$data/PG_VERSION")
-  [[ $disk_major == "$(server_major)" ]] || {
+  [[ $1 =~ ^[0-9]+$ && $disk_major == "$1" ]] || {
     echo "PostgreSQL data is version $disk_major. Restore a logical backup into a compatible cluster before changing major version." >&2
     exit 1
   }
@@ -27,7 +27,7 @@ case "${1:-}" in
     [[ -s $pw && -r $("$PREFIX/bin/pg_config" --sharedir)/extension/postgis.control ]]
     if [[ -e $data ]]; then
       [[ -s $data/PG_VERSION ]] || { echo "Unexpected existing native data directory: $data" >&2; exit 1; }
-      check_data_version
+      check_data_version "$(server_major)"
     else
       stage=$(mktemp -d "$state/.init.XXXXXX")
       trap 'rm -rf -- "$stage"' EXIT
@@ -36,10 +36,13 @@ case "${1:-}" in
     fi
     ;;
   run)
-    check_data_version
+    major=$(server_major)
+    check_data_version "$major"
+    io_args=()
+    if (( major >= 18 )); then io_args=(-c io_method=sync); fi
     exec "$PREFIX/bin/postgres" -D "$data" -h 127.0.0.1 -k "$state" -p 5432 \
       -c shared_buffers=96MB -c work_mem=2MB -c maintenance_work_mem=32MB \
-      -c max_connections=16 -c max_parallel_workers=0 -c max_wal_senders=0
+      -c max_connections=16 -c max_parallel_workers=0 -c max_wal_senders=0 "${io_args[@]}"
     ;;
   stop)
     if "$PREFIX/bin/pg_ctl" -D "$data" status >/dev/null; then
