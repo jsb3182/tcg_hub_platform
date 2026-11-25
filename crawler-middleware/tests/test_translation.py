@@ -25,6 +25,19 @@ class RecordingModel:
         return f"[{source}>{target}] {text}"
 
 
+class GiveawayTitleTests(unittest.TestCase):
+    def test_preserves_product_edition_and_distinguishes_winners(self):
+        self.assertEqual(translation.korean_weiss_giveaway(
+            "【Giveaway】Booster Pack A:B -Two Worlds- Vol.3"),
+            "A:B -Two Worlds- Vol.3 부스터 팩 증정 이벤트")
+        self.assertEqual(translation.korean_weiss_giveaway(
+            "[Giveaway] Extra Booster 86 Collection Vol. 12 Winners"),
+            "86 Collection Vol. 12 엑스트라 부스터 증정 이벤트 당첨자 발표")
+        for title in ("Update to Booster Pack A Vol.3", "【Giveaway】Booster Pack A 3",
+                      "【Giveaway】Booster Pack A Vol.3 postponed", "【Giveaway】Booster Pack A Vol."):
+            self.assertIsNone(translation.korean_weiss_giveaway(title))
+
+
 @unittest.skipUnless(os.environ.get("TCG_TEST_DSN"), "set TCG_TEST_DSN to a test PostgreSQL/PostGIS database")
 class TranslationDatabaseTests(unittest.TestCase):
     @classmethod
@@ -88,6 +101,51 @@ class TranslationDatabaseTests(unittest.TestCase):
 
     def test_backfill_only_queues_existing_news(self):
         self.assertEqual(self.backfill, {"NEWS": True, "OTHER": False})
+
+    def test_numbered_giveaway_new_item_recollection_and_restart(self):
+        title = "【Giveaway】Premium Booster Example! Vol.12"
+        item = self.add_item("weiss-en", title, "Draw on Friday", "PENDING")
+        other = self.add_item("riftbound-en", title)
+        model = RecordingModel()
+        self.run_worker(lambda _: model)
+        self.assertEqual(self.rows(item)["ko"], ("Example! Vol.12 프리미엄 부스터 증정 이벤트", "[en>ko] Draw on Friday"))
+        self.assertEqual(self.rows(item)["ja"][0], f"[en>ja] {title}")
+        self.assertEqual(self.rows(other)["ko"][0], f"[en>ko] {title}")
+        self.db.execute("UPDATE feed_item SET payload=payload WHERE id=%s", (item,))
+        self.run_worker(Mock(side_effect=AssertionError("Restart reprocessed an unchanged item")))
+        revised = title + " Winners"
+        self.db.execute("UPDATE feed_item SET payload=payload || %s WHERE id=%s", (Jsonb({"title": revised}), item))
+        self.run_worker(lambda _: model)
+        self.assertEqual(self.rows(item)["ko"][0], "Example! Vol.12 프리미엄 부스터 증정 이벤트 당첨자 발표")
+        self.assertEqual(self.db.execute("SELECT status,payload->>'title' FROM feed_item WHERE id=%s",
+                                         (item,)).fetchone(), ("PENDING", revised))
+
+    def test_v16_repairs_only_clipped_copy_without_touching_review_or_summaries(self):
+        migration = (Path(__file__).resolve().parents[2] / "backend/src/main/resources/db/migration"
+                     / "V16__repair_clipped_weiss_giveaway_volume.sql").read_text(encoding="utf-8")
+        title = "[Giveaway] Extra Booster Star 86 Vol. 12 Winners"
+        clipped = title.replace("Vol. 12", "Vol.")
+        rows = [
+            ("weiss-en", "PUBLISHED", clipped, "Star 86 Vol. 12 엑스트라 부스터 증정 이벤트 당첨자 발표"),
+            ("weiss-en", "PENDING", clipped, "Star 86 Vol. 12 엑스트라 부스터 증정 이벤트 당첨자 발표"),
+            ("weiss-en", "PUBLISHED", "별빛 86 12탄 추첨 당첨자", "별빛 86 12탄 추첨 당첨자"),
+            ("weiss-en", "REJECTED", clipped, clipped),
+            ("riftbound-en", "PUBLISHED", clipped, clipped),
+        ]
+        prepared = []
+        for key, status, old, expected in rows:
+            item = self.add_item(key, title, "Original excerpt", status)
+            self.db.execute("UPDATE feed_item SET original_language='en',translation_due_at=NULL WHERE id=%s", (item,))
+            self.db.execute("""INSERT INTO feed_item_translation VALUES
+                (%s,'ko',%s,'검수한 요약'),(%s,'ja','確認済み','元の要約')""", (item, old, item))
+            row = self.db.execute("SELECT to_jsonb(i) FROM feed_item i WHERE i.id=%s", (item,)).fetchone()
+            prepared.append((item, expected, row))
+        self.assertEqual(self.db.execute(migration).rowcount, 2)
+        self.assertEqual(self.db.execute(migration).rowcount, 0)
+        for item, expected, before in prepared:
+            self.assertEqual(self.rows(item), {"ko": (expected, "검수한 요약"), "ja": ("確認済み", "元の要約")})
+            self.assertEqual(self.db.execute("SELECT to_jsonb(i) FROM feed_item i WHERE i.id=%s",
+                                             (item,)).fetchone(), before)
 
     def test_us_terms_pause_preserves_archive_and_excludes_it_from_translation(self):
         self.assertEqual(self.archived, (False, True, "PUBLISHED", "Stored title", "기존 제목", None))

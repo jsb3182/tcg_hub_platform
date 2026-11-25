@@ -14,7 +14,7 @@
 | 자동 수집, 외부 소스 설정, 모바일 관리 | [수집과 운영](docs/COLLECTION.md) |
 | 게임별 카드 언어, 판본 범위, 원본 출처와 갱신 방식 | [도감 출처](docs/CARD_SOURCES.md) |
 
-**바인더**에서 보유 수량을 기록하고 **내 덱**에서 덱을 만들거나 수정한다. 저장한 덱은 공유 링크와 PNG로 내보낼 수 있다. **플레이**에서 유희왕·포켓몬의 인쇄 카드명을 세 언어로 검색해 손패를 연습하거나 저장한 메인 덱을 불러온다. 실제 온라인 대전은 화면에서 연결한 공식 앱을 이용한다. Pokémon TCG Pocket에는 모바일 전용 카드와 규칙이 있다. [Master Duel](https://www.konami.com/yugioh/masterduel/asia/ko/) · [포켓몬 카드 게임 Pocket](https://www.pokemonkorea.co.kr/pokemon_tcg_pocket/)
+**바인더**에서 보유 수량을 기록하고 **내 덱**에서 덱을 만들거나 수정한다. 저장한 덱은 공유 링크와 PNG로 내보낼 수 있다. **플레이**에서 유희왕·포켓몬의 인쇄 카드명을 세 언어로 검색해 손패를 연습하거나 저장한 메인 덱을 불러온다. 시작 손패의 기본값은 유희왕 5장, 포켓몬 실물 덱 7장이며 연습 전에 바꿀 수 있다. 실제 온라인 대전은 화면에서 연결한 공식 앱을 이용한다. Pokémon TCG Pocket에는 모바일 전용 카드와 규칙이 있다. [Master Duel](https://www.konami.com/yugioh/masterduel/asia/ko/) · [포켓몬 카드 게임 Pocket](https://www.pokemonkorea.co.kr/pokemon_tcg_pocket/)
 
 **매장 지도**에서 국내 매장의 주소와 종목별 출처를 확인하고, 가까운 매장을 검색해 즐겨찾기에 저장할 수 있다.
 

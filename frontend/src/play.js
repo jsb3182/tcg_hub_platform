@@ -1,7 +1,34 @@
 export const playLanguages = { ko: '한국어', en: 'English', ja: '日本語' }
+const languageKey = 'tcg.play.language'
+const openingKey = game => 'tcg.play.opening.' + game
+const supportedLanguage = code => typeof code === 'string' && Object.hasOwn(playLanguages, code)
+
+function stored(key) {
+  try { return sessionStorage.getItem(key) } catch { return null }
+}
+function remember(key, value) {
+  try { sessionStorage.setItem(key, String(value)) } catch { /* Links still carry the language. */ }
+}
+export function practiceLanguage(code) {
+  if (supportedLanguage(code)) return code
+  const previous = stored(languageKey)
+  return supportedLanguage(previous) ? previous : 'ko'
+}
+export function rememberPracticeLanguage(code) {
+  if (supportedLanguage(code)) remember(languageKey, code)
+}
+export const validOpeningSize = size => Number.isInteger(size) && size >= 1 && size <= 10
+export function practiceOpening(game) {
+  const previous = Number(stored(openingKey(game)))
+  return validOpeningSize(previous) ? previous : playGames[game].opening
+}
+export function rememberPracticeOpening(game, size) {
+  if (validOpeningSize(size)) remember(openingKey(game), size)
+}
 
 export const playGames = {
   YUGIOH: {
+    opening: 5,
     name: { ko: '유희왕', en: 'Yu-Gi-Oh!', ja: '遊戯王' },
     app: 'Master Duel',
     androidPackage: 'jp.konami.masterduel',
@@ -9,6 +36,7 @@ export const playGames = {
       en: 'https://www.konami.com/yugioh/masterduel/asia/en/', ja: 'https://www.konami.com/yugioh/masterduel/jp/ja/' },
   },
   POKEMON: {
+    opening: 7,
     name: { ko: '포켓몬', en: 'Pokémon', ja: 'ポケモン' },
     app: 'Pokémon TCG Pocket',
     androidPackage: 'jp.pokemon.pokemontcgp',

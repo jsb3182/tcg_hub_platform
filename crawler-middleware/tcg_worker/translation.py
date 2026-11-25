@@ -22,6 +22,25 @@ SOURCE_LANGUAGES = {
     "pokemon-jp": "ja", "nivel-kr": "ja", "nivel-notice-kr": "ko", "tcggame": "ko",
 }
 TRANSLATION_LOCK = 73401853
+WEISS_PRODUCT_TYPES = {
+    "Booster Pack": "부스터 팩",
+    "Extra Booster": "엑스트라 부스터",
+    "Premium Booster": "프리미엄 부스터",
+}
+WEISS_NUMBERED_GIVEAWAY = re.compile(
+    r"(?:【Giveaway】|\[Giveaway\])[ \t]*(Booster Pack|Extra Booster|Premium Booster)[ \t]+"
+    r"(.+?[ \t]+Vol\.[ \t]*[0-9]+)([ \t]+Winners)?"
+)
+
+
+def korean_weiss_giveaway(title):
+    """Keep the publisher's product name and edition together when localizing its giveaway format."""
+    match = WEISS_NUMBERED_GIVEAWAY.fullmatch(title)
+    if not match:
+        return None
+    product_type, name_with_volume, winners = match.groups()
+    event = "증정 이벤트 당첨자 발표" if winners else "증정 이벤트"
+    return f"{name_with_volume} {WEISS_PRODUCT_TYPES[product_type]} {event}"
 
 
 def model_directory():
@@ -95,13 +114,18 @@ def translate_item(db, item, get_model, stop):
     if source is None:
         raise ValueError("Unknown original language")
     label = re.fullmatch(r"(@[A-Za-z0-9_]{1,15}) · (.+)", item["title"]) if item["provider"] == "X" else None
+    weiss_ko = None
+    if item["provider"] == "OFFICIAL_NEWS" and item["source_key"] == "weiss-en" and source == "en":
+        weiss_ko = korean_weiss_giveaway(item["title"])
     converted = []
     for target in LANGUAGES:
         if stop.is_set():
             return
         if target == source or target in item["done"]:
             continue
-        if label and label[2] in X_LABELS and source == "ko":
+        if target == "ko" and weiss_ko:
+            title = weiss_ko
+        elif label and label[2] in X_LABELS and source == "ko":
             title = f"{label[1]} · {X_LABELS[label[2]][target]}"
         else:
             title = get_model().translate(item["title"], source, target)

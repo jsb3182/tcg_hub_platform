@@ -4,6 +4,7 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vu
 import { request } from '../api'
 import { useSession } from '../stores/session'
 import { sectionLabel, savedDate, stateLabel } from '../library'
+import { practiceLanguage } from '../play'
 import LibraryAccess from '../components/LibraryAccess.vue'
 import CatalogPicker from '../components/CatalogPicker.vue'
 import DeckRecipe from '../components/DeckRecipe.vue'
@@ -96,7 +97,8 @@ async function showError(message) {
   await nextTick()
   errorElement.value?.focus()
 }
-const practiceRoute=deck=>({name:'play',query:{deck:deck.id,game:deck.gameCode}})
+const languageQuery=computed(()=>({lang:practiceLanguage(route.query.lang)}))
+const practiceRoute=deck=>({name:'play',query:{deck:deck.id,game:deck.gameCode,...languageQuery.value}})
 async function save(state,practice=false) {
   if(busy.value)return
   practiceChoice.value?.close()
@@ -111,7 +113,7 @@ async function save(state,practice=false) {
       entries:entries.value.map(({cardId,quantity,section})=>({cardId,quantity,section}))}})
     if(current!==generation)return
     fill(deck);history.value=null
-    if(wasNew)await router.replace({name:'deck-edit',params:{id:deck.id}})
+    if(wasNew)await router.replace({name:'deck-edit',params:{id:deck.id},query:languageQuery.value})
     if(practice){await router.push(practiceRoute(deck));return}
     notice.value=stateLabel(state)+' 상태로 저장했습니다.'
   }catch(cause){if(current===generation)await showError(cause.message)}
@@ -152,7 +154,7 @@ async function copyLink() {
 }
 </script>
 <template>
-  <LibraryAccess title="덱 편집"><header class="lib-heading"><h1>{{ id?'덱 편집':'새 덱' }}</h1><RouterLink to="/decks">내 덱 목록</RouterLink></header>
+  <LibraryAccess title="덱 편집"><header class="lib-heading"><h1>{{ id?'덱 편집':'새 덱' }}</h1><RouterLink :to="{name:'decks',query:languageQuery}">내 덱 목록</RouterLink></header>
     <p v-if="error" ref="errorElement" tabindex="-1" role="alert" class="inline-error">{{ error }} <button class="text-button" @click="mayDiscard() && reload++">저장된 구성 다시 불러오기</button></p>
     <p v-if="notice" role="status">{{ notice }}</p>
     <p v-if="loading" role="status">덱을 불러오는 중입니다.</p>
