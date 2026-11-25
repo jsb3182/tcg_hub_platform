@@ -19,6 +19,10 @@ function Run([string]$Command, [string[]]$Arguments) {
 if (-not (Test-Path -LiteralPath $platform)) { throw 'Install platforms;android-35 first.' }
 $out = [IO.Directory]::CreateDirectory($OutputDirectory).FullName
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$helper = Join-Path $repo 'deploy/setup-termux.sh'
+$helperHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $helper).Hash.ToLowerInvariant()
+$archiveHash = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'server-release.sha256')).Trim()
+if ($archiveHash -cnotmatch '^[0-9a-f]{64}$') { throw 'Invalid pinned server release SHA-256.' }
 $private = [IO.Path]::GetFullPath($SigningDirectory)
 if ($private -eq $repo -or $private.StartsWith($repo + '\', [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Choose a signing directory outside the source repository.'
@@ -72,6 +76,9 @@ try {
     Run "$tools\aapt2.exe" @('compile','--dir',(Join-Path $PSScriptRoot 'res'),'-o',$resources)
     $generated = [IO.Directory]::CreateDirectory((Join-Path $work 'generated')).FullName
     Run "$tools\aapt2.exe" @('link','--java',$generated,'-I',$platform,'--manifest',$manifest,'-o',$unsigned,$resources)
+    $pin = Join-Path $generated 'kr/tcghub/control/ReleasePin.java'
+    $pinSource = "package kr.tcghub.control; final class ReleasePin { static final String HELPER = `"$helperHash`"; static final String ARCHIVE = `"$archiveHash`"; }"
+    [IO.File]::WriteAllText($pin, $pinSource, [Text.Encoding]::ASCII)
     $source = (Get-ChildItem -Path @((Join-Path $PSScriptRoot 'src'), $generated) -Recurse -File -Filter '*.java').FullName
     Run $compiler (@('-encoding','UTF-8','--release','8','-classpath',$platform,'-d',$classes) + @($source))
     $bytecode = Join-Path $work 'classes.jar'
@@ -93,6 +100,8 @@ try {
     $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $apk).Hash.ToLowerInvariant()
     [IO.File]::WriteAllText("$apk.sha256", "$hash  tcg-server-control.apk`n", [Text.Encoding]::ASCII)
     Write-Output "$apk SHA-256 $hash"
+    Write-Output "Pinned setup-termux.sh SHA-256 $helperHash"
+    Write-Output "Pinned server release SHA-256 $archiveHash"
 } finally {
     if ([IO.Path]::GetDirectoryName($work).TrimEnd('\') -eq $tempRoot.TrimEnd('\') -and
             [IO.Path]::GetFileName($work) -match '^tcg-android-[a-f0-9]{32}$') {

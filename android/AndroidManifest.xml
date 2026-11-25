@@ -1,9 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="kr.tcghub.control" android:versionCode="3" android:versionName="1.2">
+    package="kr.tcghub.control" android:versionCode="4" android:versionName="1.3">
     <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="35"/>
+    <!-- Resolve the same provider after an update or reboot; access still requires the user's SAF grant. -->
+    <queries>
+        <provider android:authorities="com.termux.documents"/>
+    </queries>
     <application android:label="TCG 허브" android:icon="@drawable/ic_server"
         android:theme="@style/HubTheme" android:allowBackup="false">
         <activity android:name=".ServerActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".UpdateActivity" android:exported="false"/>
         <activity android:name=".ControlActivity" android:windowSoftInputMode="adjustResize" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
