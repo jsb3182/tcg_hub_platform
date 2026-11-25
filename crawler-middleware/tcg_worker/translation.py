@@ -23,24 +23,36 @@ SOURCE_LANGUAGES = {
 }
 TRANSLATION_LOCK = 73401853
 WEISS_PRODUCT_TYPES = {
-    "Booster Pack": "부스터 팩",
-    "Extra Booster": "엑스트라 부스터",
-    "Premium Booster": "프리미엄 부스터",
+    "Booster Pack": ("부스터 팩", "ブースターパック"),
+    "Extra Booster": ("엑스트라 부스터", "エクストラブースター"),
+    "Premium Booster": ("프리미엄 부스터", "プレミアムブースター"),
+    "Trial Deck and Booster Pack": ("트라이얼 덱 및 부스터 팩", "トライアルデッキ＆ブースターパック"),
 }
-WEISS_NUMBERED_GIVEAWAY = re.compile(
-    r"(?:【Giveaway】|\[Giveaway\])[ \t]*(Booster Pack|Extra Booster|Premium Booster)[ \t]+"
-    r"(.+?[ \t]+Vol\.[ \t]*[0-9]+)([ \t]+Winners)?"
-)
+WEISS_GIVEAWAY = re.compile(r"(?:【Giveaway】|\[Giveaway\])[ \t]*([^\r\n]+)")
 
 
-def korean_weiss_giveaway(title):
-    """Keep the publisher's product name and edition together when localizing its giveaway format."""
-    match = WEISS_NUMBERED_GIVEAWAY.fullmatch(title)
+def weiss_giveaway_titles(title):
+    """Localize the publisher's event and product labels while copying its full product name."""
+    match = WEISS_GIVEAWAY.fullmatch(title)
     if not match:
-        return None
-    product_type, name_with_volume, winners = match.groups()
-    event = "증정 이벤트 당첨자 발표" if winners else "증정 이벤트"
-    return f"{name_with_volume} {WEISS_PRODUCT_TYPES[product_type]} {event}"
+        return {}
+    name = match[1].strip()
+    winners = name.endswith(" Winners")
+    if winners:
+        name = name.removesuffix(" Winners").removesuffix(" Giveaway").rstrip()
+    pack_ko = pack_ja = ""
+    for kind, (ko, ja) in WEISS_PRODUCT_TYPES.items():
+        if name.startswith(kind + " "):
+            name = name[len(kind):].lstrip()
+            pack_ko, pack_ja = " " + ko, ja
+            break
+    if (not name or name in {"Winners", "Giveaway", *WEISS_PRODUCT_TYPES}
+            or re.search(r"\b(?:postponed|cancelled|canceled|rescheduled)\b|\bVol\.\s*$", name, re.I)):
+        return {}
+    return {
+        "ko": name + pack_ko + " 증정 이벤트" + (" 당첨자 발표" if winners else ""),
+        "ja": pack_ja + "「" + name + "」プレゼントキャンペーン" + (" 当選者発表" if winners else ""),
+    }
 
 
 def model_directory():
@@ -114,17 +126,17 @@ def translate_item(db, item, get_model, stop):
     if source is None:
         raise ValueError("Unknown original language")
     label = re.fullmatch(r"(@[A-Za-z0-9_]{1,15}) · (.+)", item["title"]) if item["provider"] == "X" else None
-    weiss_ko = None
+    weiss_titles = {}
     if item["provider"] == "OFFICIAL_NEWS" and item["source_key"] == "weiss-en" and source == "en":
-        weiss_ko = korean_weiss_giveaway(item["title"])
+        weiss_titles = weiss_giveaway_titles(item["title"])
     converted = []
     for target in LANGUAGES:
         if stop.is_set():
             return
         if target == source or target in item["done"]:
             continue
-        if target == "ko" and weiss_ko:
-            title = weiss_ko
+        if target in weiss_titles:
+            title = weiss_titles[target]
         elif label and label[2] in X_LABELS and source == "ko":
             title = f"{label[1]} · {X_LABELS[label[2]][target]}"
         else:
