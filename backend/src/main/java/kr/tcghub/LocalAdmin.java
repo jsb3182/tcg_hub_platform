@@ -33,6 +33,7 @@ class LocalAdmin {
     enum Mode { LOCAL_TOTP, CLOUDFLARE, DISABLED }
     private record Factor(long userId, String secretBase32) {}
     static final String COOKIE = "__Host-tcg_local_admin";
+    static final String LOCAL_ORIGIN = "http://127.0.0.1:8080";
     private static final Duration LIFETIME = Duration.ofMinutes(15);
     private static final Pattern TOKEN = Pattern.compile("[A-Za-z0-9_-]{43}");
     private static final Set<String> PROXY_HEADERS = Set.of("forwarded", "via", "x-real-ip", "true-client-ip",
@@ -47,24 +48,32 @@ class LocalAdmin {
                @Value("${server.address:}") String bind, @Value("${server.forward-headers-strategy:}") String forwarding) {
         this.cloudflare = cloudflare;
         this.db = db;
-        this.localListener = "http://127.0.0.1:8080".equals(origin) && "127.0.0.1".equals(bind)
+        this.localListener = LOCAL_ORIGIN.equals(origin) && "127.0.0.1".equals(bind)
                 && "none".equalsIgnoreCase(forwarding);
     }
 
     Mode mode(HttpServletRequest request) {
         if (cloudflare.configured()) return Mode.CLOUDFLARE;
+        return directLocalRequest(request,"127.0.0.1:8080") ? Mode.LOCAL_TOTP : Mode.DISABLED;
+    }
+
+    boolean localEntryAlias(HttpServletRequest request) {
+        return !cloudflare.configured() && directLocalRequest(request,"localhost:8080");
+    }
+
+    private boolean directLocalRequest(HttpServletRequest request, String host) {
         if (!localListener || !"http".equals(request.getScheme()) || request.getLocalPort() != 8080
                 || !"127.0.0.1".equals(request.getLocalAddr()) || !"127.0.0.1".equals(request.getRemoteAddr())
-                || !Collections.list(request.getHeaders("Host")).equals(java.util.List.of("127.0.0.1:8080"))) {
-            return Mode.DISABLED;
+                || !Collections.list(request.getHeaders("Host")).equals(java.util.List.of(host))) {
+            return false;
         }
         for (String name : Collections.list(request.getHeaderNames())) {
             String header = name.toLowerCase(Locale.ROOT);
             if (header.startsWith("cf-") || header.startsWith("x-forwarded") || PROXY_HEADERS.contains(header)) {
-                return Mode.DISABLED;
+                return false;
             }
         }
-        return Mode.LOCAL_TOTP;
+        return true;
     }
 
     boolean admits(HttpServletRequest request, String requiredEmail) {

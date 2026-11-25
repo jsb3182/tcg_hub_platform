@@ -57,6 +57,7 @@ class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,"/**").permitAll()
                 .requestMatchers(HttpMethod.HEAD,"/**").permitAll()
                 .anyRequest().denyAll())
+            .addFilterBefore(new LocalEntryRedirect(local), AuthorizationFilter.class)
             .addFilterBefore(new ApiGuard(origin), AuthorizationFilter.class);
         return http.build();
     }

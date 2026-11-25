@@ -22,6 +22,7 @@ export default defineConfig({
         })),
       },
       workbox: {
+        importScripts: ['/local-entry-update.js'],
         globPatterns: ['**/*.{html,js,css}'],
         navigateFallback: '/index.html',
         // Protected navigation always reaches the origin and its Access policy.
