@@ -7,7 +7,7 @@
 | 전체 아키텍처, 데이터 흐름, API, 후속 기능 설계 | [시스템 설계](docs/ARCHITECTURE.md) |
 | 테이블·외래 키·공간 인덱스와 덱 규칙 | [Flyway SQL](backend/src/main/resources/db/migration/) |
 | PC 빌드, A90 설치, Cloudflare Tunnel·Access, 백업·복구 | [배포 가이드](docs/DEPLOYMENT.md) |
-| A90에서 APK로 서버 켜기·끄기, 상태와 관리자 화면 열기 | [Android 앱 설치와 연결](docs/ANDROID.md) |
+| Android에서 공개 사이트 열기, A90에서 서버 켜기·끄기 | [Android 앱 설치와 연결](docs/ANDROID.md) |
 | 국내 매장 좌표·취급 종목·영업시간의 출처와 갱신 방법 | [매장 지도](docs/STORES.md) |
 | Windows PC에서 API와 자동 수집 워커 함께 실행 | [Windows 실행 가이드](deploy/WINDOWS.md) |
 | 로컬 카드 데이터 이관, 이미지 추가, 작업 재시도 | [워커 운영 가이드](crawler-middleware/README.md) |

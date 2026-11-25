@@ -26,6 +26,8 @@ d=/sdcard/Download/tcg-hub/DIGEST12; [ -r "$d/bootstrap-termux.sh" ] || { termux
 
 ## 2. 외부 공개용 Cloudflare 계정 준비
 
+공개 주소를 받은 사람은 브라우저 또는 Android 앱에서 도감·소식·매장 지도를 바로 열 수 있다. 주소를 전달받은 다른 사람도 열 수 있다. 개인 바인더·덱은 서비스 계정 로그인 후 사용하고, 서버 켜기·끄기 권한은 A90에서 승인한 제어 폴더에만 부여한다. 아래 Access 앱의 적용 범위는 관리자 경로로 지정한다.
+
 1. 소유하거나 관리 권한이 있는 도메인을 Cloudflare에 추가해 zone이 **Active**가 되면 그 아래에 서비스 호스트명(예: `cards.example.com`)을 정한다. 이미 운영하는 사이트의 서브도메인을 쓸 수 있다. Zero Trust에서 조직의 팀 도메인과 관리자용 IdP를 확인한다. [공개 호스트용 Access 요건](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/)
 2. **Access → Applications**에서 Self-hosted 앱 한 개를 만든다. 동일 앱의 공개 hostname/path 항목으로 `cards.example.com/admin`, `cards.example.com/admin/*`, `cards.example.com/api/v1/admin`, `cards.example.com/api/v1/admin/*`를 등록한다. 허용할 관리자 계정/그룹과 IdP를 지정하고 IdP의 다중 인증 정책을 적용한다. 이 앱의 Application Audience(AUD)와 `팀명.cloudflareaccess.com`을 복사한다. Spring도 Access 서명·발급자·대상·만료를 검증한다. [Access 경로 규칙](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/)
 3. **Networking → Tunnels**에서 원격 관리형 `cloudflared` 터널을 생성한다. Published application route에서 공개 hostname을 위 주소로, 서비스 유형을 HTTP로, 주소를 `127.0.0.1:8080`으로 지정한다. DNS가 터널을 가리키고 zone의 HTTPS 인증서가 활성 상태인지 확인한다. 커넥터 토큰은 5단계에서 입력한다. 터널은 TCP 또는 UDP 7844 아웃바운드 연결을 사용한다. [터널 네트워크 구성](https://developers.cloudflare.com/tunnel/configuration/) · [토큰 파일 옵션](https://developers.cloudflare.com/tunnel/reference/run-parameters/)
@@ -132,7 +134,9 @@ tcgctl status
 
 `tcgctl start`는 실행 중인 Spring이 DB에 연결되고 관리자 인증 모드를 `CLOUDFLARE`로 보고하는지 검사한다. 커넥터가 Cloudflare에 연결되는지도 로컬 지표에서 최대 60초간 확인한다. 처음 활성화할 때 연결에 실패하면 터널을 다시 비활성화하므로 로그와 네트워크를 확인한 뒤 명령을 재실행한다. 앞서 활성화한 터널은 일시적으로 연결이 끊겨도 재접속을 시도한다. 기기 재부팅 후에도 터널 서비스는 같은 원본 검사를 통과한 뒤 연결한다. `tcgctl status`에서 현재 연결을 확인할 수 있다. [커넥터 준비 상태](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/deployment-guides/kubernetes/)
 
-외부 공개 설정은 **휴대전화 데이터 회선에서** 확인한다. 공개 주소의 `/api/v1/games`가 HTTP 200과 다섯 종목을 반환하는지, 브라우저에서 PWA 설치·카드 검색·이미지 표시가 동작하는지 확인한다. 비로그인 창에서 `/admin`과 `/api/v1/admin/operations`를 열면 Access 인증 또는 접근 거부가 나타나야 한다. 허용된 관리자 계정으로 로그인해 관리 상태 조회를 확인한다. 외부 `/internal/ready`에는 WAF의 HTTP 403이, A90 내부 `http://127.0.0.1:8080/internal/ready`에는 HTTP 200이 기대된다.
+APK의 공개 서버 켜기와 `tcgctl start`는 커넥터 연결 후 실제 공개 HTTPS 주소로 익명 요청을 보낸다. 도감 API의 다섯 종목, 관리자 화면·API의 접근 거부 또는 설정된 Access 로그인 경로, 내부 상태 경로의 접근 거부를 검사한다. 처음 터널을 켜는 중 이 검사가 실패하면 터널을 다시 끈다. 실행 중인 서버를 다시 점검할 때는 A90에서 `tcgctl check-public`을 실행한다. 다른 회선에 있는 PC에서는 저장소 또는 서버 배포본의 `python3 deploy/check-public.py https://cards.example.com your-team.cloudflareaccess.com`으로 동일한 익명 검사를 실행할 수 있다.
+
+최종 확인은 **A90과 다른 휴대전화의 데이터 회선**에서 한다. 공개 주소로 도감을 열고 카드 검색·이미지 표시·PWA 설치를 확인한다. 관리자 경로에서는 허용된 관리자 계정으로 Access와 서비스 로그인을 거친 후 관리 상태를 조회한다. A90 내부의 `http://127.0.0.1:8080/internal/ready`는 HTTP 200이어야 한다.
 
 ## 6. 메모리와 서비스 상태
 
@@ -175,7 +179,7 @@ export TCG_RELEASE_DIR="$HOME/tcg-release-next"
 
 | 소식 출처 | 수집하는 내용 |
 | --- | --- |
-| 유희왕 | 코나미 영문판 공지 목록의 제목, 일자, 원문 링크. [Konami](https://www.yugioh-card.com/en/news/) |
+| 유희왕 | YGOPRODeck 도감에서 새로 등록한 카드·팩을 세 언어로 요약한다. KONAMI 북미 웹 공지는 이용 조건에 따라 자동 조회와 공개를 중지한다. [수집·이력 안내](COLLECTION.md) · [한국 공식 공지](https://www.yugioh.co.kr/board/board_list.php?b_category=notice) · [아시아 공식 공지](https://www.yugioh-card.com/asia/news/) |
 | 포켓몬 | 공식 일본어 카드게임 뉴스 목록. 같은 상품의 여러 발표는 제목과 날짜로 구분한다. [포켓몬 카드](https://www.pokemon-card.com/info/) |
 | 바이스 슈발츠 | 영어판 공식 공지 RSS의 최근 40개 제목과 원문 링크. [Bushiroad](https://en.ws-tcg.com/information/feed/) |
 | 니벨아레나 | 한국어 공식 홈페이지의 공지 목록과 발행사가 직접 올린 일본 게임마켓 부스 공지. 한국어 홈페이지는 공개 HTTP를 사용한다. [한국 공식 공지](http://nivelarena.co.kr/bbs/board.php?bo_table=notice) · [발행사 부스](https://www.gamemarket.jp/booth/blog/5657) |
