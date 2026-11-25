@@ -22,7 +22,9 @@ class AuthApi {
     record Verification(@NotNull @Pattern(regexp="[0-9]{6}") String code) {}
 
     @GetMapping("/auth/admin-mode")
-    Map<String,LocalAdmin.Mode> mode(HttpServletRequest request) { return Map.of("mode",local.mode(request)); }
+    Map<String,Object> mode(HttpServletRequest request) {
+        return Map.of("mode",local.mode(request),"localEntryAlias",local.localEntryAlias(request));
+    }
 
     @PostMapping("/auth/local-admin")
     @ResponseStatus(HttpStatus.NO_CONTENT)

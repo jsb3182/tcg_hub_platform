@@ -22,7 +22,9 @@ class OperationsApi {
     record Decision(@NotNull Verdict status, @Pattern(regexp="YUGIOH|POKEMON|WEISS|NIVEL|RIFTBOUND") String gameCode) {}
     record Source(long id, String provider, String name, String gameCode, boolean enabled, String state,
                   OffsetDateTime lastStartedAt, OffsetDateTime lastSuccessAt, OffsetDateTime lastErrorAt,
-                  String lastError, OffsetDateTime nextFetchAt, OffsetDateTime runRequestedAt, int lastCount, int addedCount) {}
+                  String lastError, OffsetDateTime nextFetchAt, OffsetDateTime runRequestedAt, int lastCount, int addedCount,
+                  String policyNote) {}
+    record SourceSettings(boolean enabled, String policyNote) {}
     record Heartbeat(OffsetDateTime seenAt, OffsetDateTime startedAt, OffsetDateTime restartRequestedAt, int restartCount) {}
     record Snapshot(long jvmUsedBytes, long jvmMaxBytes, long diskUsableBytes, long diskTotalBytes,
                     OffsetDateTime workerHeartbeatAt, OffsetDateTime workerStartedAt,
@@ -53,7 +55,7 @@ class OperationsApi {
                         when requested_at is not null then 'QUEUED' else state end as state,
                    last_started_at,last_success_at,last_error_at,last_error,
                    greatest(s.next_fetch_at,s.retry_after_at,p.retry_after_at) as next_fetch_at,requested_at as run_requested_at,
-                   last_seen as last_count,last_added as added_count
+                   last_seen as last_count,last_added as added_count,s.policy_note
             from feed_source s left join feed_provider_cooldown p using (provider)
             order by provider,game_code nulls last,id
             """).query(Source.class).list();
@@ -67,19 +69,20 @@ class OperationsApi {
     @PostMapping("/sources/{id}/enabled")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void enable(@PathVariable @Positive long id, @Valid @RequestBody Enabled body, Principal principal) {
-        if (db.sql("""
+        var source = lockSource(id);
+        if (body.enabled() && source.policyNote()!=null) throw new ResponseStatusException(HttpStatus.CONFLICT);
+        db.sql("""
             update feed_source set enabled=:enabled,requested_at=null,
                 next_fetch_at=case when :enabled and not enabled then now() else next_fetch_at end where id=:id
-            """).param("id",id).param("enabled",body.enabled()).update()==0) throw missing();
+            """).param("id",id).param("enabled",body.enabled()).update();
         audit(principal,body.enabled() ? "ENABLE_SOURCE" : "PAUSE_SOURCE",id);
     }
 
     @PostMapping("/sources/{id}/run")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void run(@PathVariable @Positive long id, Principal principal) {
-        boolean enabled = db.sql("select enabled from feed_source where id=? for update").param(id)
-                .query(Boolean.class).optional().orElseThrow(OperationsApi::missing);
-        if (!enabled) throw new ResponseStatusException(HttpStatus.CONFLICT);
+        var source = lockSource(id);
+        if (!source.enabled() || source.policyNote()!=null) throw new ResponseStatusException(HttpStatus.CONFLICT);
         db.sql("update feed_source set requested_at=coalesce(requested_at,now()),next_fetch_at=now() where id=?")
                 .param(id).update();
         audit(principal,"REQUEST_SYNC",id);
@@ -97,7 +100,10 @@ class OperationsApi {
     @PostMapping("/review/{id}/decision")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void review(@PathVariable @Positive long id, @Valid @RequestBody Decision body, Principal principal) {
-        var prior = db.sql("select status from feed_item where id=? and payload->>'kind'='NEWS' for update").param(id)
+        var prior = db.sql("""
+            select i.status from feed_item i join feed_source s on s.id=i.source_id
+            where i.id=? and i.payload->>'kind'='NEWS' and s.policy_note is null for update of i,s
+            """).param(id)
                 .query(String.class).optional().orElseThrow(OperationsApi::missing);
         if (prior.equals(body.status().name())) return;
         if (!prior.equals("PENDING")) throw new ResponseStatusException(HttpStatus.CONFLICT);
@@ -110,6 +116,11 @@ class OperationsApi {
             """).param("status",body.status().name()).param("user",user).param("id",id)
                 .param("game",body.gameCode(),java.sql.Types.VARCHAR).update();
         audit(principal,"REVIEW_" + body.status(),id);
+    }
+
+    private SourceSettings lockSource(long id) {
+        return db.sql("select enabled,policy_note from feed_source where id=? for update").param(id)
+                .query(SourceSettings.class).optional().orElseThrow(OperationsApi::missing);
     }
 
     private long adminId(Principal principal) {

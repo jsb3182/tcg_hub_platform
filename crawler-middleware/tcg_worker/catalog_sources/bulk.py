@@ -187,6 +187,7 @@ def yugioh(http):
                     continue
                 seen.add(ident)
                 yield {"external_id": ident, "pack_code": code, "pack_name": pack_name or "수록 팩 미확인",
+                       "pack_tcg_date": pack.get("tcg_date") if pack_name else None,
                        "number": number or str(card["id"]), "name": name, "original_name": name, "rarity": rarity,
                        "effect": card.get("desc"), "release_date": pack.get("tcg_date") if printing else misc.get("ocg_date") or misc.get("tcg_date"),
                        "specs": {"language": "en", "passcode": card["id"],

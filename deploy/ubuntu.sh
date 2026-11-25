@@ -18,6 +18,10 @@ if [[ $cmd == db ]]; then
     -c shared_buffers=96MB -c work_mem=2MB -c maintenance_work_mem=32MB \
     -c max_connections=16 -c max_parallel_workers=0 -c max_wal_senders=0
 fi
+if [[ $cmd == check-public-route ]]; then
+  require_public_settings
+  exec python3 -I "$app/deploy/check-public.py" "$PUBLIC_ORIGIN" "$CF_TEAM_DOMAIN"
+fi
 if [[ $cmd == tunnel || $cmd == check-public || $cmd == check-public-origin ]]; then
   require_public_settings
   [[ -f $config/tunnel.token && -r $config/tunnel.token && -s $config/tunnel.token ]] && command -v cloudflared >/dev/null || { echo 'Public start requires an installed connector and a readable, nonempty token file.' >&2; exit 1; }

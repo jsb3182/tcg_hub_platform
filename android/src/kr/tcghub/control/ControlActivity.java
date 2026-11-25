@@ -3,6 +3,8 @@ package kr.tcghub.control;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.ClipboardManager;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -13,11 +15,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.DocumentsContract;
+import android.text.InputType;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -43,7 +48,9 @@ public final class ControlActivity extends Activity {
     private long started, timeout;
     private boolean active, polling, ready;
     private TextView summary, details, message;
-    private Button start, stop, status, browser, pair;
+    private Button start, stop, status, browser, pair, copy, share;
+    private EditText siteInput;
+    private LinearLayout controls;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -60,19 +67,78 @@ public final class ControlActivity extends Activity {
         LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setPadding(dp(24), dp(28), dp(24), dp(24));
+        column.setFocusableInTouchMode(true);
         scroll.addView(column);
         setContentView(scroll);
-        text(column, "TCG 서버", 30, true);
-        summary = text(column, "상태 확인 전", 22, true);
-        details = text(column, "", 16, false);
-        message = text(column, "", 16, false);
+        text(column, "TCG 허브", 30, true);
+        TextView label = text(column, "공개 사이트 주소", 16, true);
+        siteInput = new EditText(this);
+        siteInput.setId(View.generateViewId());
+        siteInput.setSaveEnabled(false);
+        label.setLabelFor(siteInput.getId());
+        siteInput.setSingleLine();
+        siteInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        siteInput.setHint("https://cards.example.com");
+        siteInput.setText(prefs.getString("publicSite", ""));
+        column.addView(siteInput);
+        button(column, "공개 사이트 열기", true, v -> openPublicSite());
+        Button toggle = button(column, "A90 서버 관리", false, v -> {
+            boolean expand = controls.getVisibility() != View.VISIBLE;
+            controls.setVisibility(expand ? View.VISIBLE : View.GONE);
+            ((Button) v).setText(expand ? "A90 서버 관리 접기" : "A90 서버 관리");
+        });
+        controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.VERTICAL);
+        column.addView(controls);
+        boolean expanded = state != null ? state.getBoolean("expanded", tree != null) : tree != null;
+        controls.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        if (expanded) toggle.setText("A90 서버 관리 접기");
+        summary = text(controls, "상태 확인 전", 22, true);
+        details = text(controls, "", 16, false);
+        message = text(controls, "", 16, false);
         message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        start = button(column, "서버 켜기", true, v -> confirm(true));
-        stop = button(column, "서버 끄기", false, v -> confirm(false));
-        status = button(column, "상태 새로고침", false, v -> request("status"));
-        browser = button(column, "관리자 화면 열기", false, v -> openAdmin());
-        pair = button(column, "Termux 제어 폴더 연결", false, v -> chooseFolder());
+        copy = button(controls, "공개 주소 복사", false, v -> sharePublicSite(false));
+        share = button(controls, "공개 주소 공유", false, v -> sharePublicSite(true));
+        start = button(controls, "서버 켜기", true, v -> confirm(true));
+        stop = button(controls, "서버 끄기", false, v -> confirm(false));
+        status = button(controls, "상태 새로고침", false, v -> request("status"));
+        browser = button(controls, "관리자 화면 열기", false, v -> openAdmin());
+        pair = button(controls, "Termux 제어 폴더 연결", false, v -> chooseFolder());
         updateButtons();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        state.putBoolean("expanded", controls.getVisibility() == View.VISIBLE);
+    }
+
+    private void openPublicSite() {
+        String root = PublicSite.root(siteInput.getText().toString());
+        if (root.isEmpty()) {
+            siteInput.setError("공유받은 https:// 공개 도메인 주소를 입력하세요.");
+            siteInput.requestFocus();
+            return;
+        }
+        siteInput.setText(root);
+        prefs.edit().putString("publicSite", root).apply();
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(root)).addCategory(Intent.CATEGORY_BROWSABLE));
+        } catch (ActivityNotFoundException ex) {
+            siteInput.setError("공개 사이트를 열 브라우저를 설치하세요.");
+        }
+    }
+
+    private void sharePublicSite(boolean useShareSheet) {
+        String root = PublicSite.root(origin);
+        if (tree == null || root.isEmpty()) return;
+        if (useShareSheet) {
+            Intent shareUrl = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, root);
+            startActivity(Intent.createChooser(shareUrl, "공개 주소 공유"));
+        } else {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            clipboard.setPrimaryClip(ClipData.newPlainText("TCG 허브", root));
+            Toast.makeText(this, "공개 주소를 복사했습니다.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
@@ -119,6 +185,9 @@ public final class ControlActivity extends Activity {
     @Override protected void onDestroy() { io.shutdownNow(); super.onDestroy(); }
     private void updateButtons() {
         boolean idle = tree != null && pending.isEmpty();
+        int visibility = idle && !PublicSite.root(origin).isEmpty() ? View.VISIBLE : View.GONE;
+        copy.setVisibility(visibility);
+        share.setVisibility(visibility);
         for (Button button : new Button[]{start, stop, status, browser, pair}) {
             boolean enabled = button == pair ? pending.isEmpty()
                     : button == start ? idle && !origin.isEmpty()
@@ -237,6 +306,8 @@ public final class ControlActivity extends Activity {
         if (services == null) { fail(id, "요청을 완료하지 못했습니다. Termux와 제어 서비스 상태를 확인하세요."); return; }
         String candidate = response.optString("origin", "");
         origin = LOCAL.equals(candidate) || PUBLIC.matcher(candidate).matches() ? candidate : "";
+        String publicRoot = PublicSite.root(origin);
+        if (!publicRoot.isEmpty() && siteInput.getText().length() == 0) siteInput.setText(publicRoot);
         ready = response.optBoolean("ready");
         summary.setText(ready ? "서버 실행 중" : "웹 서버 응답 없음");
         String[] keys = {"db", "api", "worker", "tunnel"};

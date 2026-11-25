@@ -44,10 +44,23 @@ class TranslationDatabaseTests(unittest.TestCase):
                     INSERT INTO feed_item(source_id,external_id,source_url,payload,status)
                     SELECT s.id,v.kind,'https://example.invalid',jsonb_build_object('kind',v.kind,'title','Earlier title'),'PENDING'
                     FROM feed_source s CROSS JOIN (VALUES ('NEWS'),('OTHER')) v(kind)
-                    WHERE s.source_key='yugioh-en'
+                    WHERE s.source_key='weiss-en'
                 """)
+            if migration.name.startswith("V12__"):
+                archive = cls.db.execute("""
+                    INSERT INTO feed_item(source_id,external_id,source_url,payload,status)
+                    SELECT id,'old-us','https://example.invalid',
+                           '{"kind":"NEWS","title":"Stored title"}','PUBLISHED' FROM feed_source WHERE source_key='yugioh-en'
+                    RETURNING id
+                """).fetchone()[0]
+                cls.db.execute("INSERT INTO feed_item_translation(item_id,lang,title) VALUES (%s,'ko','기존 제목')", (archive,))
             cls.db.execute(migration.read_text(encoding="utf-8"))
-        cls.backfill = dict(cls.db.execute("SELECT external_id,translation_due_at IS NOT NULL FROM feed_item"))
+        cls.backfill = dict(cls.db.execute("SELECT external_id,translation_due_at IS NOT NULL FROM feed_item WHERE external_id<>'old-us'"))
+        cls.archived = cls.db.execute("""
+            SELECT s.enabled,s.policy_note IS NOT NULL,i.status,i.payload->>'title',t.title,i.translation_due_at
+            FROM feed_item i JOIN feed_source s ON s.id=i.source_id JOIN feed_item_translation t ON t.item_id=i.id
+            WHERE i.external_id='old-us'
+        """).fetchone()
         cls.db.execute("DELETE FROM feed_item")
 
     def connection(self):
@@ -76,8 +89,15 @@ class TranslationDatabaseTests(unittest.TestCase):
     def test_backfill_only_queues_existing_news(self):
         self.assertEqual(self.backfill, {"NEWS": True, "OTHER": False})
 
+    def test_us_terms_pause_preserves_archive_and_excludes_it_from_translation(self):
+        self.assertEqual(self.archived, (False, True, "PUBLISHED", "Stored title", "기존 제목", None))
+        item = self.add_item("yugioh-en", "Stored title")
+        self.assertEqual(translation.pending(self.db, 10), [])
+        self.run_worker(Mock(side_effect=AssertionError("Archive must not invoke translation")))
+        self.assertEqual(self.rows(item), {})
+
     def test_original_plus_translated_titles_and_summaries_preserve_moderation_and_skip_repeats(self):
-        sources = [("yugioh-en", "English announcement", "Details in English", "en", "PENDING"),
+        sources = [("weiss-en", "English announcement", "Details in English", "en", "PENDING"),
                    ("pokemon-jp", "新しいカードの発表", "発売日のお知らせ", "ja", "PUBLISHED"),
                    ("nivel-notice-kr", "새 카드 공개", "발매 일정 안내", "ko", "PUBLISHED")]
         items = [(self.add_item(key, title, summary, status), title, summary, language, status)

@@ -44,7 +44,7 @@ async function logout() {
         <RouterLink to="/binder">바인더</RouterLink>
         <RouterLink to="/decks">내 덱</RouterLink>
         <RouterLink to="/play">플레이</RouterLink>
-        <a v-if="(session.isAdmin && session.adminMode !== 'DISABLED') || (!session.account && session.adminMode === 'LOCAL_TOTP')" href="/admin">관리자</a>
+        <a v-if="(session.isAdmin && session.adminMode !== 'DISABLED') || (!session.account && (session.adminMode === 'LOCAL_TOTP' || session.localEntryAlias))" href="/admin">관리자</a>
         <span class="divider" aria-hidden="true"></span>
         <button v-if="session.account" type="button" class="text-button" :disabled="busy" @click="logout">로그아웃</button>
         <RouterLink v-else :to="{name: 'login', query: $route.name === 'admin' ? {to: 'admin'} : {}}">로그인</RouterLink>

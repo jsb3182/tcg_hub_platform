@@ -124,6 +124,54 @@ class LocalAdminIntegrationTest {
                 .andExpect(jsonPath("$.mode").value("DISABLED"));
     }
 
+    private MockHttpServletRequestBuilder localAlias(MockHttpServletRequestBuilder request) {
+        return local(request).with(req -> {
+            req.removeHeader("Host");
+            req.addHeader("Host","localhost:8080");
+            return req;
+        });
+    }
+
+    @Test void previouslyInstalledLocalBrowserUsesCanonicalOriginForPrivateDocuments() throws Exception {
+        String mode="/api/v1/auth/admin-mode";
+        http.perform(localAlias(get(mode))).andExpect(jsonPath("$.mode").value("DISABLED"))
+                .andExpect(jsonPath("$.localEntryAlias").value(true));
+        http.perform(local(get(mode))).andExpect(jsonPath("$.mode").value("LOCAL_TOTP"))
+                .andExpect(jsonPath("$.localEntryAlias").value(false));
+        for (String path : List.of("/login","/binder","/decks","/decks/new","/decks/17","/play?game=YUGIOH&deck=17")) {
+            http.perform(localAlias(get(path))).andExpect(status().isFound())
+                    .andExpect(redirectedUrl(ORIGIN+path)).andExpect(header().string("Cache-Control","no-store"));
+        }
+        http.perform(localAlias(get("/admin"))).andExpect(redirectedUrl(ORIGIN+"/login?next=/admin"));
+        http.perform(localAlias(get("/binder/"))).andExpect(redirectedUrl(ORIGIN+"/binder"));
+        http.perform(localAlias(get("/news"))).andExpect(forwardedUrl("/index.html"));
+        http.perform(localAlias(get("/play"))).andExpect(forwardedUrl("/index.html"));
+        http.perform(localAlias(get("/api/v1/me/binder"))).andExpect(status().isUnauthorized());
+        String login="/api/v1/auth/login";
+        http.perform(localAlias(post(login).servletPath(login)).header("Origin","http://localhost:8080")
+                .header("X-TCG-Request","1")).andExpect(status().isForbidden()).andExpect(header().doesNotExist("Location"));
+        http.perform(localAlias(get(mode)).header("Via","1.1 proxy")).andExpect(jsonPath("$.localEntryAlias").value(false));
+        http.perform(localAlias(get("/login")).header("Via","1.1 proxy")).andExpect(forwardedUrl("/index.html"));
+        http.perform(localAlias(get(mode)).with(req->{req.setLocalPort(18085);return req;}))
+                .andExpect(jsonPath("$.localEntryAlias").value(false));
+    }
+
+    @Test void desktopAndPublicConfigurationsKeepTheirConfiguredOrigin() {
+        var request=new org.springframework.mock.web.MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+        request.setLocalAddr("127.0.0.1");
+        request.setLocalPort(8080);
+        request.addHeader("Host","localhost:8080");
+        var gate=org.mockito.Mockito.mock(AccessGate.class);
+        var desktop=new LocalAdmin(gate,db,"http://localhost:8080","127.0.0.1","none");
+        assertFalse(desktop.localEntryAlias(request));
+        assertEquals(LocalAdmin.Mode.DISABLED,desktop.mode(request));
+        org.mockito.Mockito.when(gate.configured()).thenReturn(true);
+        var tunnel=new LocalAdmin(gate,db,"https://tcg.example.org","127.0.0.1","none");
+        assertFalse(tunnel.localEntryAlias(request));
+        assertEquals(LocalAdmin.Mode.CLOUDFLARE,tunnel.mode(request));
+    }
+
     @Test void deactivationRevocationExpiryAndRotationTakeEffectOnTheNextRequest() throws Exception {
         Cookie factor = session();
         db.sql("update app_user set enabled=false where id=?").param(id).update();

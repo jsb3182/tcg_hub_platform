@@ -65,12 +65,13 @@ class CatalogTests(unittest.TestCase):
     def test_yugioh_keeps_reprints_and_skips_duplicate_rows(self):
         printings = [{"set_name": "Fixture", "set_code": "EX-001", "set_rarity": r} for r in ["C", "R", "C"]]
         card = {"id": 9, "name": "Fixture", "card_sets": printings, "ygoprodeck_url": "https://example.org/card/9"}
-        pages = [[{"database_version": "v1"}], [{"set_name": "Fixture", "set_code": "EX"}],
+        pages = [[{"database_version": "v1"}], [{"set_name": "Fixture", "set_code": "EX", "tcg_date": "2020-01-02"}],
                  {"meta": {"total_rows": 1}, "data": [card]}]
         with patch("tcg_worker.catalog_sources.bulk.document", side_effect=pages), \
              patch("tcg_worker.catalog_sources.bulk.ygo_names", return_value={}):
             rows = list(yugioh(Mock()))
         self.assertEqual([r["rarity"] for r in rows], ["C", "R"])
+        self.assertEqual([r["pack_tcg_date"] for r in rows], ["2020-01-02"] * 2)
         self.assertNotEqual(rows[0]["external_id"], rows[1]["external_id"])
 
     def test_cache_replaces_completed_version_and_forwards_rate_limit(self):

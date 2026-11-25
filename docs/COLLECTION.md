@@ -1,20 +1,28 @@
 # 카드와 새 소식 운영
 
-**카드 도감**은 게임별 데이터에서 판본·번호·이름·레어도·수록 팩 등을 읽는다. **새 소식**은 발행처의 공지 제목·날짜·원문 링크를 보여준다. 원본 사이트가 날짜를 제공하지 않으면 수집 시각을 표시한다. 게임 선택은 도감과 새 소식 양쪽에서 사용할 수 있다.
+**카드 도감**은 게임별 데이터에서 판본·번호·이름·레어도·수록 팩 등을 읽는다. **새 소식**에는 유희왕 도감의 신규 등록 내역과 게임별 발행처 소식이 표시된다. 공지에 날짜가 없으면 수집 시각을 표시한다. 게임 선택은 도감과 새 소식 양쪽에서 사용할 수 있다.
 
 ## 자동 수집
 
-A90의 로컬 설치에서는 `tcgctl start-local`, 공개 HTTPS 설치에서는 `tcgctl start`로 Python 워커를 실행한다. 워커는 PostgreSQL에 저장한 다음 조회 시각을 기준으로 작업을 고른다. 초기 배포 시 도감 5개와 발행처 공지 6개가 등록되며, 기본 주기는 도감 24시간·소식 1시간이다. DB에 원본 키와 체크포인트를 보관하므로 앱을 닫아도 서버에서 수집이 계속된다. 기존 한국어 유희왕 정적 도감을 가지고 있다면 [이관 도구](../crawler-middleware/README.md)로 함께 보관할 수 있다.
+A90의 로컬 설치에서는 `tcgctl start-local`, 공개 HTTPS 설치에서는 `tcgctl start`로 Python 워커를 실행한다. 도감 5개는 기본 24시간마다, 활성화된 발행처 공지 5개는 1시간마다 확인한다. DB에 원본 키와 체크포인트를 보관하므로 앱을 닫아도 서버에서 수집이 계속된다. 기존 한국어 유희왕 정적 도감도 함께 보관할 수 있다. [이관 도구](../crawler-middleware/README.md)
 
 | 게임 | 발행처 소식 | X 계정 |
 |---|---|---|
-| 유희왕 | [KONAMI TCG 소식](https://www.yugioh-card.com/en/news/) | [@YuGiOh_TCG](https://x.com/YuGiOh_TCG) |
+| 유희왕 | 한국과 아시아 공식 공지는 원문을 직접 연다. [한국 공지](https://www.yugioh.co.kr/board/board_list.php?b_category=notice) · [아시아 공지](https://www.yugioh-card.com/asia/news/) | [@YuGiOh_TCG](https://x.com/YuGiOh_TCG) |
 | 바이스 슈발츠 | [부시로드 공식 RSS](https://en.ws-tcg.com/information/feed/) | [@weissschwarz_en](https://x.com/weissschwarz_en) |
 | 포켓몬 TCG | [포켓몬 카드 일본 공지](https://www.pokemon-card.com/info/) | [@PokemonTCG](https://x.com/PokemonTCG) |
 | 니벨아레나 | [젬블로 국내 공지](http://nivelarena.co.kr/bbs/board.php?bo_table=notice) · [일본 게임마켓의 출전사 소식](https://www.gamemarket.jp/booth/blog/5657) | [@NivelArena](https://x.com/NivelArena) |
 | 리프트바운드 | [Riot Games 공지](https://playriftbound.com/en-us/news/) | [@PlayRiftbound](https://x.com/PlayRiftbound) |
 
 카드의 언어와 수록 범위는 출처별로 다르다. 수집 대상은 카드와 팩 메타데이터이며, 카드 상세의 출처 링크에서 원문을 확인할 수 있다. Riftbound를 외부에 서비스할 때 Riot의 디지털 도구 정책에 따라 서면 라이선스 또는 앱 전용 API 키를 준비한다. [게임별 도감 출처](CARD_SOURCES.md) · [Riot 개발자 정책](https://developer.riotgames.com/docs/riftbound)
+
+### 유희왕 도감 등록 소식과 기존 북미 공지
+
+YGOPRODeck은 공개 API로 카드·수록 팩 정보를 제공하며 응답을 로컬에 보관하도록 안내한다. 유희왕 도감 등록 소식은 이미 내려받은 자료에서 새로 확인한 공개 카드 항목과 팩을 센다. 카드 번호나 레어도가 다른 판본은 별도 항목으로 셀 수 있다. 출처에서 팩을 특정할 수 없으면 팩 수에서 제외한다. 기본 한국어와 선택 가능한 영어·일본어는 자체 서식으로 동시에 작성한다. 소식에는 도감에서 확인한 시점과 최대 세 개씩의 카드·팩 예시가 표시된다. 실제 발매 일자는 개별 카드 상세에서 확인한다. [YGOPRODeck API 가이드](https://ygoprodeck.com/api-guide/)
+
+설치·업그레이드 후 처음 완주한 도감 수집은 기존 자료를 기준점으로 삼는다. 그때 받은 팩 목록에 한국 날짜 기준 오늘부터 30일 전까지의 TCG 발매일이 있으면 가장 최근 팩 하나를 발매일·출처 링크와 함께 소개한다. 날짜가 같으면 제품명순으로 고른다. 이후에는 새로 등재된 카드·팩만 회당 요약 한 건에 담는다. 도중에 작업이 끊기면 이미 저장한 배치는 보관하고 다음 완주 시 합산한다. 변경 없는 재수집이나 과거 정적 자료의 수동 이관은 소식을 만들지 않는다.
+
+KONAMI 북미 웹 이용 조건은 자동 접근을 제한하고 콘텐츠의 복제·번역에 사전 서면 승인을 요구한다. 이 배포본은 `yugioh-en`의 예약 조회와 수동 점검, 번역 및 공개를 중지한다. 기존 제목·번역·게시 결정·마지막 조회 기록은 DB에 보존한다. 업그레이드 시 구버전 워커를 중지하고 API와 워커를 함께 교체한다. 운영자가 별도로 배포한 정적 뉴스 사본이나 CDN에 저장한 응답이 있다면 해당 사본도 비공개 처리한다. [KONAMI 북미 웹 이용 조건](https://legal.konami.com/kdeus/btob/terms/tou/en/)
 
 ## 게시물 언어
 

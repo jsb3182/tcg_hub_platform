@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
+import { useSession } from './stores/session'
 import App from './App.vue'
 import CatalogView from './views/CatalogView.vue'
 import './styles/tokens.css'
@@ -28,6 +29,29 @@ const router = createRouter({
     if (savedPosition) return savedPosition
     if (to.path !== from.path) return { top: 0 }
   },
+})
+const privateRoutes = new Set(['login','binder','decks','deck-new','deck-edit','admin'])
+router.beforeEach(async (to, from) => {
+  if (location.origin !== 'http://localhost:8080' ||
+      !(privateRoutes.has(to.name) || (to.name === 'play' && to.query.deck))) return
+  const session = useSession()
+  try {
+    await session.loadAdminMode()
+    if (!session.localEntryAlias) return
+  } catch {
+    // Full document requests also run the server-side check. The first load has already done so.
+    if (from === START_LOCATION) return
+    location.assign(to.fullPath)
+    return false
+  }
+  const entry = to.name === 'admin' ? '/login?next=/admin' :
+    router.resolve({name:to.name,params:to.params,query:to.query,hash:to.hash}).fullPath
+  location.replace('http://127.0.0.1:8080' + entry)
+  return false
+})
+// An updated service worker only refreshes windows still running the previous alias-unaware bundle.
+navigator.serviceWorker?.addEventListener('message', event => {
+  if (event.data === 'tcg-local-entry-ready') event.ports[0]?.postMessage(true)
 })
 router.afterEach(to => { document.title = to.meta.title + ' · TCG 허브' })
 createApp(App).use(createPinia()).use(router).mount('#app')

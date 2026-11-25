@@ -134,10 +134,16 @@ start_public_tunnel() {
   local was_disabled=false
   if [[ -e $svroot/tcg-tunnel/down ]]; then was_disabled=true; fi
   if enable tunnel && wait_for_edge; then
-    echo 'Cloudflare connector is connected.'
-    return 0
+    if guest tcgtunnel /bin/bash "$guest_script" check-public-route; then
+      return 0
+    elif [[ $? == 3 ]]; then
+      echo 'Connector is up. Finish the challenged routes in a browser on an external connection.' >&2
+      return 0
+    fi
+    echo 'Check the public hostname, DNS and Cloudflare Access/WAF routes.' >&2
+  else
+    echo "Cloudflare connection could not be confirmed. See $PREFIX/var/log/tcg-tunnel/current." >&2
   fi
-  echo "Cloudflare connection could not be confirmed. See $PREFIX/var/log/tcg-tunnel/current." >&2
   if [[ $was_disabled == true ]]; then disable tunnel; fi
   return 1
 }
@@ -219,6 +225,7 @@ BOOT
     echo 'Database prepared. Use tcgctl start-local for local access or restore a backup first.'
     ;;
   service-controls) install_guest_controls ;;
+  check-public) guest tcgtunnel /bin/bash "$guest_script" check-public-route ;;
   token)
     read -rsp 'Cloudflare tunnel token: ' token
     echo
@@ -307,5 +314,5 @@ BOOT
       restore_guest restore "$@"
     fi
     ;;
-  *) echo 'tcgctl install [--local]|service-controls|configure-public|token|x-token|start-local|start|status|maintenance|stop|account|totp|media|backup|restore'; exit 2;;
+  *) echo 'tcgctl install [--local]|service-controls|configure-public|check-public|token|x-token|start-local|start|status|maintenance|stop|account|totp|media|backup|restore'; exit 2;;
 esac

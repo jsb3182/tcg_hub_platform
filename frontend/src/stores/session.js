@@ -8,6 +8,7 @@ export const useSession = defineStore('session', () => {
   const error = ref('')
   const adminAccessBlocked = ref(false)
   const adminMode = ref(null)
+  const localEntryAlias = ref(false)
   const isAdmin = computed(() => account.value?.role === 'ROLE_ADMIN')
   let initPromise
   let refreshPromise
@@ -16,8 +17,9 @@ export const useSession = defineStore('session', () => {
   function loadAdminMode() {
     if (adminMode.value) return Promise.resolve(adminMode.value)
     if (!modePromise) {
-      modePromise = request('/auth/admin-mode', { privateRequest: true }).then(({ mode }) => {
+      modePromise = request('/auth/admin-mode', { privateRequest: true }).then(({ mode, localEntryAlias: alias }) => {
         if (!['LOCAL_TOTP', 'CLOUDFLARE', 'DISABLED'].includes(mode)) throw new ApiError(502)
+        localEntryAlias.value = alias === true && mode === 'DISABLED'
         adminMode.value = mode
         return mode
       }).finally(() => { modePromise = null })
@@ -46,7 +48,13 @@ export const useSession = defineStore('session', () => {
   }
   function initialize() {
     if (!initPromise) {
-      initPromise = refresh().catch(cause => {
+      initPromise = (async () => {
+        if (location.origin === 'http://localhost:8080') {
+          await loadAdminMode().catch(() => {})
+          if (localEntryAlias.value) return
+        }
+        await refresh()
+      })().catch(cause => {
         if (cause.status !== 401) error.value = cause.message
       }).finally(() => { ready.value = true })
     }
@@ -84,6 +92,6 @@ export const useSession = defineStore('session', () => {
   function verifyLocalCode(code, signal) {
     return authenticatedRequest('/auth/local-admin', { method: 'POST', body: { code }, signal })
   }
-  return { account, ready, isAdmin, adminAccessBlocked, adminMode, error, initialize, login, logout,
+  return { account, ready, isAdmin, adminAccessBlocked, adminMode, localEntryAlias, error, initialize, login, logout,
     loadAdminMode, authenticatedRequest, adminRequest, verifyLocalCode }
 })
