@@ -1,6 +1,6 @@
 # Android에서 TCG 허브 열기와 A90 서버 제어
 
-`TCG 허브` 앱 1.3은 방문자가 공개 사이트를 열고 운영자가 A90에서 서버를 설치·관리하는 Android 앱이다. 1.1 또는 1.2에서 업데이트하면 저장한 주소와 폴더 권한을 이어서 사용한다.
+`TCG 허브` 앱 1.3.1은 방문자가 공개 사이트를 열고 운영자가 A90에서 서버를 설치·관리하는 Android 앱이다. 1.1, 1.2 또는 1.3에서 업데이트하면 저장한 주소와 폴더 권한을 이어서 사용한다.
 
 ## 다른 휴대폰에서 공개 사이트 열기
 
@@ -16,10 +16,10 @@ A90에 Termux를 설치하고 한 번 연다. 첫 설치에서는 Ubuntu와 번�
 2. **Termux 열기**를 눌러 터미널에 붙여 넣고 Enter를 누른다. 명령은 설치 도우미와 서버 압축 파일을 각각 앱에 고정된 SHA-256과 대조한 뒤 설치한다. 다운로드나 설치가 중단되면 같은 명령으로 다시 진행한다.
 3. 설치 완료 주소가 표시되면 앱으로 돌아와 아래 절차로 제어 폴더를 한 번 연결한다. 이후 서버 시작·중지는 앱에서 할 수 있다. [제어 폴더 연결](#a90-제어-폴더를-처음-연결할-때)
 
-**Termux에서 직접 설치하는 방법**도 있다. A90 브라우저로 사용할 GitHub 릴리스를 열어 같은 태그의 `setup-termux.sh`와 파일의 SHA-256을 확인한다. 아래의 예시는 `a90-2026.11.25.3` 배포본을 휴대폰의 개인 폴더에 받는다. [릴리스 파일](https://github.com/jsb3182/tcg_hub_platform/releases)
+**Termux에서 직접 설치하는 방법**도 있다. A90 브라우저로 사용할 GitHub 릴리스를 열어 같은 태그의 `setup-termux.sh`와 파일의 SHA-256을 확인한다. 아래의 예시는 `a90-2026.11.25.4` 배포본을 휴대폰의 개인 폴더에 받는다. [릴리스 파일](https://github.com/jsb3182/tcg_hub_platform/releases)
 
 ```bash
-tag=a90-2026.11.25.3
+tag=a90-2026.11.25.4
 pkg install -y curl coreutils &&
   curl --proto '=https' --proto-redir '=https' -fL --retry 2 \
     "https://github.com/jsb3182/tcg_hub_platform/releases/download/$tag/setup-termux.sh" \
@@ -30,7 +30,7 @@ pkg install -y curl coreutils &&
 출력된 SHA-256이 릴리스에 표시된 값과 일치하면 아래 명령을 실행한다.
 
 ```bash
-bash "$HOME/setup-termux.sh" --release a90-2026.11.25.3
+bash "$HOME/setup-termux.sh" --release a90-2026.11.25.4
 ```
 
 Termux에서 설치가 끝나면 A90 브라우저로 `http://127.0.0.1:8080/`을 연다. 카드와 소식은 워커가 백그라운드에서 수집한다. `tcgctl media check-catalogs`를 실행하면 다섯 도감에 실제로 저장된 자동 수집 카드 수와 첫 수집 완료 여부를 볼 수 있다. 기존 로컬 배포의 백업은 `$HOME/tcg-backups/`에 보관된다.
