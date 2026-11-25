@@ -5,6 +5,7 @@ from .transport import CatalogHTTP
 
 
 _ADAPTERS = {"YUGIOH": yugioh, "POKEMON": pokemon, "WEISS": weiss, "NIVEL": nivel, "RIFTBOUND": riftbound}
+CATALOG_GAMES = frozenset(_ADAPTERS)
 
 
 def iter_catalog(game_code):

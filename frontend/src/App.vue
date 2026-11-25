@@ -31,6 +31,7 @@ onUnmounted(() => {
   window.removeEventListener('offline', updateOnline)
 })
 async function logout() {
+  if (!window.dispatchEvent(new Event('tcg-before-logout', {cancelable:true}))) return
   busy.value = true
   logoutError.value = ''
   try {

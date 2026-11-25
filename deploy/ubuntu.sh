@@ -123,10 +123,18 @@ SQL
   backup)
     psql -X --set=ON_ERROR_STOP=1 -qAtc 'SELECT 1 FROM public.flyway_schema_history LIMIT 1' >/dev/null
     parent=/mnt/tcg-backups
-    target="$parent/$(date -u +%Y%m%dT%H%M%SZ)-$$"
+    native=false
+    if [[ ${1:-} == --native ]]; then native=true; shift; fi
+    name="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+    if [[ $# != 0 ]]; then
+      [[ $# == 2 && $1 == --name && $2 =~ ^[0-9]{8}T[0-9]{6}Z-[0-9]+$ ]] || exit 2
+      name=$2
+    fi
+    target="$parent/$name"
+    [[ ! -e $target ]] || { echo 'This backup directory already exists.' >&2; exit 1; }
     tmp=$(mktemp -d "$parent/.incomplete.XXXXXX")
     trap 'rm -rf -- "$tmp"' EXIT
-    if [[ ${1:-} == --native ]]; then
+    if [[ $native == true ]]; then
       cp /mnt/tcg-native/db.dump "$tmp/db.dump"
     else
       admin_db pg_dump --format=custom --file="$tmp/db.dump"

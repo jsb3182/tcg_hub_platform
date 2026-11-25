@@ -48,6 +48,30 @@ class DatabaseTests(unittest.TestCase):
         ).fetchone()[0]
         return self.db.execute("INSERT INTO card_variant(card_id) VALUES (%s) RETURNING id", (card_id,)).fetchone()[0]
 
+    def test_catalog_check_requires_published_source_cards_and_a_finished_import_for_each_game(self):
+        from tcg_worker.__main__ import check_catalogs
+
+        with self.db.transaction(force_rollback=True):
+            self.db.execute("INSERT INTO card(game_code,name,status) VALUES ('YUGIOH','manual','PUBLISHED')")
+            before = check_catalogs(self.db)
+            self.assertEqual(len(before["catalogs"]), 5)
+            self.assertTrue(all(row["published"] == 0 for row in before["catalogs"]))
+            self.assertFalse(before["initial_sync_complete"])
+            self.db.execute("""
+                INSERT INTO card(game_code,name,status,source_id)
+                SELECT game_code,'imported', CASE WHEN game_code='NIVEL' THEN 'PENDING' ELSE 'PUBLISHED' END,id
+                FROM feed_source WHERE provider='CATALOG'
+            """)
+            self.db.execute("UPDATE feed_source SET last_success_at=now() WHERE provider='CATALOG'")
+            self.assertFalse(check_catalogs(self.db)["initial_sync_complete"])
+            self.db.execute("UPDATE card SET status='PUBLISHED' WHERE game_code='NIVEL' AND source_id IS NOT NULL")
+            self.db.execute("UPDATE feed_source SET last_success_at=NULL,state='RUNNING' WHERE provider='CATALOG' AND game_code='NIVEL'")
+            self.assertFalse(check_catalogs(self.db)["initial_sync_complete"])
+            self.db.execute("UPDATE feed_source SET last_success_at=now(),state='OK' WHERE provider='CATALOG' AND game_code='NIVEL'")
+            complete = check_catalogs(self.db)
+            self.assertTrue(complete["initial_sync_complete"])
+            self.assertTrue(all(row["published"] == 1 and row["last_success_at"] for row in complete["catalogs"]))
+
     def test_sync_keeps_moderation_and_artwork_across_refresh(self):
         from tcg_worker.feeds import Headline
         from tcg_worker.sync import save_cards, save_news

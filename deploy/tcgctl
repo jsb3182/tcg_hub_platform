@@ -11,7 +11,8 @@ native_state="$PREFIX/var/lib/tcg-hub-native"
 native_script="$PREFIX/libexec/tcg-hub/native-db.sh"
 guest_stop="$PREFIX/libexec/tcg-hub/stop-guest.py"
 mkdir -p "$backups" "$HOME/tcg-import"
-exec 9>"$HOME/.tcg-control.lock"
+# setup-termux holds this same open file description across its management steps.
+if [[ ! /proc/self/fd/9 -ef "$HOME/.tcg-control.lock" ]]; then exec 9>"$HOME/.tcg-control.lock"; fi
 flock -n 9 || { echo 'Another TCG management command is active.' >&2; exit 1; }
 engine=guest
 if [[ -e $engine_file ]]; then
@@ -282,7 +283,19 @@ BOOT
     guest tcgapp /bin/bash "$guest_script" totp "$@"
     ;;
   media) proot-distro login ubuntu-tcg --isolated --user tcgapp --bind "$HOME/tcg-import:/mnt/tcg-source" -- /bin/bash "$guest_script" media "$@";;
-  backup)
+  backup|backup-for-update)
+    backup_guest=()
+    backup_args=()
+    if [[ $cmd == backup-for-update ]]; then
+      [[ $# == 1 && $1 =~ ^[0-9]{8}T[0-9]{6}Z-[0-9]+$ ]] || exit 2
+      for member in api worker tunnel; do [[ -f $svroot/tcg-$member/down ]] || exit 1; done
+      # This also supports updating a server stopped before the upgrade.
+      enable db
+      prepare_db
+      backup_guest=(--bind "$release:/mnt/tcg-release")
+      guest_script=/mnt/tcg-release/deploy/ubuntu.sh
+      backup_args=(--name "$1")
+    fi
     members=()
     for member in api worker tunnel; do
       if [[ ! -e $svroot/tcg-$member/down ]]; then members+=("$member"); fi
@@ -294,9 +307,9 @@ BOOT
       work=$(mktemp -d "$native_state/.dump.XXXXXX")
       trap 'rm -rf -- "$work"; resume' EXIT
       native_db dump "$work/db.dump"
-      proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" --bind "$work:/mnt/tcg-native" -- /bin/bash "$guest_script" backup --native
+      proot-distro login ubuntu-tcg --isolated "${backup_guest[@]}" --bind "$backups:/mnt/tcg-backups" --bind "$work:/mnt/tcg-native" -- /bin/bash "$guest_script" backup --native "${backup_args[@]}"
     else
-      proot-distro login ubuntu-tcg --isolated --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" backup
+      proot-distro login ubuntu-tcg --isolated "${backup_guest[@]}" --bind "$backups:/mnt/tcg-backups" -- /bin/bash "$guest_script" backup "${backup_args[@]}"
     fi
     ;;
   restore)

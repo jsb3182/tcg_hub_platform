@@ -9,6 +9,25 @@ from pathlib import Path
 from .legacy import check, import_catalog
 
 
+def check_catalogs(db):
+    """Distinguish a completed source import from an empty or partially populated catalogue."""
+    from .catalog_sources import CATALOG_GAMES
+    rows = db.execute("""
+        SELECT g.code, g.name, s.last_success_at,
+               CASE WHEN NOT s.enabled THEN 'PAUSED' ELSE s.state END,
+               count(c.id) AS imported
+        FROM game g LEFT JOIN feed_source s
+          ON s.provider='CATALOG' AND s.source_key=g.code AND s.game_code=g.code
+        LEFT JOIN card c ON c.source_id=s.id AND c.game_code=g.code AND c.status='PUBLISHED'
+        WHERE g.code=ANY(%s) GROUP BY g.code,g.name,s.id ORDER BY g.name
+    """, (list(CATALOG_GAMES),)).fetchall()
+    result = [{"game": code, "name": name, "state": state, "published": count,
+               "last_success_at": success.isoformat() if success is not None else None}
+              for code, name, success, state, count in rows]
+    completed = {row["game"] for row in result if row["published"] and row["last_success_at"]}
+    return {"initial_sync_complete": completed == CATALOG_GAMES, "catalogs": result}
+
+
 def main():
     parser = argparse.ArgumentParser(description="TCG catalogue and atlas worker")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -19,6 +38,7 @@ def main():
     enqueue_command.add_argument("image", type=Path)
     commands.add_parser("once")
     commands.add_parser("run")
+    commands.add_parser("check-catalogs", help="Report completed imports and published cards for each game.")
     probe = commands.add_parser("check-feed", help="Read a source without storing posts. A configured X worker shares its rate limit.")
     probe.add_argument("provider", choices=("OFFICIAL_NEWS", "X", "DCINSIDE"))
     probe.add_argument("key")
@@ -45,6 +65,14 @@ def main():
         return
 
     from .jobs import connect, enqueue, process_once
+
+    if args.command == "check-catalogs":
+        with connect() as db:
+            report = check_catalogs(db)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        if not report["initial_sync_complete"]:
+            parser.exit(3)
+        return
 
     media = Path(os.environ.get("MEDIA_ROOT", "/var/lib/tcg-hub/media")).resolve()
     spool = Path(os.environ.get("SPOOL_ROOT", "/var/lib/tcg-hub/spool")).resolve()
