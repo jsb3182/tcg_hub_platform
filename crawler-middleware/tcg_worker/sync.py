@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from .catalog_news import collect_pack_dates, finish_yugioh_scan
 from .feeds import FetchError, backoff, fetch_feed
 from .jobs import connect, process_once
 
@@ -206,12 +207,15 @@ def sync_source(source, stop):
             if source["provider"] == "CATALOG":
                 from .catalog_sources import iter_catalog
                 total = 0
+                releases = {} if source["source_key"] == "YUGIOH" and "news" not in cursor else None
                 records = iter(iter_catalog(source["game_code"]))
                 while True:
                     interrupted(db, sid, stop)
                     batch = list(islice(records, 10 if source["game_code"] == "NIVEL" else 200))
                     if not batch:
                         break
+                    if releases is not None:
+                        collect_pack_dates(releases, batch)
                     with db.transaction():
                         interrupted(db, sid, stop)
                         added = save_cards(db, source, batch)
@@ -229,6 +233,8 @@ def sync_source(source, stop):
                 cursor, more, floor = page.cursor, page.more, page.retry_after
             with db.transaction():
                 interrupted(db, sid, stop)
+                if source["provider"] == "CATALOG" and source["source_key"] == "YUGIOH":
+                    cursor["news"] = finish_yugioh_scan(db, sid, releases)
                 if page is not None:
                     added = save_news(db, source, page.items)
                     db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s WHERE id=%s",
@@ -311,8 +317,9 @@ def run(db, media, spool, stop, interval):
                 if translating is None and time.monotonic() >= next_translation_check:
                     next_translation_check = time.monotonic() + 30
                     if (model_directory() / "model.bin").is_file() and db.execute("""
-                            SELECT EXISTS (SELECT 1 FROM feed_item
-                                           WHERE translation_due_at<=now() AND status <> 'REJECTED')
+                            SELECT EXISTS (SELECT 1 FROM feed_item i JOIN feed_source s ON s.id=i.source_id
+                                           WHERE i.translation_due_at<=now() AND i.status <> 'REJECTED'
+                                             AND s.policy_note IS NULL)
                             """).fetchone()[0]:
                         translating = pool.submit(translate_pending, cancel)
                 media_count = process_once(db, media, spool)

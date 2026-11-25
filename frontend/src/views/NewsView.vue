@@ -85,6 +85,10 @@ watch([selected, page, language, retry], async (_, __, cleanup) => {
     <button type="button" :aria-pressed="!selected" @click="navigate('', 0)">전체</button>
     <button v-for="game in games" :key="game.code" type="button" :aria-pressed="selected === game.code" @click="navigate(game.code, 0)">{{ game.name }}</button>
   </nav>
+  <p v-if="selected === 'YUGIOH'" class="story-links">
+    <a href="https://www.yugioh.co.kr/board/board_list.php?b_category=notice" target="_blank" rel="noopener noreferrer">한국 공식 공지</a>
+    <a href="https://www.yugioh-card.com/asia/news/" target="_blank" rel="noopener noreferrer">아시아 OCG 공식 공지</a>
+  </p>
   <p v-if="gameError" role="alert" class="inline-error">게임 목록을 불러오지 못했습니다. <button class="text-button" @click="retry++">다시 시도</button></p>
   <section class="news-results" :aria-busy="busy" aria-label="공개 소식">
     <p v-if="busy" role="status" class="state">소식을 불러오는 중입니다.</p>

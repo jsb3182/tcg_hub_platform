@@ -18,7 +18,6 @@ from protego import Protego
 
 AGENT = "TCGHub/1.0"
 NEWS = {
-    "yugioh-en": "https://www.yugioh-card.com/en/news/",
     "weiss-en": "https://en.ws-tcg.com/information/feed/",
     "pokemon-jp": "https://www.pokemon-card.com/info/",
     "nivel-kr": "https://www.gamemarket.jp/booth/blog/5657",
@@ -62,9 +61,7 @@ class FeedPage:
 
 class SameOrigin(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        konami_robot = (req.full_url == "https://www.yugioh-card.com/robots.txt"
-                        and newurl == "https://img.yugioh-card.com/robots.txt")
-        if not konami_robot and urlsplit(newurl)[:2] != urlsplit(req.full_url)[:2]:
+        if urlsplit(newurl)[:2] != urlsplit(req.full_url)[:2]:
             raise FetchError("원본 호스트 밖으로 리디렉션되어 요청을 중단했습니다.", blocked=True)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
@@ -226,12 +223,7 @@ def parse_news(key, body):
                            summary=rss_excerpt(item.findtext("description")))
         return
     soup = BeautifulSoup(body.decode("utf-8-sig"), "html.parser")
-    if key == "yugioh-en":
-        for anchor in soup.select("li section.copy h4 a[href]"):
-            day = anchor.find_parent("li").select_one("p.date")
-            yield headline(base, anchor["href"], anchor.get_text(strip=True),
-                           published(day.get_text(strip=True) if day else None))
-    elif key == "pokemon-jp":
+    if key == "pokemon-jp":
         for entry in soup.select("li.List_item a.List_item_inner[href]")[:40]:
             image, day = entry.select_one("img[alt]"), entry.select_one(".Date")
             if image is not None:
@@ -271,6 +263,8 @@ def validators(cursor):
 
 
 def publisher_news(key, cursor):
+    if key == "yugioh-en":
+        raise FetchError("KONAMI 북미 이용 조건에 따라 자동 접근·번역·공개를 중지했습니다.", blocked=True)
     if key not in NEWS:
         raise FetchError("등록되지 않은 공식 소식 출처입니다.", blocked=True)
     url = NEWS[key]

@@ -38,7 +38,7 @@ class NewsApi {
     private Results items(String status, String game, int page, int size, String lang) {
         String from = " from feed_item i join feed_source s on s.id=i.source_id ";
         String where = """
-                where i.status=:status and i.payload->>'kind'='NEWS'
+                where i.status=:status and i.payload->>'kind'='NEWS' and s.policy_note is null
                   and (:game='' or coalesce(i.payload->>'gameCode',s.game_code)=:game)
                 """;
         var total = db.sql("select count(*)" + from + where)

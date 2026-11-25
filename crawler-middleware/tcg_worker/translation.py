@@ -18,7 +18,7 @@ X_LABELS = {
     "새 게시물": {"en": "New post", "ja": "新着投稿"},
 }
 SOURCE_LANGUAGES = {
-    "yugioh-en": "en", "weiss-en": "en", "riftbound-en": "en",
+    "weiss-en": "en", "riftbound-en": "en",
     "pokemon-jp": "ja", "nivel-kr": "ja", "nivel-notice-kr": "ko", "tcggame": "ko",
 }
 TRANSLATION_LOCK = 73401853
@@ -85,7 +85,7 @@ def pending(db, limit):
                    i.original_language, ARRAY(SELECT lang FROM feed_item_translation t WHERE t.item_id=i.id
                         AND (nullif(trim(i.payload->>'summary'),'') IS NULL OR nullif(trim(t.summary),'') IS NOT NULL)) AS done
               FROM feed_item i JOIN feed_source s ON i.source_id=s.id
-             WHERE i.translation_due_at <= now() AND i.status <> 'REJECTED'
+             WHERE i.translation_due_at <= now() AND i.status <> 'REJECTED' AND s.policy_note IS NULL
              ORDER BY i.translation_due_at,i.id LIMIT %s
         """, (limit,)).fetchall()
 
@@ -112,6 +112,7 @@ def translate_item(db, item, get_model, stop):
         current = db.execute("""
             UPDATE feed_item SET original_language=%s,translation_due_at=NULL
              WHERE id=%s AND status <> 'REJECTED' AND translation_due_at IS NOT NULL
+               AND EXISTS (SELECT 1 FROM feed_source s WHERE s.id=feed_item.source_id AND s.policy_note IS NULL)
                AND payload->>'kind'='NEWS' AND payload->>'title'=%s
                AND payload->>'summary' IS NOT DISTINCT FROM %s RETURNING id
         """, (source, item["id"], item["title"], item["summary"])).fetchone()

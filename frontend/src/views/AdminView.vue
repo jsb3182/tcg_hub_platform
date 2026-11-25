@@ -200,7 +200,8 @@ onBeforeUnmount(() => {
                 <strong>마지막 오류</strong> <time v-if="source.lastErrorAt" :datetime="source.lastErrorAt">{{ dateTime(source.lastErrorAt) }}</time>
                 <p v-if="source.lastError">{{ source.lastError }}</p>
               </div>
-              <div class="ops-actions">
+              <p v-if="source.policyNote">{{ source.policyNote }}</p>
+              <div v-else class="ops-actions">
                 <button class="secondary" :disabled="!!activeAction" @click="sourceAction(source, 'enabled')">{{ source.enabled ? '일시정지' : '수집 재개' }}</button>
                 <button class="primary" :disabled="!!activeAction || !source.enabled || ['QUEUED','RUNNING'].includes(source.state)" @click="sourceAction(source, 'run')">지금 수집</button>
               </div>

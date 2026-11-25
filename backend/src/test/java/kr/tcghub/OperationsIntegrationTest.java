@@ -105,6 +105,18 @@ class OperationsIntegrationTest {
         assertTrue(db.sql("select restart_requested_at is not null from worker_heartbeat where id='tcg-worker'").query(Boolean.class).single());
     }
 
+    @Test void restrictedSourceIsHiddenAndCannotBeResumedFromTheDashboard() throws Exception {
+        db.sql("update feed_item set status='PUBLISHED' where id=?").param(item).update();
+        long visible = newsCount();
+        db.sql("update feed_source set enabled=false,policy_note='테스트 이용 조건' where id=?").param(source).update();
+        assertEquals(visible-1,newsCount());
+        assertEquals("PUBLISHED",db.sql("select status from feed_item where id=?").param(item).query(String.class).single());
+        http.perform(get("/api/v1/admin/operations").header(ASSERTION,access).header("Authorization","Bearer "+admin))
+                .andExpect(jsonPath("$.sources[?(@.id == " + source + ")].policyNote").value(contains("테스트 이용 조건")));
+        http.perform(command("/sources/"+source+"/enabled").content("{\"enabled\":true}")).andExpect(status().isConflict());
+        http.perform(command("/sources/"+source+"/run")).andExpect(status().isConflict());
+    }
+
     @Test void dashboardPreservesProviderCooldownForManualRequests() throws Exception {
         db.sql("""
             insert into feed_provider_cooldown(provider,retry_after_at) values('X','2099-02-02T00:00:00Z')

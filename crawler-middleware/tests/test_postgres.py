@@ -206,7 +206,7 @@ class DatabaseTests(unittest.TestCase):
         with self.db.transaction(force_rollback=True):
             self.db.execute("UPDATE feed_source SET enabled=(provider='X'),next_fetch_at=now(),requested_at=now()")
             self.assertIsNone(claim(self.db, False))
-            self.db.execute("UPDATE feed_source SET enabled=true WHERE provider='OFFICIAL_NEWS'")
+            self.db.execute("UPDATE feed_source SET enabled=true WHERE provider='OFFICIAL_NEWS' AND policy_note IS NULL")
             self.assertEqual(claim(self.db, False)["provider"], "OFFICIAL_NEWS")
             self.db.execute("UPDATE feed_source SET enabled=false WHERE provider='OFFICIAL_NEWS'")
             self.db.execute("UPDATE feed_provider_cooldown SET retry_after_at=now()-interval '1 second'")
