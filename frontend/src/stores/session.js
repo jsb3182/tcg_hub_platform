@@ -60,12 +60,14 @@ export const useSession = defineStore('session', () => {
     }
     return initPromise
   }
-  async function login(email, password) {
+  async function startSession(action, email, password) {
     await initialize()
-    await serialize(async () => { account.value = await post('login', { email, password }) })
+    await serialize(async () => { account.value = await post(action, { email, password }) })
     adminAccessBlocked.value = false
     error.value = ''
   }
+  const login = (email, password) => startSession('login', email, password)
+  const register = (email, password) => startSession('register', email, password)
   async function logout() {
     await serialize(async () => {
       await post('logout')
@@ -92,6 +94,6 @@ export const useSession = defineStore('session', () => {
   function verifyLocalCode(code, signal) {
     return authenticatedRequest('/auth/local-admin', { method: 'POST', body: { code }, signal })
   }
-  return { account, ready, isAdmin, adminAccessBlocked, adminMode, localEntryAlias, error, initialize, login, logout,
+  return { account, ready, isAdmin, adminAccessBlocked, adminMode, localEntryAlias, error, initialize, login, register, logout,
     loadAdminMode, authenticatedRequest, adminRequest, verifyLocalCode }
 })

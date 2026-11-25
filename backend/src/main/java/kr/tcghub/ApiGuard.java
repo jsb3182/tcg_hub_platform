@@ -15,6 +15,8 @@ class ApiGuard extends OncePerRequestFilter {
     private final String origin;
     private final Cache<String, Bucket> buckets = Caffeine.newBuilder().maximumSize(8192)
             .expireAfterAccess(Duration.ofMinutes(10)).build();
+    // Hold the total volume of public BCrypt work down even when requests arrive from different IPs.
+    private final Bucket registrationBudget = budget(12, Duration.ofMinutes(1));
 
     ApiGuard(String origin) { this.origin = origin; }
 
@@ -35,18 +37,32 @@ class ApiGuard extends OncePerRequestFilter {
         if ("127.0.0.1".equals(client) && forwarded != null && forwarded.matches("[a-fA-F0-9:.]{2,45}")) {
             client = forwarded;
         }
-        boolean login = req.getServletPath().equals("/api/v1/auth/login");
-        int limit = login ? 10 : 180;
-        var bucket = buckets.get((login ? "login/" : "api/") + client,
-                key -> Bucket.builder().addLimit(l -> l.capacity(limit).refillGreedy(limit, Duration.ofMinutes(1))).build());
-        if (!bucket.tryConsume(1)) {
-            res.setHeader("Retry-After","60");
-            res.setStatus(429);
-            return;
+        String path = req.getServletPath();
+        if (path.equals("/api/v1/auth/register") && "POST".equals(req.getMethod())) {
+            Bucket clientBudget = buckets.get("register/" + client, key -> budget(5, Duration.ofMinutes(10)));
+            if (!consume(clientBudget, res) || !consume(registrationBudget, res)) return;
+        } else {
+            boolean login = path.equals("/api/v1/auth/login");
+            Bucket bucket = buckets.get((login ? "login/" : "api/") + client,
+                    key -> budget(login ? 10 : 180, Duration.ofMinutes(1)));
+            if (!consume(bucket, res)) return;
         }
         if ("GET".equals(req.getMethod()) && req.getServletPath().matches("/api/v1/(games|packs|cards(/[0-9]+)?)")) {
             res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
         }
         chain.doFilter(req,res);
+    }
+
+    private static Bucket budget(int tokens, Duration period) {
+        return Bucket.builder().addLimit(limit -> limit.capacity(tokens).refillGreedy(tokens, period)).build();
+    }
+
+    private static boolean consume(Bucket bucket, HttpServletResponse response) {
+        var result = bucket.tryConsumeAndReturnRemaining(1);
+        if (result.isConsumed()) return true;
+        long seconds = (result.getNanosToWaitForRefill() + 999_999_999L) / 1_000_000_000L;
+        response.setHeader("Retry-After", Long.toString(Math.max(1L, seconds)));
+        response.setStatus(429);
+        return false;
     }
 }

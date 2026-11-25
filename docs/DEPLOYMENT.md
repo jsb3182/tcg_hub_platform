@@ -99,11 +99,13 @@ curl --fail http://127.0.0.1:8080/api/v1/games
 tcgctl account admin@example.com ROLE_ADMIN
 ```
 
-계정 명령에서 관리자의 실제 이메일과 암호를 입력한다. 비밀번호는 BCrypt 해시로 저장되고 이미 존재하는 이메일은 거부된다. 일반 계정은 같은 명령의 마지막 인수로 `ROLE_USER`를 사용한다. CLI의 표준 입력이 터미널이 아닌 경우에는 암호 한 줄을 비밀 입력으로 전달한다. HTTPS 브라우저 로그인은 5단계에서 확인한다.
+방문자는 웹에서 **회원가입**을 눌러 일반 계정을 만든다. 이메일은 로그인에 쓰며 가입 확인 메일은 발송하지 않는다. 비밀번호는 12자 이상, UTF-8 기준 72바이트 이내여야 하며 서버에는 BCrypt 해시가 저장된다.
+
+공개 주소를 열기 전에 A90에서 운영자용 이메일로 관리자 계정을 먼저 만든다. 이미 사용 중인 이메일로 계정 생성 명령을 실행하면 기존 계정과 권한이 유지된다. 운영자용 이메일은 일반 회원가입에 사용하지 않는다. 관리자는 아래 절차에 따라 인증 앱을 등록한다.
 
 ### A90에서 로컬 관리자 로그인
 
-1. `tcgctl start-local`로 앱을 기동한다. 관리자 계정이 없으면 Termux에서 `tcgctl account admin@example.com ROLE_ADMIN`을 실행해 자신의 이메일과 암호로 계정을 만든다.
+1. `tcgctl start-local`로 앱을 기동한다. 관리자 계정이 없으면 Termux에서 `tcgctl account admin@example.com ROLE_ADMIN`의 예시 이메일을 자신의 것으로 바꿔 실행한다. 비밀번호를 입력하는 동안 화면에는 글자가 표시되지 않는다. Enter를 누른 뒤 `Account created.`가 나오면 다음 단계로 간다. `Use at least 12 characters and at most 72 UTF-8 bytes`가 나오면 길이 조건에 맞는 새 비밀번호로 다시 실행한다.
 2. **A90의 Termux 터미널**에서 `tcgctl totp admin@example.com`을 실행한다. 인증 앱의 수동 등록 화면에서 키 종류를 시간 기반으로 지정하고 표시된 설정 키를 입력한다. 기본값은 SHA-1, 6자리, 30초다. 인증 앱이 설정 URI 입력을 지원하면 같은 화면에 표시된 URI를 사용할 수 있다. 인증 앱의 6자리 코드를 Termux에 입력하면 등록이 완료된다. [TOTP 규격](https://www.rfc-editor.org/rfc/rfc6238.html)
 3. A90의 브라우저로 `http://127.0.0.1:8080/login?to=admin`을 연다. 관리자 이메일과 암호로 로그인하고 **다음 6자리 코드**를 입력한다. 등록 확인에 사용한 코드는 이미 소비됐다. 인증 앱의 시각이 어긋나면 Android의 자동 날짜 및 시간을 확인한다.
 4. 인증 앱을 교체하거나 분실하면 기기를 직접 열고 `tcgctl totp admin@example.com --rotate`를 실행한다. 새 앱의 코드 확인과 교체가 성공하면 기존 로컬 관리자 세션이 만료된다. 교체가 취소되거나 코드가 틀리면 기존 앱과 세션을 계속 사용할 수 있다.

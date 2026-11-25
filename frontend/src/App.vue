@@ -13,6 +13,7 @@ const menuButton = ref(null)
 const loginTarget = computed(() => {
   const route = router.currentRoute.value
   if (route.name === 'admin') return {name:'login',query:{to:'admin'}}
+  if (route.name === 'login') return {name:'login',query:{next:route.query.next,to:route.query.to}}
   if (['binder','decks','deck-new','deck-edit','play','stores'].includes(route.name)) return {name:'login',query:{next:route.fullPath}}
   return {name:'login'}
 })
