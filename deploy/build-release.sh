@@ -40,7 +40,7 @@ cp -R deploy "$tmp/release/"
 cp crawler-middleware/requirements.txt crawler-middleware/README.md "$tmp/release/crawler-middleware/"
 tar --exclude='__pycache__' --exclude='*.pyc' -C crawler-middleware -cf - tcg_worker | tar -C "$tmp/release/crawler-middleware" -xf -
 mkdir -p "$tmp/release/docs"
-cp docs/DEPLOYMENT.md docs/COLLECTION.md docs/CARD_SOURCES.md "$tmp/release/docs/"
+cp docs/DEPLOYMENT.md docs/COLLECTION.md docs/CARD_SOURCES.md docs/ANDROID.md docs/STORES.md "$tmp/release/docs/"
 cd "$tmp/release"
 find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "$tmp/MANIFEST.sha256"
 cp "$tmp/MANIFEST.sha256" .

@@ -109,8 +109,9 @@ button.atlas { cursor: zoom-in; box-shadow: 0 1px 5px rgba(0,0,0,.28); }
 .footer { border-top: 1px solid var(--bd); margin-block: 24px; padding-top: 16px; }
 @media (max-width: 720px) {
   .shell { width: calc(100% - 32px); }
-  .masthead-inner { min-height: 54px; }
-  .masthead nav { gap: 12px; }
+  .masthead-inner { min-height: 54px; display: block; padding-top: 8px; }
+  .masthead nav { gap: 16px; overflow-x: auto; white-space: nowrap; padding: 8px 0; scrollbar-width: thin; }
+  .masthead nav > * { flex-shrink: 0; }
   .catalog-layout { grid-template-columns: 1fr; gap: 16px; padding-top: 0; }
   .filters { position: static; padding: 14px; }
   .filters .section-heading { margin-bottom: 8px; }

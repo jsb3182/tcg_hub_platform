@@ -212,6 +212,7 @@ BOOT
     done
     enable db
     prepare_db
+    bash "$release/deploy/install-mobile-control.sh"
     completed=$(mktemp "$(dirname "$engine_file")/installed.XXXXXX")
     sha256sum "$release/MANIFEST.sha256" | cut -c1-20 > "$completed"
     mv -f "$completed" "$(dirname "$engine_file")/installed-manifest"

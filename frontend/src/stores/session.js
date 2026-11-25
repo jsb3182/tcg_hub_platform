@@ -85,5 +85,5 @@ export const useSession = defineStore('session', () => {
     return authenticatedRequest('/auth/local-admin', { method: 'POST', body: { code }, signal })
   }
   return { account, ready, isAdmin, adminAccessBlocked, adminMode, error, initialize, login, logout,
-    loadAdminMode, adminRequest, verifyLocalCode }
+    loadAdminMode, authenticatedRequest, adminRequest, verifyLocalCode }
 })

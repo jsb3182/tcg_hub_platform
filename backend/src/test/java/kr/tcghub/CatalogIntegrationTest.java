@@ -33,6 +33,26 @@ class CatalogIntegrationTest {
     @Autowired ObjectMapper json;
     @Value("${tcg.public-origin}") String origin;
 
+    @Test void practiceLabelsMatchThePrintingAndReportLanguageFallback() throws Exception {
+        String name = "연습-" + UUID.randomUUID();
+        long id = db.sql("""
+                insert into card(game_code,name,specs,status) values('POKEMON',?,
+                    '{"language":"ko","names":{"ja":"練習用"}}'::jsonb,'PUBLISHED') returning id
+                """).param(name).query(Long.class).single();
+        long hidden = db.sql("insert into card(game_code,name) values('POKEMON',?) returning id")
+                .param(name).query(Long.class).single();
+        api.perform(get("/api/v1/play/cards").param("game","POKEMON").param("lang","ja")
+                        .param("ids",id+","+hidden))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("練習用")).andExpect(jsonPath("$[0].language").value("ja"));
+        api.perform(get("/api/v1/play/cards").param("game","POKEMON").param("lang","en").param("q",name))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].name").value(name))
+                .andExpect(jsonPath("$[0].language").value("ko"));
+        api.perform(get("/api/v1/play/cards").param("game","YUGIOH").param("ids",String.valueOf(id)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        api.perform(get("/api/v1/play/cards").param("game","POKEMON").param("lang","fr")).andExpect(status().isBadRequest());
+    }
+
     @Test void onlyPublishedCardsAndCorrectTileReachTheCatalog() throws Exception {
         String keyword = "검증-" + UUID.randomUUID();
         long card = db.sql("insert into card(game_code,name,status) values('NIVEL',?,'PUBLISHED') returning id")

@@ -8,6 +8,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote, urlencode
 
+from .card_names import PokemonNames, ygo_names
 
 def document(path):
     with path.open(encoding="utf-8-sig") as stream:
@@ -15,7 +16,10 @@ def document(path):
 
 
 def revision(http, repo, directory):
-    url = f"https://api.github.com/repos/{repo}/commits?" + urlencode({"path": directory, "per_page": 1})
+    params = {"per_page": 1}
+    if directory:
+        params["path"] = directory
+    url = f"https://api.github.com/repos/{repo}/commits?" + urlencode(params)
     value = document(http.get(url, ttl=1800))[0]["sha"]
     if not re.fullmatch(r"[0-9a-f]{40}", value):
         raise ValueError(f"Invalid catalog revision for {repo}")
@@ -49,8 +53,8 @@ def pokemon_record(card, file):
 
 def pokemon(http):
     repo = "type-null/PTCG-database"
-    sha = revision(http, repo, "data_ko")
-    derived = http.root / hashlib.sha256(f"pokemon-ko-normalized-v1:{sha}".encode()).hexdigest()
+    sha = revision(http, repo, None)
+    derived = http.root / hashlib.sha256(f"pokemon-localized-v2:{sha}".encode()).hexdigest()
     if derived.is_file():
         http.remember_revision("pokemon-korean-archive", derived)
         with derived.open(encoding="utf-8") as cache:
@@ -62,7 +66,7 @@ def pokemon(http):
     fd, temp = tempfile.mkstemp(dir=http.root, prefix=".pokemon-")
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as output:
-            for row in pokemon_archive(archive):
+            for row in pokemon_archive(archive, http.root):
                 output.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
                 yield row
         os.replace(temp, derived)
@@ -71,25 +75,38 @@ def pokemon(http):
         Path(temp).unlink(missing_ok=True)
 
 
-def pokemon_archive(archive):
+def pokemon_archive(archive, workdir=None):
     seen = set()
-    # Tar members are never extracted to disk or executed. Keep only the Korean physical-card subtree.
-    with tarfile.open(archive, "r|gz") as bundle:
-        for entry in bundle:
-            bundle.members.clear()
-            parts = PurePosixPath(entry.name).parts
-            if not entry.isfile() or len(parts) != 4 or parts[1] != "data_ko" or not parts[3].endswith(".json"):
-                continue
-            if not 0 < entry.size <= 2_000_000:
-                raise ValueError("Unexpected Pokémon card file size")
-            with bundle.extractfile(entry) as stream:
-                card = json.load(stream)
-            record = pokemon_record(card, parts[3])
-            if record["external_id"] not in seen:
-                seen.add(record["external_id"])
-                yield record
-    if not seen:
-        raise ValueError("Pokémon Korea subtree is empty")
+    names = PokemonNames()
+    languages = {"data_ko": "ko", "data_en": "en", "data_jp": "ja"}
+    # Keep the original Korean printing identity, regardless of the layout of overseas sets.
+    # Spool records to disk while gathering short printed names instead of retaining all card text in RAM.
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8", dir=workdir) as korean:
+        with tarfile.open(archive, "r|gz") as bundle:
+            for entry in bundle:
+                bundle.members.clear()
+                parts = PurePosixPath(entry.name).parts
+                if not entry.isfile() or len(parts) < 4 or parts[1] not in languages or not parts[-1].endswith(".json"):
+                    continue
+                if not 0 < entry.size <= 2_000_000:
+                    raise ValueError("Unexpected Pokémon card file size")
+                with bundle.extractfile(entry) as stream:
+                    card = json.load(stream)
+                lang = languages[parts[1]]
+                names.add(lang, card)
+                if lang == "ko" and len(parts) == 4:
+                    record = pokemon_record(card, parts[-1])
+                    if record["external_id"] not in seen:
+                        seen.add(record["external_id"])
+                        korean.write(json.dumps([record, card.get("print_key"), card.get("card_key")],
+                                                ensure_ascii=False, separators=(",", ":")) + "\n")
+        if not seen:
+            raise ValueError("Pokémon Korea subtree is empty")
+        korean.seek(0)
+        for line in korean:
+            record, print_key, card_key = json.loads(line)
+            record["specs"]["names"] = names.localized(record["name"], print_key, card_key)
+            yield record
 
 
 def weiss(http):
@@ -141,6 +158,7 @@ def riftbound(http):
 
 def yugioh(http):
     base = "https://db.ygoprodeck.com/api/v7/"
+    translations = ygo_names(http, revision)
     version = str(document(http.get(base + "checkDBVer.php", ttl=1800))[0]["database_version"])
     sets = {r["set_name"]: r for r in document(http.get(base + "cardsets.php", revision=version))}
     offset, total, seen = 0, None, set()
@@ -172,6 +190,7 @@ def yugioh(http):
                        "number": number or str(card["id"]), "name": name, "original_name": name, "rarity": rarity,
                        "effect": card.get("desc"), "release_date": pack.get("tcg_date") if printing else misc.get("ocg_date") or misc.get("tcg_date"),
                        "specs": {"language": "en", "passcode": card["id"],
+                                 "names": {"en": name, **translations.get(str(misc.get("konami_id")), {})},
                                  **selected(card, ("type", "race", "level", "attribute", "atk", "def",
                                                    "archetype", "scale", "linkval", "linkmarkers")),
                                  **selected(misc, ("ocg_date", "tcg_date", "formats", "konami_id"))},

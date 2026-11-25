@@ -36,7 +36,8 @@ interface CardRepository extends Repository<Card, Long> {
              or exists (select 1 from card_variant v where v.card_id=c.id
                  and (lower(v.rarity)=lower(:rarity)
                       or lower(:rarity)=any(regexp_split_to_array(lower(v.rarity),'[[:space:]]+')))))
-           and (:q='' or strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.effect)),lower(:q))>0)
+           and (:q='' or strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.effect,
+               c.specs->'names'->>'ko',c.specs->'names'->>'en',c.specs->'names'->>'ja')),lower(:q))>0)
         """;
 
     @Query(value=SELECT + FILTER + " order by c.id", countQuery="select count(*) from card c" + FILTER, nativeQuery=true)

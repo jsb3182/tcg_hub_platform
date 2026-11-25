@@ -23,8 +23,10 @@ const tileStyle = computed(() => {
   }
 })
 const title = computed(() => card.value?.name || card.value?.originalName || '이름 미정')
+const editionLabels = { ko: '한국어판', en: '영어판', ja: '일본어판' }
+const editions = computed(() => Object.entries(card.value?.specs?.names || {}).filter(([code]) => Object.hasOwn(editionLabels, code)))
 const specs = computed(() => Object.entries(card.value?.specs || {}).filter(([key, value]) =>
-  key !== 'xid' && key !== 'pk' && value != null && value !== ''))
+    key !== 'xid' && key !== 'pk' && key !== 'names' && value != null && value !== ''))
 const names = { k: '종류', at: '속성', lv: '레벨', mk: '링크 마커', rc: '종족', sub: '유형', ps: '펜듈럼 스케일', pe: '펜듈럼 효과', atk: '공격력', def: '수비력', or: '읽기', nw: '수록 구분', pr: '출처', pd: '발매 정보', ej: '일본어 효과', type: '유형', attribute: '속성', level: '레벨', race: '종족' }
 function display(value) {
   if (typeof value === 'boolean') return value ? '예' : '아니요'
@@ -81,6 +83,9 @@ watch(() => props.cardId, () => { if (!props.lazy || accordion?.open) load() })
         <div class="card-facts">
           <div v-if="card.originalName && card.originalName !== title"><small>원문명</small><p>{{ card.originalName }}</p></div>
           <div v-if="card.number"><small>카드 번호</small><p>{{ card.number }}</p></div>
+          <div v-for="[code, name] in editions" :key="code">
+            <small>{{ editionLabels[code] }}</small><p :lang="code">{{ name }}</p>
+          </div>
           <div v-if="card.packName"><small>수록 팩</small><p>{{ card.packName }}</p></div>
           <div v-if="card.releaseDate"><small>발매일</small><p>{{ card.releaseDate }}</p></div>
           <div v-if="card.sourceName || sourceLink(card.sourceUrl)"><small>정보 출처</small>
@@ -88,7 +93,11 @@ watch(() => props.cardId, () => { if (!props.lazy || accordion?.open) load() })
               <span v-else>{{ card.sourceName }}</span></p>
           </div>
           <div v-if="current?.rarity || card.rarity"><small>레어도</small><p>{{ current?.rarity || card.rarity }}</p></div>
-          <RouterLink v-if="lazy" :to="{ name: 'card', params: { id: card.id } }">상세 페이지 열기</RouterLink>
+          <div class="lib-actions">
+            <RouterLink :to="{name:'binder',query:{card:card.id}}">바인더에 담기</RouterLink>
+            <RouterLink :to="{name:'deck-new',query:{game:card.gameCode,card:card.id}}">이 카드로 덱 만들기</RouterLink>
+            <RouterLink v-if="lazy" :to="{ name: 'card', params: { id: card.id } }">상세 페이지 열기</RouterLink>
+          </div>
         </div>
       </div>
       <section v-if="card.effect" class="detail-section"><h3>카드 효과</h3><p>{{ card.effect }}</p></section>
