@@ -5,10 +5,17 @@ import { useSession } from '../stores/session'
 import { bytes, dateTime, providerName } from '../presentation'
 import NewsItem from '../components/NewsItem.vue'
 import AdminAccess from '../components/AdminAccess.vue'
+import AdminCatalog from '../components/AdminCatalog.vue'
 
 const session = useSession()
 const tab = ref('overview')
-const tabs = {overview: '서버 상태', sources: '수집 출처', review: '검수 대기'}
+const tabs = {overview: '서버 상태', sources: '수집 출처', review: '검수 대기', catalog:'도감 편집'}
+const catalogPanel=ref(null)
+const catalogBusy=ref(false)
+function selectTab(next) {
+  if (tab.value === 'catalog' && next !== 'catalog' && catalogPanel.value && !catalogPanel.value.mayLeave()) return
+  tab.value=next
+}
 const states = {IDLE: '대기', RUNNING: '수집 중', OK: '수집 성공', ERROR: '수집 오류', BLOCKED: '수집 차단', QUEUED: '실행 예약', PAUSED: '일시정지'}
 const snapshot = ref(null)
 const games = ref([])
@@ -78,7 +85,7 @@ function refresh() {
   else loadSnapshot()
 }
 function refreshWhenVisible() {
-  if (document.visibilityState === 'visible' && session.isAdmin && tab.value !== 'review' &&
+  if (document.visibilityState === 'visible' && session.isAdmin && ['overview','sources'].includes(tab.value) &&
       !activeAction.value && !snapshotBusy.value) loadSnapshot()
 }
 async function act(path, body, message) {
@@ -150,13 +157,14 @@ onBeforeUnmount(() => {
     <p v-else-if="!session.isAdmin" role="alert" class="state">관리자 권한이 필요합니다.</p>
     <AdminAccess v-else-if="session.adminAccessBlocked" />
     <template v-else>
-      <nav class="game-tabs admin-tabs" aria-label="관리 메뉴"><button v-for="(title, key) in tabs" :key="key" :aria-pressed="tab === key" :disabled="!!activeAction" @click="tab = key">{{ title }}</button></nav>
+      <nav class="game-tabs admin-tabs" aria-label="관리 메뉴"><button v-for="(title, key) in tabs" :key="key" :aria-pressed="tab === key" :disabled="!!activeAction || catalogBusy" @click="selectTab(key)">{{ title }}</button></nav>
       <div class="ops-heading"><h2>{{ tabs[tab] }}</h2>
-        <button class="secondary" :disabled="!!activeAction || (tab === 'review' ? reviewBusy : snapshotBusy)" @click="refresh">새로고침</button>
+        <button v-if="tab !== 'catalog'" class="secondary" :disabled="!!activeAction || (tab === 'review' ? reviewBusy : snapshotBusy)" @click="refresh">새로고침</button>
       </div>
       <p v-if="notice" class="success-message" role="status">{{ notice }}</p>
       <p v-if="actionError" role="alert" class="inline-error">{{ actionError }}</p>
-      <template v-if="tab !== 'review'">
+      <AdminCatalog v-if="tab === 'catalog'" ref="catalogPanel" :games="games" @editing="catalogBusy=$event.busy" />
+      <template v-else-if="tab !== 'review'">
         <p v-if="snapshotError" role="alert" class="inline-error">{{ snapshotError }}</p>
         <p v-if="snapshotBusy && !snapshot" role="status" class="state">운영 상태를 불러오는 중입니다.</p>
         <template v-if="snapshot">

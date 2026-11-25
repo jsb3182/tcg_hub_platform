@@ -73,6 +73,7 @@ watch([selected, page, language, retry], async (_, __, cleanup) => {
 </script>
 
 <template>
+  <div class="news-page">
   <header class="page-heading news-heading">
     <h1>새 소식</h1>
     <label class="news-language">게시글 언어
@@ -91,6 +92,9 @@ watch([selected, page, language, retry], async (_, __, cleanup) => {
   </p>
   <p v-if="gameError" role="alert" class="inline-error">게임 목록을 불러오지 못했습니다. <button class="text-button" @click="retry++">다시 시도</button></p>
   <section class="news-results" :aria-busy="busy" aria-label="공개 소식">
+    <div v-if="!busy && !error" class="section-heading results-heading">
+      <h2>공개 소식 <span class="result-count" role="status">{{ total.toLocaleString('ko-KR') }}건</span></h2>
+    </div>
     <p v-if="busy" role="status" class="state">소식을 불러오는 중입니다.</p>
     <div v-else-if="error" role="alert" class="state"><p>{{ error }}</p><button class="secondary" @click="retry++">다시 시도</button></div>
     <div v-else-if="!items.length" class="state"><p>공개된 소식이 없습니다.</p>
@@ -103,4 +107,5 @@ watch([selected, page, language, retry], async (_, __, cleanup) => {
       <button class="secondary" :disabled="page + 1 >= pages" @click="navigate(selected, page + 1)">다음</button>
     </nav>
   </section>
+  </div>
 </template>

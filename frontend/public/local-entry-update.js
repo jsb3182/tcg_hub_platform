@@ -1,6 +1,7 @@
 // The previous PWA shell could open its cached login component through client-side navigation.
 // Refresh only old, open app windows when an A90 localhost installation receives this update.
 self.addEventListener('activate', event => {
+  event.waitUntil(caches.delete('tcg-public-media-v1'))
   if (self.location.origin !== 'http://localhost:8080') return
   event.waitUntil(refreshOldLocalWindows().catch(() => {}))
 })

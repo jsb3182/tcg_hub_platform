@@ -44,9 +44,19 @@ export default defineConfig({
           {
             urlPattern: ({ sameOrigin, url }) =>
               sameOrigin && /^\/media\/.+\.webp$/i.test(url.pathname),
-            handler: 'CacheFirst',
+              handler: 'NetworkFirst',
             options: {
-              cacheName: 'tcg-public-media-v1',
+                cacheName: 'tcg-public-media-v2',
+                fetchOptions: { cache: 'no-cache' },
+                plugins: [{
+                  fetchDidSucceed: async ({ request, response }) => {
+                    if ([403, 404, 410].includes(response.status)) {
+                      const cache = await caches.open('tcg-public-media-v2')
+                      await cache.delete(request)
+                    }
+                    return response
+                  },
+                }],
               expiration: { maxEntries: 32, maxAgeSeconds: 7 * 86400 },
               cacheableResponse: { statuses: [200] },
             },

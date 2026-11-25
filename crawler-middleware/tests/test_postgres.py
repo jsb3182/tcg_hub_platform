@@ -62,6 +62,9 @@ class DatabaseTests(unittest.TestCase):
             cid = self.db.execute("UPDATE card SET status='REJECTED' WHERE source_id=%s RETURNING id", (sid,)).fetchone()[0]
             self.db.execute("UPDATE card_variant SET sheet_id=%s,col_idx=1,row_idx=2 WHERE card_id=%s", (sheet, cid))
             self.assertEqual(save_cards(self.db, source, [{**record, "name": "revised"}]), 0)
+            self.assertEqual(self.db.execute("SELECT edit_version FROM card WHERE id=%s", (cid,)).fetchone()[0], 2)
+            self.assertEqual(save_cards(self.db, source, [{**record, "name": "revised"}]), 0)
+            self.assertEqual(self.db.execute("SELECT edit_version FROM card WHERE id=%s", (cid,)).fetchone()[0], 2)
             row = self.db.execute("SELECT c.name,c.status,v.sheet_id,v.col_idx,v.row_idx FROM card c JOIN card_variant v ON v.card_id=c.id WHERE c.id=%s", (cid,)).fetchone()
             self.assertEqual(row, ("revised", "REJECTED", sheet, 1, 2))
             item = Headline("post-1", "Title", "https://example.org/post", None)
@@ -299,7 +302,7 @@ class DatabaseTests(unittest.TestCase):
             publish(*args)
             raise RuntimeError("simulated interruption after rename")
 
-        with patch("tcg_worker.jobs.publish", interrupt_after_file), self.assertRaises(RuntimeError):
+        with patch("tcg_worker.atlases.publish", interrupt_after_file), self.assertRaises(RuntimeError):
             process_once(self.db, self.media, self.spool)
         count = self.db.execute("SELECT count(*) FROM media_job WHERE status='PENDING'").fetchone()[0]
         self.assertEqual(count, 13)
@@ -315,6 +318,61 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(len(list(self.media.glob("sheets/*.webp"))), 2)
         self.assertFalse(list(self.spool.iterdir()))
 
+    def test_withdraw_repack_and_republish_shared_cells(self):
+        from tcg_worker.jobs import enqueue, process_once
+
+        def sheet(variant):
+            return self.db.execute("""
+                SELECT s.id,s.storage_key,s.retired,v.col_idx,v.row_idx,c.id
+                  FROM image_sheet s JOIN card_variant v ON s.id=v.sheet_id JOIN card c ON c.id=v.card_id
+                 WHERE v.id=%s""", (variant,)).fetchone()
+
+        with self.db.transaction(force_rollback=True):
+            first, second = self.make_variant(), self.make_variant()
+            enqueue(self.db, self.spool, first, self.input)
+            Image.new("RGB", (300, 438), "blue").save(self.input)
+            enqueue(self.db, self.spool, second, self.input)
+            process_once(self.db, self.media, self.spool)
+            original = sheet(first)
+            self.assertEqual(original[0], sheet(second)[0])
+            self.db.execute("UPDATE card SET status='PENDING' WHERE id=%s", (original[5],))
+            self.assertTrue(sheet(second)[2])
+            process_once(self.db, self.media, self.spool)
+            remaining = sheet(second)
+            self.assertFalse(remaining[2])
+            self.assertNotEqual(remaining[1], original[1])
+            with Image.open(self.media / remaining[1]) as image:
+                self.assertLess(max(image.getpixel((150, 219))[:3]), 40)
+                self.assertGreater(image.getpixel((450, 219))[2], 220)
+            self.assertTrue(sheet(first)[2])
+            self.db.execute("UPDATE card SET status='PUBLISHED' WHERE id=%s", (original[5],))
+            process_once(self.db, self.media, self.spool)
+            restored = sheet(first)
+            self.assertFalse(restored[2])
+            self.assertNotEqual(restored[1], original[1])
+            with Image.open(self.media / restored[1]) as image:
+                self.assertGreater(image.getpixel((150, 219))[0], 220)
+                self.assertLess(max(image.getpixel((450, 219))[:3]), 40)
+            process_once(self.db, self.media, self.spool)
+            self.assertFalse((self.media / original[1]).exists())
+
+    def test_newest_queued_image_wins_without_leaving_superseded_pixels(self):
+        from tcg_worker.jobs import enqueue, process_once
+        with self.db.transaction(force_rollback=True):
+            variant = self.make_variant()
+            prior = enqueue(self.db, self.spool, variant, self.input)
+            Image.new("RGB", (300, 438), "green").save(self.input)
+            newest = enqueue(self.db, self.spool, variant, self.input)
+            process_once(self.db, self.media, self.spool)
+            states = self.db.execute("SELECT status FROM media_job WHERE id IN (%s,%s) ORDER BY id",
+                                     (prior, newest)).fetchall()
+            self.assertEqual(states, [("FAILED",), ("DONE",)])
+            key = self.db.execute("""SELECT s.storage_key FROM card_variant v JOIN image_sheet s ON s.id=v.sheet_id
+                                     WHERE v.id=%s AND v.col_idx=0 AND v.row_idx=0""", (variant,)).fetchone()[0]
+            with Image.open(self.media / key) as image:
+                self.assertGreater(image.getpixel((150, 219))[1], 110)
+                self.assertLess(max(image.getpixel((450, 219))[:3]), 40)
+
     def test_missing_input_can_be_requeued(self):
         from tcg_worker.jobs import enqueue, process_once
 
@@ -326,6 +384,28 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(state, "FAILED")
         self.assertNotEqual(enqueue(self.db, self.spool, variant, self.input), job)
         self.assertEqual(process_once(self.db, self.media, self.spool), 1)
+
+    def test_private_spool_reclaims_only_abandoned_images(self):
+        from tcg_worker.jobs import enqueue, reclaim_orphans
+
+        variant = self.make_variant()
+        job = enqueue(self.db, self.spool, variant, self.input)
+        self.addCleanup(self.db.execute, "DELETE FROM media_job WHERE id=%s", (job,))
+        live = self.spool / self.db.execute("SELECT spool_key FROM media_job WHERE id=%s", (job,)).fetchone()[0]
+        old = self.spool / (uuid.uuid4().hex + ".png")
+        fresh = self.spool / (uuid.uuid4().hex + ".png")
+        other = self.spool / "operator-file.png"
+        interrupted = self.spool / ".tmp-1abcdef2"
+        for path in (old, fresh, other, interrupted):
+            path.touch()
+        for path in (old, live, other, interrupted):
+            os.utime(path, (1, 1))
+        reclaim_orphans(self.db, self.spool)
+        self.assertFalse(old.exists())
+        self.assertFalse(interrupted.exists())
+        self.assertTrue(live.exists())
+        self.assertTrue(fresh.exists())
+        self.assertTrue(other.exists())
 
     def test_unpublished_art_is_excluded(self):
         from tcg_worker.jobs import enqueue, process_once
@@ -343,28 +423,133 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(state, "FAILED")
         self.assertFalse(list(self.media.glob("sheets/*.webp")))
 
+    def test_v15_retires_historical_partial_sheets_before_publication(self):
+        from psycopg import sql
+
+        migrations = Path(__file__).resolve().parents[2] / "backend/src/main/resources/db/migration"
+        with self.db.transaction(force_rollback=True):
+            schema = sql.Identifier("test_tcg_v15_" + uuid.uuid4().hex)
+            self.db.execute(sql.SQL("CREATE SCHEMA {}").format(schema))
+            self.db.execute(sql.SQL("SET LOCAL search_path TO {},public").format(schema))
+            for number in range(1, 15):
+                self.db.execute(next(migrations.glob(f"V{number}__*.sql")).read_text(encoding="utf-8"))
+            for key, distinct in [("complete", 12), ("duplicate", 11), ("unused", 0)]:
+                sheet = self.db.execute("""
+                    INSERT INTO image_sheet(storage_key,cell_width,cell_height) VALUES (%s,10,10) RETURNING id
+                """, (key,)).fetchone()[0]
+                if distinct:
+                    card = self.db.execute("""
+                        INSERT INTO card(game_code,name,status) VALUES ('YUGIOH',%s,'PUBLISHED') RETURNING id
+                    """, (key,)).fetchone()[0]
+                    self.db.execute("""
+                        INSERT INTO card_variant(card_id,position,sheet_id,col_idx,row_idx)
+                        SELECT %s,i,%s,(i %% %s) %% 4,(i %% %s) / 4 FROM generate_series(0,11) i
+                    """, (card, sheet, distinct, distinct))
+            self.db.execute(next(migrations.glob("V15__*.sql")).read_text(encoding="utf-8"))
+            rows = self.db.execute("""
+                SELECT storage_key,retired,repack_at IS NOT NULL FROM image_sheet ORDER BY storage_key
+            """).fetchall()
+            self.assertEqual(rows, [("complete",False,False),("duplicate",True,True),("unused",True,True)])
+
+    def test_partial_legacy_import_rebuilds_only_newly_needed_cells(self):
+        import hashlib
+        import json
+        from tcg_worker.jobs import process_once
+        from tcg_worker.legacy import import_catalog
+
+        source = self.input.parent / "export"
+        (source / "js").mkdir(parents=True)
+        (source / "imgd").mkdir()
+        pixels = Image.new("RGB", (160, 120), "red")
+        pixels.paste("blue", (0, 0, 40, 40))
+        sheet_path = source / "imgd/d1.webp"
+        pixels.save(sheet_path, lossless=True)
+        key = "sheets/" + hashlib.sha256(sheet_path.read_bytes()).hexdigest() + ".webp"
+        pack = {"id":"incremental","name":"Fixture","cards":[{"xid":"a","n":"First","im":[1,0,0]}]}
+
+        def load():
+            (source / "js/app.js").write_text("var ITEMS = " + json.dumps([pack]) + ";", encoding="utf-8")
+            import_catalog(self.db, source, self.media)
+
+        def run():
+            return process_once(self.db, self.media, self.spool)
+
+        def current(name):
+            return self.db.execute("""
+                SELECT s.storage_key,s.retired,s.repack_at IS NOT NULL,v.id
+                FROM card_variant v JOIN image_sheet s ON s.id=v.sheet_id JOIN card c ON c.id=v.card_id
+                WHERE c.legacy_key=%s
+            """, ("legacy:incremental:xid:" + name,)).fetchone()
+
+        with self.db.transaction(force_rollback=True):
+            load()
+            self.assertEqual(current("a")[:3], (key, True, True))
+            self.assertTrue((self.media / key).is_file())
+            self.assertEqual([run(),run(),run()], [1,1,0])
+            first = current("a")
+            self.assertFalse(first[1])
+            with Image.open(self.media / first[0]) as clean:
+                self.assertGreater(clean.getpixel((20,20))[2], 220)
+                self.assertLess(max(clean.getpixel((60,20))[:3]), 40)
+            load()
+            self.assertFalse((self.media / key).exists())
+            self.assertEqual(current("a"), first)
+            self.assertEqual(run(), 0)
+
+            pack["cards"].append({"xid":"b","n":"Second","im":[1,1,0]})
+            load()
+            self.assertEqual(current("b")[:3], (key, True, True))
+            self.assertTrue((self.media / key).is_file())
+            self.assertEqual([run(),run(),run()], [1,1,0])
+            self.assertEqual(current("a"), first)
+            second = current("b")
+            self.assertFalse(second[1])
+            with Image.open(self.media / second[0]) as clean:
+                self.assertLess(max(clean.getpixel((20,20))[:3]), 40)
+                self.assertGreater(clean.getpixel((60,20))[0], 220)
+            # An update into a drained retired target must wake the repacker too.
+            self.db.execute("""
+                UPDATE card_variant SET sheet_id=(SELECT id FROM image_sheet WHERE storage_key=%s) WHERE id=%s
+            """, (key, second[3]))
+            self.assertEqual(current("b")[:3], (key, True, True))
+            load()
+            self.assertTrue((self.media / key).is_file())
+
     @unittest.skipUnless(os.environ.get("TCG_TEST_LEGACY"), "set TCG_TEST_LEGACY to the original export")
     def test_catalog_import_and_repeat(self):
         from tcg_worker.legacy import import_catalog
+        from tcg_worker.jobs import process_once
 
         source = Path(os.environ["TCG_TEST_LEGACY"])
-        for _ in range(2):
+        with self.db.transaction(force_rollback=True):
             stats = import_catalog(self.db, source, self.media)
             self.assertEqual((stats["packs"], stats["cards"], stats["sheets"]), (23, 994, 82))
-        actual = self.db.execute(
-            """SELECT count(*), count(*) FILTER (WHERE number IS NULL)
-               FROM card WHERE game_code='YUGIOH'"""
-        ).fetchone()
-        self.assertEqual(actual, (994, 304))
-        variants = self.db.execute(
-            """SELECT count(*),count(sheet_id) FROM card_variant v JOIN card c ON v.card_id=c.id
-               WHERE c.game_code='YUGIOH'"""
-        ).fetchone()
-        self.assertEqual(variants, (1044, 954))
-        self.assertEqual(self.db.execute("SELECT count(*) FROM pack WHERE game_code='YUGIOH'").fetchone()[0], 23)
-        keys = self.db.execute(
-            """SELECT DISTINCT s.storage_key FROM image_sheet s JOIN card_variant v ON v.sheet_id=s.id
-               JOIN card c ON c.id=v.card_id WHERE c.game_code='YUGIOH'"""
-        )
-        for (key,) in keys:
-            self.assertTrue((self.media / key).is_file())
+            raw = self.db.execute("""
+                SELECT s.storage_key FROM image_sheet s WHERE s.retired AND s.repack_at IS NOT NULL
+                AND EXISTS (SELECT 1 FROM card_variant v JOIN card c ON c.id=v.card_id
+                            WHERE v.sheet_id=s.id AND c.game_code='YUGIOH')
+            """).fetchall()
+            self.assertEqual(len(raw), 4)
+            for _ in range(2 * len(raw)):
+                self.assertEqual(process_once(self.db, self.media, self.spool), 1)
+            self.assertEqual(import_catalog(self.db, source, self.media), stats)
+            self.assertFalse(any((self.media / key).exists() for (key,) in raw))
+            self.assertEqual(process_once(self.db, self.media, self.spool), 0)
+            actual = self.db.execute("""
+                SELECT count(*), count(*) FILTER (WHERE number IS NULL)
+                FROM card WHERE game_code='YUGIOH'
+            """).fetchone()
+            self.assertEqual(actual, (994, 304))
+            variants = self.db.execute("""
+                SELECT count(*),count(sheet_id) FROM card_variant v JOIN card c ON v.card_id=c.id
+                WHERE c.game_code='YUGIOH'
+            """).fetchone()
+            self.assertEqual(variants, (1044, 954))
+            self.assertEqual(self.db.execute("SELECT count(*) FROM pack WHERE game_code='YUGIOH'").fetchone()[0], 23)
+            keys = self.db.execute("""
+                SELECT DISTINCT s.storage_key,s.retired FROM image_sheet s JOIN card_variant v ON v.sheet_id=s.id
+                JOIN card c ON c.id=v.card_id WHERE c.game_code='YUGIOH'
+            """)
+            for key, retired in keys:
+                self.assertFalse(retired)
+                self.assertTrue((self.media / key).is_file())

@@ -170,7 +170,7 @@ def save_cards(db, source, records):
           ON CONFLICT(legacy_key) DO UPDATE SET pack_id=EXCLUDED.pack_id,name=EXCLUDED.name,
             original_name=EXCLUDED.original_name,number=EXCLUDED.number,rarity=EXCLUDED.rarity,
             effect=EXCLUDED.effect,release_date=EXCLUDED.release_date,specs=EXCLUDED.specs,
-            source_url=EXCLUDED.source_url,source_id=EXCLUDED.source_id
+            source_url=EXCLUDED.source_url,source_id=EXCLUDED.source_id,edit_version=c.edit_version+1
           WHERE (c.pack_id,c.name,c.original_name,c.number,c.rarity,c.effect,c.release_date,
                  c.specs,c.source_url,c.source_id)
                 IS DISTINCT FROM (EXCLUDED.pack_id,EXCLUDED.name,EXCLUDED.original_name,EXCLUDED.number,

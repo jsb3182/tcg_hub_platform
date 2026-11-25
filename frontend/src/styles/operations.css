@@ -14,6 +14,15 @@
 .story-summary { font-size: .95rem; margin: 6px 0 12px; white-space: pre-line; }
 .news-item h3:lang(ja), .story-summary:lang(ja) { font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif; }
 .label-tag { display: inline-block; border: 1px solid var(--bd); color: var(--ac); font-size: .8rem; padding: 1px 9px; border-radius: 999px; }
+.news-page { max-width:900px; margin-inline:auto; }
+.news-page .news-heading,.news-page .news-results { max-width:none; }
+.news-page .news-results { margin-top:0; }
+.news-page .news-list { display:block; border:1px solid var(--bd); border-radius:12px; background:var(--sf); overflow:clip; }
+.news-page .news-item { border:0; border-radius:0; padding:19px 22px; }
+.news-page .news-item + .news-item { border-top:1px solid var(--bd); }
+.news-page .news-item h3 { font-size:1.16rem; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; margin:7px 0 5px; }
+.news-page .story-summary { max-width:72ch; line-height:1.65; }
+.news-page .story-links > a { padding-block:5px; text-underline-offset:3px; }
 .admin-page { padding-bottom: 24px; }
 .admin-page > .ops-heading { margin: 9px 0; }
 .ops-heading { justify-content: space-between; }
@@ -40,10 +49,9 @@
 .review-game select { margin-bottom: 0; }
 .success-message { color: var(--ok); }
 @media (max-width: 480px) {
-  .masthead-inner { align-items: start; flex-direction: column; gap: 0; padding-top: 7px; padding-bottom: 4px; }
-  .masthead nav { width: 100%; justify-content: flex-start; gap: 16px; flex-wrap: wrap; }
-  .masthead nav > a, .masthead nav .text-button { min-height: 38px; display: inline-flex; align-items: center; }
-  .masthead .brand img { width: 26px; height: 26px; }
   .news-item, .ops-card { padding: 14px; }
+  .news-page .news-item { padding:15px; }
+  .news-page .news-language { display:block; font-size:.76rem; }
+  .news-page .news-language select { display:block; min-height:38px; padding:4px 8px; }
   .card-counts dl { grid-template-columns: 1fr 1fr; }
 }

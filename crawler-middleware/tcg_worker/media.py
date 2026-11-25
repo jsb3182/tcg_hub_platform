@@ -82,7 +82,7 @@ def place_cell(sheet: Image.Image, data: bytes, slot: int) -> tuple[int, int]:
     return col, row
 
 
-def encode_sheet(sheet: Image.Image) -> bytes:
+def encode_sheet(sheet: Image.Image, *, revision: str = "") -> bytes:
     output = io.BytesIO()
-    sheet.save(output, format="WEBP", quality=80, method=4)
+    sheet.save(output, format="WEBP", quality=80, method=4, xmp=revision.encode("ascii"))
     return output.getvalue()

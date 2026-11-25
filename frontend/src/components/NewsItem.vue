@@ -31,7 +31,7 @@ const translationNote = computed(() => {
     <div class="story-byline">
       <span class="label-tag">{{ game }}</span>
       <span v-if="item.sourceName">{{ item.sourceName }}</span>
-      <span v-if="item.provider && !item.sourceName?.includes(providerName(item.provider))">{{ providerName(item.provider) }}</span>
+      <span v-if="item.provider && !item.sourceName?.includes(providerName(item.provider)) && !(item.provider==='OFFICIAL_NEWS' && item.sourceName?.includes('공지'))">{{ providerName(item.provider) }}</span>
     </div>
     <h3 :lang="item.title ? contentLanguage : 'ko'">{{ item.title || '제목 미제공' }}</h3>
     <p v-if="showSummary" class="story-summary" :lang="summaryLanguage">{{ item.summary }}</p>
