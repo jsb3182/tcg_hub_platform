@@ -26,6 +26,8 @@ d=/sdcard/Download/tcg-hub/DIGEST12; [ -r "$d/bootstrap-termux.sh" ] || { termux
 
 ## 2. 외부 공개용 Cloudflare 계정 준비
 
+현재 서버의 리프트바운드 카드 자료는 RiftHunt에서 수집한다. 이 도감을 포함해 외부에 공개하려면 운영자가 받은 서면 라이선스가 해당 자료의 사용을 허용하는지 확인한다. Riot 앱 전용 키를 사용하는 경우에는 공식 콘텐츠 API로 도감을 전환한 뒤 공개한다. 현재 배포본에는 그 키를 등록해 출처를 전환하는 기능이 없다. [리프트바운드 도감 출처](CARD_SOURCES.md#리프트바운드-공개-배포) · [Riot 디지털 도구 정책](https://developer.riotgames.com/docs/riftbound)
+
 공개 주소를 받은 사람은 브라우저 또는 Android 앱에서 도감·소식·매장 지도를 바로 열 수 있다. 주소를 전달받은 다른 사람도 열 수 있다. 개인 바인더·덱은 서비스 계정 로그인 후 사용하고, 서버 켜기·끄기 권한은 A90에서 승인한 제어 폴더에만 부여한다. 아래 Access 앱의 적용 범위는 관리자 경로로 지정한다.
 
 1. 소유하거나 관리 권한이 있는 도메인을 Cloudflare에 추가해 zone이 **Active**가 되면 그 아래에 서비스 호스트명(예: `cards.example.com`)을 정한다. 이미 운영하는 사이트의 서브도메인을 쓸 수 있다. Zero Trust에서 조직의 팀 도메인과 관리자용 IdP를 확인한다. [공개 호스트용 Access 요건](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/)

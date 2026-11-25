@@ -10,10 +10,14 @@
 | 포켓몬 | type-null이 Pokémon Korea에서 수집한 한국어 실물 카드. 제품 코드가 없는 인쇄본은 제공된 전체 제품명을 보존한다. | GitHub API에서 받은 커밋으로 압축 파일을 고정하고 한 번 순회한다. 한국어·영어·일본어 원본이 가진 동일 인쇄본 키를 우선하고 카드 지문을 보조로 사용한다. 원본과 대상 언어에서 이름이 하나로 결정될 때만 연결한다. 개별 출처는 포켓몬코리아 상세 페이지다. [데이터셋과 키 설명](https://github.com/type-null/PTCG-database) |
 | 바이스 슈발츠 | CCondeluci가 유지관리한 영문판 목록. 출처가 제공하는 카드 코드, 팩, 레어도, 소울, 트리거, 능력을 보존한다. | 세트 데이터에 영향을 준 커밋의 ZIP 한 개를 읽고 내부 JSON을 세트별 처리한다. 카드는 공식 Bushiroad 카드 검색으로 연결된다. [데이터셋과 구조](https://github.com/CCondeluci/WeissSchwarz-ENG-DB) · [공식 영문 카드 목록](https://en.ws-tcg.com/cardlist/) |
 | 니벨아레나 | 젬블로컴퍼니의 공식 한국어 게시판에 등록된 인쇄본. 같은 번호의 레어도 차이는 게시물 ID로 구분한다. | 원본 사이트가 공개한 HTTP 목록과 카드 상세만 사용한다. 게시판 전체 건수와 고유 ID를 대조하고 `robots.txt` 및 최소 0.5초의 요청 간격을 적용한다. 최신 40건의 상세는 하루, 이전 항목은 30일간 캐시한다. [공식 카드 목록](http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists) |
-| 리프트바운드 | RiftHunt 영문 인쇄본, 카드 텍스트와 세트 발매일. 인쇄본 UUID로 출처를 연결한다. | 공개 bulk API에서 카드·세트 스냅샷을 한 번에 받는다. Riot Games는 공개 Riftbound 앱 운영에 앱 전용 API 키 또는 서면 라이선스를 요구한다. [RiftHunt 무료 API](https://rifthunt.com/api/) · [Riot Digital Tools Policy](https://developer.riotgames.com/docs/riftbound) |
+| 리프트바운드 | RiftHunt 영문 인쇄본, 카드 텍스트와 세트 발매일. 카드 번호는 `riftboundId`, 수집 번호(`num`), 구형 자료의 `id` 순으로 표시한다. 바인더·덱과 원문 링크에는 인쇄본 UUID(`printing_id`)를 사용한다. | 공개 bulk API에서 카드·세트 스냅샷을 받고 24시간 동안 수동 갱신에도 같은 파일을 사용한다. Riot Games는 공개 Riftbound 앱 운영에 앱 전용 API 키 또는 서면 라이선스를 요구한다. [RiftHunt 무료 API](https://rifthunt.com/api/) · [Riot Digital Tools Policy](https://developer.riotgames.com/docs/riftbound) |
 
 유희왕은 YGOPRODeck의 `konami_id`와 YAML Yugi의 코나미 DB 번호로 한국어·일본어 이름을 연결한다. 일본어 표기에서 루비의 읽기 주석을 제거해 인쇄된 글자를 표시한다. 이름 인덱스는 새 스냅샷이 완성되면 교체한다. 특정 언어의 이름이 제공되지 않으면 연습 화면은 제공된 이름과 원문 언어를 표시한다. [YAML Yugi 출처와 배포 방식](https://github.com/DawnbrandBots/yaml-yugi)
 
 카드 문구·상표·일러스트의 권리는 각 게임사와 IP 권리자에게 있다. 데이터셋 도구의 오픈소스 라이선스는 원본 카드 이미지에 대한 이용 허가와 구분한다. 이 어댑터는 카드·팩 메타데이터만 수집한다. 공개 운영 시에는 원문 출처 표시와 각 제공자의 이용 조건을 따른다.
 
 `CATALOG_CACHE_ROOT`에는 웹 공개 경로 밖의 쓰기 가능한 디렉터리를 지정한다. 기본 카탈로그 갱신 간격은 24시간이다. 운영자 화면에서 게임별 상태와 마지막 성공 건수를 확인할 수 있다. 같은 게임의 스냅샷은 프로세스 잠금으로 한 번에 하나만 읽는다. 유희왕은 DB 버전이 같은 카드 페이지를 재사용하며, 포켓몬은 한국어 커밋이 같으면 이미 정규화한 한국어 자료를 읽는다. 바이스 슈발츠는 세트 데이터의 커밋이 같으면 저장한 ZIP을 재사용한다. 새 버전의 파일을 완성하면 해당 소스의 이전 리비전 캐시를 정리한다. HTTP 호출이 중간에 끊기면 이미 커밋한 배치를 보존하고, 다음 실행에서 응답 캐시와 중복 방지 키를 사용해 대조한다. 429 또는 503 응답의 대기 지시는 수집 스케줄러에 전달한다.
+
+## 리프트바운드 공개 배포
+
+앱 전용 키로 운영하려면 Riot 개발자 포털에 앱을 등록하고 공식 `riftbound-content-v1`의 `GET /riftbound/content/v1/contents`에서 카드 자료를 받아야 한다. 공식 명세는 기본 언어를 영어로 안내한다. 2026년 11월 25일 아시아 엔드포인트에 키 없이 요청했을 때 HTTP 401이 반환됐다. 현재 설치의 카드 본문과 판본 ID는 RiftHunt에서 왔으므로, 키 발급 후 실제 공식 응답으로 판본을 대조할 때까지 기존 바인더와 덱의 카드 ID를 보존한다. [공식 API 명세](https://developer.riotgames.com/apis#riftbound-content-v1/GET_getContent) · [Riot의 카드 자료·앱 등록 요건](https://developer.riotgames.com/policies/riftbound)
