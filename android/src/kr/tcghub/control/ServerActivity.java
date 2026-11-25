@@ -50,7 +50,7 @@ public final class ServerActivity extends Activity {
     private HubUi screen;
     private TextView summary, profile, address, message;
     private final TextView[] serviceValues = new TextView[SERVICE_KEYS.length];
-    private LinearLayout connect, dashboard, shareActions;
+    private LinearLayout connect, dashboard, operations, shareActions;
     private Button start, stop, status, browser, pair, reconnect;
 
     @Override
@@ -65,16 +65,19 @@ public final class ServerActivity extends Activity {
         screen = new HubUi(this, "A90 서버 관리", true);
         connect = screen.column();
         screen.add(screen.body, connect, 0);
-        screen.heading(connect, "제어 폴더 연결", 32);
+        SetupPanel.add(screen, connect, false);
+        TextView section = screen.label("설치한 서버 연결", 20, screen.ink, true);
+        section.setAccessibilityHeading(true);
+        screen.add(connect, section, 32);
         TextView hint =
                 screen.label(
-                        "시스템 파일 선택기에서 Termux 저장소의 tcg-control 폴더를 선택하고 접근을 허용하세요.",
+                        "설치가 끝나면 Termux 저장소의 tcg-control 폴더를 선택해 접근을 허용하세요.",
                         16,
                         screen.muted,
                         false);
         hint.setLineSpacing(screen.dp(2), 1);
         screen.add(connect, hint, 8);
-        pair = screen.button("Termux 제어 폴더 연결", HubUi.Action.FILLED, v -> chooseFolder());
+        pair = screen.button("Termux 제어 폴더 연결", HubUi.Action.OUTLINED, v -> chooseFolder());
         screen.add(connect, pair, 20);
 
         dashboard = screen.column();
@@ -90,9 +93,11 @@ public final class ServerActivity extends Activity {
         message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         screen.add(screen.body, message, 10);
         note("");
+        operations = screen.column();
+        screen.add(screen.body, operations, 0);
         start = screen.button("서버 켜기", HubUi.Action.FILLED, v -> confirm(true));
         stop = screen.button("서버 끄기", HubUi.Action.OUTLINED, v -> confirm(false));
-        screen.sideBySide(screen.body, start, stop, 16);
+        screen.sideBySide(operations, start, stop, 16);
 
         LinearLayout top = screen.row();
         TextView title = screen.label("서비스 상태", 19, screen.ink, true);
@@ -100,8 +105,8 @@ public final class ServerActivity extends Activity {
         top.addView(title, new LinearLayout.LayoutParams(0, HubUi.WRAP, 1));
         status = screen.iconButton(R.drawable.ic_refresh, "상태 새로고침", v -> request("status"));
         top.addView(status, screen.size(48, 48));
-        screen.add(screen.body, top, 18);
-        screen.rule(screen.body);
+        screen.add(operations, top, 18);
+        screen.rule(operations);
         for (int i = 0; i < SERVICE_KEYS.length; i++) {
             LinearLayout row = screen.row();
             row.setMinimumHeight(screen.dp(42));
@@ -111,20 +116,32 @@ public final class ServerActivity extends Activity {
                     new LinearLayout.LayoutParams(0, HubUi.WRAP, 1));
             serviceValues[i] = screen.label("확인 전", 15, screen.muted, true);
             row.addView(serviceValues[i]);
-            screen.add(screen.body, row, 0);
-            screen.rule(screen.body);
+            screen.add(operations, row, 0);
+            screen.rule(operations);
         }
         browser = screen.button("관리자 화면 열기", HubUi.Action.TONAL, v -> openAdmin());
-        screen.add(screen.body, browser, 16);
+        screen.add(operations, browser, 16);
         shareActions = screen.column();
-        screen.add(screen.body, shareActions, 0);
+        screen.add(operations, shareActions, 0);
         screen.sideBySide(
                 shareActions,
                 screen.button("공개 주소 복사", HubUi.Action.OUTLINED, v -> sharePublicSite(false)),
                 screen.button("공개 주소 공유", HubUi.Action.OUTLINED, v -> sharePublicSite(true)),
                 8);
         reconnect = screen.button("제어 폴더 다시 연결", HubUi.Action.OUTLINED, v -> chooseFolder());
-        screen.add(screen.body, reconnect, 8);
+        screen.add(operations, reconnect, 8);
+        Button guide =
+                screen.button(
+                        "서버 업데이트 안내",
+                        HubUi.Action.OUTLINED,
+                        v ->
+                                startActivity(
+                                        new Intent(this, UpdateActivity.class)
+                                                .putExtra("profileKnown", !origin.isEmpty())
+                                                .putExtra(
+                                                        "publicProfile",
+                                                        !PublicSite.root(origin).isEmpty())));
+        screen.add(operations, guide, 8);
         updateButtons();
     }
 
@@ -183,6 +200,7 @@ public final class ServerActivity extends Activity {
         boolean idle = tree != null && pending.isEmpty();
         connect.setVisibility(tree == null ? View.VISIBLE : View.GONE);
         dashboard.setVisibility(tree == null ? View.GONE : View.VISIBLE);
+        operations.setVisibility(tree == null ? View.GONE : View.VISIBLE);
         profile.setVisibility(origin.isEmpty() ? View.GONE : View.VISIBLE);
         address.setVisibility(origin.isEmpty() ? View.GONE : View.VISIBLE);
         boolean canShare = !PublicSite.root(origin).isEmpty();
