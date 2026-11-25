@@ -16,7 +16,7 @@ set -euo pipefail
 state="$PREFIX/var/lib/tcg-hub-native"
 case "${0##*/}" in
   postgres)
-    if [[ $1 == --version ]]; then echo 'postgres (PostgreSQL) 18.3'; else
+    if [[ $1 == --version ]]; then echo "postgres (PostgreSQL) ${FIXTURE_PG_MAJOR:-18}.3"; else
       printf '%s\n' "$@" > "$state/server-args"
     fi
     ;;
@@ -62,8 +62,16 @@ printf '16\n' > "$state/data/PG_VERSION"
 should_fail native init
 should_fail native run
 [[ $(cat "$state/data/PG_VERSION") == 16 && ! -e $state/server-args ]]
+for major in 17 18 19; do
+  printf '%s\n' "$major" > "$state/data/PG_VERSION"
+  FIXTURE_PG_MAJOR="$major" native run
+  if (( major >= 18 )); then
+    [[ $(tail -n 2 "$state/server-args") == $'-c\nio_method=sync' ]]
+  elif grep -q '^io_method=' "$state/server-args"; then
+    echo 'PostgreSQL 17 received an unsupported I/O setting' >&2; exit 1
+  fi
+done
 printf '18\n' > "$state/data/PG_VERSION"
-native run
 grep -Fxq 127.0.0.1 "$state/server-args"
 grep -Fxq 'max_connections=16' "$state/server-args"
 
@@ -80,4 +88,4 @@ rm "$state/applied"
 printf 'f\n' > "$state/blank"
 native restore "$state/snapshot.dump"
 [[ ! -e $state/applied ]]
-echo 'OK native PostgreSQL initialization, major-version guard, cluster identity and matching dump/restore tools'
+echo 'OK native PostgreSQL initialization, 17/18/19 startup flags, major-version guard, cluster identity and matching dump/restore tools'

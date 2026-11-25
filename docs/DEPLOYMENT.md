@@ -73,6 +73,10 @@ tcgctl install https://cards.example.com your-team.cloudflareaccess.com YOUR_64_
 | A90 Google Play판 신규 설치 | Termux의 `postgresql`·`postgis` 패키지. A90에서 PostgreSQL 18과 PostGIS 3.6 조합을 확인했다. | Termux의 `$PREFIX/var/lib/tcg-hub-native/data` |
 | F-Droid판 신규 설치와 기존 Ubuntu 클러스터 | Ubuntu 24.04의 PostgreSQL 16·PostGIS 3 | Ubuntu의 `/var/lib/postgresql/tcg-hub` |
 
+A90의 Termux 네이티브 PostgreSQL 18 이상은 시작할 때 `io_method=sync`를 적용한다. A90에서 기본 설정으로 상주하던 I/O 워커 3개를 줄이기 위해서다. [PostgreSQL I/O 설정](https://www.postgresql.org/docs/18/runtime-config-resource.html#GUC-IO-METHOD)
+
+Android 12에서 관리 앱이 DB나 워커를 '확인 필요'로 표시하면 Termux에서 `tcgctl status`를 실행해 감독 상태를 확인한다. Galaxy A90에서 웹 조회가 가능한 동안에도 Android 로그에 `Trimming phantom processes`가 기록되고 runit 감독자가 종료된 사례가 있었다. 기본 자식 프로세스 한도 32개는 기기의 모든 앱에 걸쳐 적용된다. [Termux의 Android 12 안내](https://github.com/termux/termux-app#installation)
+
 Play판 PRoot에서 Ubuntu의 `initdb`가 `expected absolute path: "--shm-helper"`로 실패할 수 있다. PRoot가 공유 메모리 도우미를 `/proc/self/exe`로 시작할 때 이 경로가 Android 링커를 가리키기 때문이다. Termux의 PostgreSQL 패키지는 Android 공유 메모리 라이브러리를 사용한다. 두 구성 모두 Ubuntu의 Spring과 워커가 같은 루프백 주소로 SCRAM 인증을 수행한다. [PRoot 공유 메모리 구현](https://github.com/termux/proot/blob/v5.1.107.80/src/extension/sysvipc/sysvipc_shm.c#L141-L146) · [Play판 Termux 변경 사항](https://github.com/termux-play-store#readme) · [Ubuntu ARM64 PostGIS 패키지](https://packages.ubuntu.com/noble/postgresql-16-postgis-3)
 
 `tcgctl status`에서 선택한 엔진과 DB 서비스 상태를 확인한다. 설치 시 선택값은 Termux 전용 `$PREFIX/var/lib/tcg-hub/db-engine`에 기록된다. 신규 설치에서 엔진을 지정할 때는 `TCG_DB_ENGINE=native tcgctl install --local` 또는 `TCG_DB_ENGINE=guest tcgctl install --local`을 실행한다. 기존 DB를 다른 엔진으로 옮길 때는 7단계의 논리 백업과 새 설치 복구를 사용한다. 네이티브 DB의 관리 암호 파일은 `$PREFIX/var/lib/tcg-hub-native/auth/postgres.pw`에 모드 0600으로 저장된다. Termux 패키지 업데이트로 PostgreSQL의 메이저 버전이 바뀔 예정이면 업데이트 전에 백업한다. 서버와 데이터 디렉터리의 메이저 버전이 다르면 기동 스크립트가 중단된다.
