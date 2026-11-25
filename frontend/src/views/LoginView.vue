@@ -11,6 +11,12 @@ const password = ref('')
 const error = ref('')
 const busy = ref(false)
 const wantsAdmin = computed(() => route.query.to === 'admin' || ['/admin', '/admin/'].includes(route.query.next))
+const destination = computed(() => {
+  const next = route.query.next
+  if (typeof next !== 'string' || !next.startsWith('/') || next.startsWith('//') || next.includes('\\')) return '/'
+  const target = router.resolve(next)
+  return ['binder','decks','deck-edit','deck-new','play','stores'].includes(target.name) ? target.fullPath : '/'
+})
 
 async function login() {
   busy.value = true
@@ -19,7 +25,7 @@ async function login() {
     const attempt = session.login(email.value.trim(), password.value)
     password.value = ''
     await attempt
-    if (!wantsAdmin.value) await router.replace('/')
+    if (!wantsAdmin.value) await router.replace(destination.value)
   } catch (cause) { error.value = cause.status === 401 ? '이메일 또는 비밀번호를 확인해 주세요.' : cause.message }
   finally { busy.value = false }
 }

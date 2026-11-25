@@ -25,7 +25,7 @@ export default defineConfig({
         globPatterns: ['**/*.{html,js,css}'],
         navigateFallback: '/index.html',
         // Protected navigation always reaches the origin and its Access policy.
-        navigateFallbackAllowlist: [/^\/(?:\?.*)?$/, /^\/cards(?:\/\d+)?\/?(?:\?.*)?$/, /^\/news\/?(?:\?.*)?$/],
+        navigateFallbackAllowlist: [/^\/(?:\?.*)?$/, /^\/cards(?:\/\d+)?\/?(?:\?.*)?$/, /^\/(?:news|stores|play)\/?(?:\?.*)?$/],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {

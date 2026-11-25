@@ -40,6 +40,10 @@ async function logout() {
       <nav aria-label="주 메뉴">
         <RouterLink to="/">카드 도감</RouterLink>
         <RouterLink to="/news">새 소식</RouterLink>
+        <RouterLink to="/stores">매장 지도</RouterLink>
+        <RouterLink to="/binder">바인더</RouterLink>
+        <RouterLink to="/decks">내 덱</RouterLink>
+        <RouterLink to="/play">플레이</RouterLink>
         <a v-if="(session.isAdmin && session.adminMode !== 'DISABLED') || (!session.account && session.adminMode === 'LOCAL_TOTP')" href="/admin">관리자</a>
         <span class="divider" aria-hidden="true"></span>
         <button v-if="session.account" type="button" class="text-button" :disabled="busy" @click="logout">로그아웃</button>

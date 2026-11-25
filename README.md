@@ -7,10 +7,16 @@
 | 전체 아키텍처, 데이터 흐름, API, 후속 기능 설계 | [시스템 설계](docs/ARCHITECTURE.md) |
 | 테이블·외래 키·공간 인덱스와 덱 규칙 | [Flyway SQL](backend/src/main/resources/db/migration/) |
 | PC 빌드, A90 설치, Cloudflare Tunnel·Access, 백업·복구 | [배포 가이드](docs/DEPLOYMENT.md) |
+| A90에서 APK로 서버 켜기·끄기, 상태와 관리자 화면 열기 | [Android 앱 설치와 연결](docs/ANDROID.md) |
+| 국내 매장 좌표·취급 종목·영업시간의 출처와 갱신 방법 | [매장 지도](docs/STORES.md) |
 | Windows PC에서 API와 자동 수집 워커 함께 실행 | [Windows 실행 가이드](deploy/WINDOWS.md) |
 | 로컬 카드 데이터 이관, 이미지 추가, 작업 재시도 | [워커 운영 가이드](crawler-middleware/README.md) |
 | 자동 수집, 외부 소스 설정, 모바일 관리 | [수집과 운영](docs/COLLECTION.md) |
 | 게임별 카드 언어, 판본 범위, 원본 출처와 갱신 방식 | [도감 출처](docs/CARD_SOURCES.md) |
+
+**바인더**에서 보유 수량을 기록하고 **내 덱**에서 덱을 만들거나 수정한다. 저장한 덱은 공유 링크와 PNG로 내보낼 수 있다. **플레이**에서 유희왕·포켓몬의 인쇄 카드명을 세 언어로 검색해 손패를 연습하거나 저장한 메인 덱을 불러온다. 실제 온라인 대전은 화면에서 연결한 공식 앱을 이용한다. Pokémon TCG Pocket에는 모바일 전용 카드와 규칙이 있다. [Master Duel](https://www.konami.com/yugioh/masterduel/asia/ko/) · [포켓몬 카드 게임 Pocket](https://www.pokemonkorea.co.kr/pokemon_tcg_pocket/)
+
+**매장 지도**에서 국내 매장의 주소와 종목별 출처를 확인하고, 가까운 매장을 검색해 즐겨찾기에 저장할 수 있다.
 
 ### 개발 환경
 

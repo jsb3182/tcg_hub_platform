@@ -8,11 +8,23 @@ from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
 from tcg_worker.catalog_sources.bulk import pokemon_record, riftbound, weiss, yugioh
+from tcg_worker.catalog_sources.card_names import PokemonNames, printed_name
 from tcg_worker.catalog_sources.nivel import parse_detail
 from tcg_worker.catalog_sources.transport import CatalogHTTP
 
 
 class CatalogTests(unittest.TestCase):
+    def test_localized_printings_prefer_exact_names_and_omit_ambiguous_matches(self):
+        names = PokemonNames()
+        for lang, name, printing in (("ko", "시험 카드", "asia:1"), ("ja", "テスト", "asia:1"),
+                                     ("en", "Test", "en:1"), ("ja", "別名", "asia:2")):
+            names.add(lang, {"name": name, "card_key": "shared", "print_key": printing})
+        self.assertEqual(names.localized("시험 카드", "asia:1", "shared"),
+                         {"ko": "시험 카드", "ja": "テスト", "en": "Test"})
+        self.assertNotIn("ja", names.localized("시험 카드", None, "shared"))
+        self.assertEqual(names.localized("다른 카드", "asia:1", "shared"), {"ko": "다른 카드"})
+        self.assertEqual(printed_name("<ruby>名称<rt>めいしょう</rt></ruby> &amp; A"), "名称 & A")
+
     def test_korean_printing_without_short_set_code(self):
         row = pokemon_record({"ko_id": "example", "name": "테스트", "set_full_name": "테스트 제품",
                               "attacks": [{"name": "기술", "damage": 20, "effect": "효과"}]}, "R.json")
@@ -55,7 +67,8 @@ class CatalogTests(unittest.TestCase):
         card = {"id": 9, "name": "Fixture", "card_sets": printings, "ygoprodeck_url": "https://example.org/card/9"}
         pages = [[{"database_version": "v1"}], [{"set_name": "Fixture", "set_code": "EX"}],
                  {"meta": {"total_rows": 1}, "data": [card]}]
-        with patch("tcg_worker.catalog_sources.bulk.document", side_effect=pages):
+        with patch("tcg_worker.catalog_sources.bulk.document", side_effect=pages), \
+             patch("tcg_worker.catalog_sources.bulk.ygo_names", return_value={}):
             rows = list(yugioh(Mock()))
         self.assertEqual([r["rarity"] for r in rows], ["C", "R"])
         self.assertNotEqual(rows[0]["external_id"], rows[1]["external_id"])

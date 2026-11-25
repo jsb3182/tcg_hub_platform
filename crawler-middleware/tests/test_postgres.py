@@ -22,7 +22,7 @@ class DatabaseTests(unittest.TestCase):
         cls.addClassCleanup(cls.db.execute, sql.SQL("DROP SCHEMA {} CASCADE").format(cls.schema))
         cls.db.execute(sql.SQL("SET search_path TO {},public").format(cls.schema))
         migrations = Path(__file__).resolve().parents[2] / "backend/src/main/resources/db/migration"
-        for migration in sorted(migrations.glob("V*.sql")):
+        for migration in sorted(migrations.glob("V*.sql"), key=lambda path: int(path.name[1:].split("__")[0])):
             cls.db.execute(migration.read_text(encoding="utf-8"))
             if migration.name == "V1__platform.sql":
                 cls.db.execute(

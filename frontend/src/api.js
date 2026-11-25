@@ -36,7 +36,14 @@ export async function request(path, options = {}) {
   }
   // An Access challenge requires a top-level page visit to complete sign-in.
   if (protectedAdmin && response.type === 'opaqueredirect') throw new ApiError(403)
-  if (!response.ok) throw new ApiError(response.status)
+  if (!response.ok) {
+    const error = new ApiError(response.status)
+    if (response.status === 422) {
+      const body = await response.json().catch(() => null)
+      if (typeof body?.detail === 'string') error.message = body.detail
+    }
+    throw error
+  }
   if (response.status === 204) return null
   const text = await response.text()
   if (!text) return null

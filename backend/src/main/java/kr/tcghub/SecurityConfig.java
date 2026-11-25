@@ -27,7 +27,7 @@ class SecurityConfig {
         http.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .requestCache(c -> c.disable()).logout(c -> c.disable()).csrf(c -> c.disable())
             .headers(h -> h.contentSecurityPolicy(c -> c.policyDirectives(
-                    "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'")))
+                    "default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'")))
             .oauth2ResourceServer(o -> o.jwt(j -> j.decoder(tokens.decoder).jwtAuthenticationConverter(jwt ->
                     new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority(jwt.getClaimAsString("role")))))))
             .exceptionHandling(e -> e.authenticationEntryPoint((req,res,error) -> {
@@ -45,7 +45,9 @@ class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,"/api/v1/auth/local-admin").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET,"/api/v1/auth/admin-mode").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/auth/login","/api/v1/auth/refresh","/api/v1/auth/logout").permitAll()
-                .requestMatchers(HttpMethod.GET,"/api/v1/games","/api/v1/packs","/api/v1/cards","/api/v1/cards/*","/api/v1/news").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/games","/api/v1/packs","/api/v1/cards","/api/v1/cards/*",
+                        "/api/v1/news","/api/v1/stores","/api/v1/shared/decks/*","/api/v1/play/cards").permitAll()
+                .requestMatchers("/api/v1/me/**").authenticated()
                 .requestMatchers("/api/**").denyAll()
                 .requestMatchers("/internal/ready").access((auth,ctx) -> {
                     var request = ctx.getRequest();
