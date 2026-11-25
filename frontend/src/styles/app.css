@@ -158,4 +158,7 @@ button.atlas { cursor: zoom-in; box-shadow: 0 1px 5px rgba(0,0,0,.28); }
 }
 @media (max-width: 360px) {
   .shell { width: calc(100% - 20px); }
+  .search-field { padding-inline-start:9px; gap:4px; }
+  .search-field > svg { display:none; }
+  .filter-toggle { padding-inline:9px; }
 }
