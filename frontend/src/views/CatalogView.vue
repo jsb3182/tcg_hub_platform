@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { mediaPath, request } from '../api'
 import CardDetails from '../components/CardDetails.vue'
+import LibraryThumbnail from '../components/LibraryThumbnail.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,8 +12,13 @@ const packs = ref([])
 const result = ref({ items: [], total: 0 })
 const activeGame = computed(() => param('game'))
 const selectedPack = computed(() => packs.value.find(pack => String(pack.id) === param('packId')))
-const gamePacks = computed(() => packs.value.filter(pack => !activeGame.value || pack.gameCode === activeGame.value))
 const filters = reactive({ q: '', packId: '', rarity: '' })
+const filtersOpen = ref(false)
+const needsPacks = computed(() => filtersOpen.value || Boolean(param('packId')))
+const packError = ref('')
+const packLoading = ref(false)
+const advancedCount = computed(() => Number(Boolean(param('packId'))) + Number(Boolean(param('rarity'))))
+const resultsTitle = computed(() => param('q') || advancedCount.value ? '검색 결과' : activeGame.value ? gameName(activeGame.value) : '전체 카드')
 const loading = ref(true)
 const error = ref('')
 const metaError = ref('')
@@ -37,6 +43,10 @@ function apply() {
 function chooseGame(game) {
   navigate({ game, packId: '', q: filters.q.trim(), rarity: filters.rarity.trim() })
 }
+function goPage(index) {
+  navigate({page:index ? String(index):''})
+  document.getElementById('results-heading')?.focus()
+}
 watch(() => route.query, () => Object.assign(filters, filtersFromRoute()), { immediate: true })
 watch(reload, async (_, __, onCleanup) => {
   const controller = new AbortController()
@@ -44,11 +54,21 @@ watch(reload, async (_, __, onCleanup) => {
   const options = { signal: controller.signal }
   metaError.value = ''
   try {
-    const [g, p] = await Promise.all([request('/games', options), request('/packs', options)])
-    games.value = g
-    packs.value = p
+    games.value = await request('/games', options)
   } catch (cause) { if (!controller.signal.aborted) metaError.value = cause.message }
 }, { immediate: true })
+watch([activeGame, needsPacks, reload], async ([game, needed], _, cleanup) => {
+  const controller = new AbortController()
+  cleanup(() => controller.abort())
+  packs.value = []; packError.value = ''; packLoading.value = false
+  if (!needed) return
+  packLoading.value = true
+  try {
+    const rows = await request('/packs?' + new URLSearchParams({game}), {signal:controller.signal})
+    if (!controller.signal.aborted) packs.value = rows
+  } catch (cause) { if (!controller.signal.aborted) packError.value = cause.message }
+  finally { if (!controller.signal.aborted) packLoading.value = false }
+}, {immediate:true})
 watch([() => route.fullPath, reload], async (_, __, onCleanup) => {
   if (route.name !== 'catalog') return
   const controller = new AbortController()
@@ -70,37 +90,48 @@ function gameName(code) { return games.value.find(g => g.code === code)?.name ||
 </script>
 
 <template>
-  <header class="page-heading"><h1>카드 도감</h1></header>
-  <nav class="game-tabs" aria-label="게임별 보기">
+  <header class="catalog-heading">
+    <h1>카드 도감</h1>
+    <form class="catalog-search" role="search" aria-label="카드 검색" @submit.prevent="apply">
+      <div class="search-field">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>
+        </svg>
+        <input v-model="filters.q" type="search" maxlength="120" aria-label="카드 검색" placeholder="카드명·번호·효과" />
+        <button class="search-submit" type="submit">검색</button>
+      </div>
+      <button type="button" class="filter-toggle secondary" :aria-expanded="filtersOpen" aria-controls="extra-filters" @click="filtersOpen=!filtersOpen">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <path d="M3 7h4m4 0h10M3 17h10m4 0h4"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="17" r="2"/>
+        </svg>필터<span v-if="advancedCount">{{ advancedCount }}</span>
+      </button>
+    </form>
+  </header>
+  <form v-show="filtersOpen" id="extra-filters" class="filter-tray" @submit.prevent="apply">
+    <label>수록 팩<select v-model="filters.packId" :disabled="packLoading || !!packError">
+      <option value="">{{ packLoading ? '팩 불러오는 중…' : '모든 팩' }}</option>
+      <option v-for="pack in packs" :key="pack.id" :value="String(pack.id)">{{ pack.name }}</option>
+    </select></label>
+    <label>레어도<input v-model="filters.rarity" maxlength="64" placeholder="예: UR" /></label>
+    <button type="submit" class="secondary">필터 적용</button>
+  </form>
+  <div v-if="metaError || packError" class="inline-error" role="alert">{{ metaError ? '게임 목록' : '팩 목록' }}을 불러오지 못했습니다.
+    <button type="button" class="text-button" @click="reload++">다시 시도</button>
+  </div>
+  <nav class="game-tabs catalog-games" aria-label="게임별 보기">
     <button type="button" :aria-pressed="!activeGame" @click="chooseGame('')">전체</button>
     <button v-for="game in games" :key="game.code" type="button"
       :aria-pressed="activeGame === game.code" @click="chooseGame(game.code)">{{ game.name }}</button>
   </nav>
-  <div class="catalog-layout">
-    <aside class="filters">
-      <form @submit.prevent="apply">
-        <div class="section-heading"><h2>검색 조건</h2><button type="button" class="text-button" @click="reset">초기화</button></div>
-        <label>카드 검색<input v-model="filters.q" type="search" maxlength="100" placeholder="카드명 · 번호 · 효과" /></label>
-        <div class="filter-pair">
-          <label>수록 팩<select v-model="filters.packId"><option value="">모든 팩</option>
-            <option v-for="pack in gamePacks" :key="pack.id" :value="String(pack.id)">{{ pack.name }}</option>
-          </select></label>
-          <label>레어도<input v-model="filters.rarity" maxlength="40" placeholder="예: UR" /></label>
-        </div>
-        <button type="submit" class="primary wide">검색</button>
-        <div v-if="metaError" class="inline-error" role="alert">게임·팩 목록을 불러오지 못했습니다.
-          <button type="button" class="text-button" @click="reload++">다시 시도</button>
-        </div>
-      </form>
-    </aside>
     <section class="catalog-results" aria-labelledby="results-heading" :aria-busy="loading">
       <div v-if="selectedPack" class="pack-banner">
         <img v-if="mediaPath(selectedPack.bannerUrl)" :src="mediaPath(selectedPack.bannerUrl)" alt="" loading="lazy" />
         <div><strong>{{ selectedPack.name }}</strong><small v-if="selectedPack.releaseLabel">{{ selectedPack.releaseLabel }}</small></div>
       </div>
       <div class="section-heading results-heading">
-        <h2 id="results-heading">{{ activeGame ? gameName(activeGame) : '전체 카드' }}</h2>
-        <span v-if="!loading && !error" role="status">{{ result.total.toLocaleString('ko-KR') }}장</span>
+        <h2 id="results-heading" tabindex="-1">{{ resultsTitle }} <span v-if="!loading && !error" class="result-count" role="status">{{ result.total.toLocaleString('ko-KR') }}장</span></h2>
+        <button v-if="hasSearchConditions" class="text-button" @click="reset">검색 초기화</button>
+        <span v-else-if="!loading && !error && result.items.length" class="result-range">{{ page * pageSize + 1 }}–{{ page * pageSize + result.items.length }} 표시</span>
       </div>
       <p v-if="loading" class="state" role="status">카드를 불러오는 중입니다.</p>
       <div v-else-if="error" class="state" role="alert"><p>{{ error }}</p><button type="button" class="secondary" @click="reload++">다시 시도</button></div>
@@ -108,21 +139,26 @@ function gameName(code) { return games.value.find(g => g.code === code)?.name ||
         <p>{{ hasSearchConditions ? '검색 조건에 맞는 카드가 없습니다.' : '등록된 카드가 없습니다.' }}</p>
         <button v-if="Object.keys(route.query).length" type="button" class="secondary" @click="reset">전체 카드 보기</button>
       </div>
-      <template v-else>
+      <div v-else class="catalog-list">
         <details v-for="card in result.items" :key="card.id" class="card-row">
           <summary>
-            <span class="card-code">{{ card.number || gameName(card.gameCode) }}</span>
-            <span class="card-title"><strong>{{ card.name || card.originalName || '이름 미정' }}</strong><small>{{ card.packName }}</small></span>
-            <span v-if="card.rarity" class="rarity">{{ card.rarity }}</span><span class="chevron" aria-hidden="true"></span>
+            <span class="card-leading">
+              <LibraryThumbnail v-if="card.image" :image="card.image" />
+              <span class="card-title"><strong>{{ card.name || card.originalName || '이름 미정' }}</strong>
+                <small v-if="card.packName">{{ card.packName }}</small>
+                <small class="card-id-mobile">{{ [card.number,card.rarity].filter(Boolean).join(' · ') }}</small>
+              </span>
+            </span>
+            <span class="card-code">{{ card.number }}</span>
+            <span class="card-rarity">{{ card.rarity }}</span><span class="chevron" aria-hidden="true"></span>
           </summary>
           <CardDetails :card-id="card.id" lazy />
         </details>
-      </template>
+      </div>
       <nav v-if="!loading && !error && (pageCount > 1 || page > 0)" class="pagination" aria-label="결과 페이지">
-        <button class="secondary" type="button" :disabled="page === 0" @click="navigate({page: page > 1 ? String(page - 1) : ''})">이전</button>
+        <button class="secondary" type="button" :disabled="page === 0" @click="goPage(page-1)">이전</button>
         <span>{{ page + 1 }} / {{ Math.max(page + 1, pageCount) }}</span>
-        <button class="secondary" type="button" :disabled="page + 1 >= pageCount" @click="navigate({page: String(page + 1)})">다음</button>
+        <button class="secondary" type="button" :disabled="page + 1 >= pageCount" @click="goPage(page+1)">다음</button>
       </nav>
     </section>
-  </div>
 </template>

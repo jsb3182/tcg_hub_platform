@@ -13,6 +13,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
 input, select, button { font: inherit; }
+input,textarea { caret-color:var(--ac); }
+::selection { background:var(--ac);color:var(--sf); }
 button, summary, select { cursor: pointer; }
 a { color: var(--ac); }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {

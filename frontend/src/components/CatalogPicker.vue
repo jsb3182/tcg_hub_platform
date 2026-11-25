@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { request } from '../api'
+import LibraryThumbnail from './LibraryThumbnail.vue'
 const props = defineProps({ game: { type: String, default: '' }, disabled: Boolean })
 defineEmits(['pick'])
 const query = ref(''), page = ref(0), items = ref([]), total = ref(0), loading = ref(false), error = ref(''), retry = ref(0)
@@ -29,7 +30,7 @@ watch([query, page, () => props.game, retry], (_, __, cleanup) => {
     <p v-else-if="!items.length">검색 결과가 없습니다.</p>
     <ul v-else class="lib-list">
       <li v-for="card in items" :key="card.id">
-        <div><strong>{{ card.name }}</strong><small>{{ [card.number,card.packName,card.rarity].filter(Boolean).join(' · ') }}</small></div>
+        <div class="lib-print"><LibraryThumbnail :image="card.image" /><div><strong>{{ card.name }}</strong><small>{{ [card.number,card.packName,card.rarity].filter(Boolean).join(' · ') }}</small></div></div>
         <button type="button" class="secondary" :aria-label="card.name + ' 추가'" :disabled="disabled" @click="$emit('pick',card)">추가</button>
       </li>
     </ul>

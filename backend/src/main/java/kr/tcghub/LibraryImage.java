@@ -11,7 +11,7 @@ final class LibraryImage {
          left join lateral (
             select v.sheet_id,v.col_idx,v.row_idx,s.storage_key,s.cell_width,s.cell_height
             from card_variant v join image_sheet s on s.id=v.sheet_id
-            where v.card_id=c.id and c.status='PUBLISHED' order by v.position limit 1
+            where v.card_id=c.id and c.status='PUBLISHED' and not s.retired order by v.position limit 1
          ) tile on true
         """;
     static CatalogApi.Image read(ResultSet row) throws SQLException {

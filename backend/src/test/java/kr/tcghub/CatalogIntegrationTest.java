@@ -65,14 +65,16 @@ class CatalogIntegrationTest {
                 .param(card).param(sheet).update();
         api.perform(get("/api/v1/cards").param("game","NIVEL").param("q",keyword).param("rarity","SR"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
-                .andExpect(jsonPath("$.items[0].name").value(keyword));
+                .andExpect(jsonPath("$.items[0].name").value(keyword))
+                .andExpect(jsonPath("$.items[0].image.sheetId").value(sheet)).andExpect(jsonPath("$.items[0].image.row").value(2));
         api.perform(get("/api/v1/cards/" + card)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value(keyword)).andExpect(jsonPath("$.variants[0].image.col").value(3))
                 .andExpect(jsonPath("$.variants[0].image.row").value(2));
         api.perform(get("/api/v1/cards/" + hidden)).andExpect(status().isNotFound());
         db.sql("update card_variant set rarity='Super Rare' where card_id=?").param(card).update();
+        db.sql("update image_sheet set retired=true where id=?").param(sheet).update();
         api.perform(get("/api/v1/cards").param("q",keyword).param("rarity","super rare"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].image").isEmpty());
         api.perform(get("/api/v1/cards").param("size","101")).andExpect(status().isBadRequest());
     }
 
@@ -97,6 +99,8 @@ class CatalogIntegrationTest {
         var hidden = assertThrows(org.springframework.web.server.ResponseStatusException.class,
                 () -> media.media("sheets",filename));
         assertEquals(404,hidden.getStatusCode().value());
+        db.sql("update card set status='PUBLISHED' where id=?").param(card).update();
+        assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> media.media("sheets",filename));
     }
 
     @Test void rotationLogoutAndAdminBoundary() throws Exception {
