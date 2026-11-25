@@ -141,15 +141,21 @@ def weiss(http):
 
 
 def riftbound(http):
-    result = document(http.get("https://api.rifthunt.com/bulk/cards", ttl=3600, size=16_000_000))
+    result = document(http.get("https://api.rifthunt.com/bulk/cards", ttl=24 * 3600, size=16_000_000))
     sets = {row["id"]: row for row in result["sets"]}
     if not result["cards"]:
         raise ValueError("Riftbound catalog is empty")
     for card in result["cards"]:
         group = sets[card["set"]]
         name = card["name"]
+        # Alternate printings can share the Riot code or numeric collector number.
+        # The old source-record id is only a label for snapshots lacking both fields.
+        number = card.get("riftboundId")
+        if not number:
+            num = card.get("num")
+            number = str(num) if num is not None else card.get("id")
         yield {"external_id": "en:" + card["printing_id"], "pack_code": group["id"], "pack_name": group["name"],
-               "number": card["id"], "name": name, "original_name": name, "rarity": card.get("rarity"),
+               "number": number, "name": name, "original_name": name, "rarity": card.get("rarity"),
                "effect": card.get("text"), "release_date": group.get("released"),
                "specs": {"language": "en", **selected(card, ("variant", "num", "type", "supertype", "energy",
                                                                "might", "power", "domains", "artist", "finishes"))},

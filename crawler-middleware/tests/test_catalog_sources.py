@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import tempfile
@@ -41,13 +42,45 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(card["effect"], "[패시브] 테스트\n다음 줄")
         self.assertEqual(card["pack_name"], "테스트 <예시>")
 
-    def test_rifthunt_link_uses_printing_uuid(self):
-        fake = {"sets": [{"id": "X", "name": "Fixture", "released": "2026-01-01"}],
-                "cards": [{"set": "X", "name": "Fixture Card", "printing_id": "printing-uuid", "id": "x-001"}]}
-        with patch("tcg_worker.catalog_sources.bulk.document", return_value=fake):
-            card = next(riftbound(Mock()))
-        self.assertEqual(card["number"], "x-001")
-        self.assertTrue(card["source_url"].endswith("/printing-uuid"))
+    def test_rifthunt_numbers_do_not_identify_printings(self):
+        fields = [
+            {"riftboundId":"x-001","num":1,"id":"legacy-import-1"},
+            {"riftboundId":"x-001","num":1},
+            {"num":0,"id":"legacy-token"},
+            {"id":"legacy-only"},
+            {},
+        ]
+        rows = [{"set":"X","name":"Fixture Card","printing_id":f"printing-{i}",**data}
+                for i,data in enumerate(fields)]
+        snapshot = {"sets":[{"id":"X","name":"Fixture"}],"cards":rows}
+        with patch("tcg_worker.catalog_sources.bulk.document", return_value=snapshot):
+            cards = list(riftbound(Mock()))
+        self.assertEqual([c["number"] for c in cards], ["x-001","x-001","0","legacy-only",None])
+        for i,card in enumerate(cards):
+            self.assertEqual(card["external_id"], f"en:printing-{i}")
+            self.assertEqual(card["source_url"], f"https://api.rifthunt.com/cards/printing-{i}")
+
+    def test_rifthunt_bulk_cache_survives_manual_refresh_for_24_hours(self):
+        snapshot = {"sets":[{"id":"X","name":"Fixture"}],
+                    "cards":[{"set":"X","name":"Fixture Card","printing_id":"fixture","riftboundId":"x-001"}]}
+        def response():
+            stream = io.BytesIO(json.dumps(snapshot).encode())
+            stream.headers = {}
+            return stream
+
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"CATALOG_CACHE_ROOT":tmp}):
+            http = CatalogHTTP()
+            with patch.object(http.opener, "open", side_effect=[response(),response()]) as network:
+                self.assertEqual(len(list(riftbound(http))), 1)
+                cached = next(Path(tmp).iterdir()).stat().st_mtime
+                restarted = CatalogHTTP()
+                with patch("tcg_worker.catalog_sources.transport.time.time", return_value=cached+86399), \
+                     patch.object(restarted.opener, "open", side_effect=AssertionError("early network fetch")):
+                    self.assertEqual(list(riftbound(restarted))[0]["number"], "x-001")
+                self.assertEqual(network.call_count, 1)
+                with patch("tcg_worker.catalog_sources.transport.time.time", return_value=cached+86401):
+                    self.assertEqual(len(list(riftbound(http))), 1)
+                self.assertEqual(network.call_count, 2)
 
     def test_weiss_uses_set_archives_and_deduplicates_printing_code(self):
         fixture = {"name": "Example", "code": "EX/W99-E001", "expansion": "Example Pack", "ability": ["One", "Two"]}

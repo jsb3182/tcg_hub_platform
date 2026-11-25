@@ -97,6 +97,52 @@ class DatabaseTests(unittest.TestCase):
             self.assertEqual(save_news(self.db, source, [item]), 0)
             self.assertEqual(self.db.execute("SELECT status FROM feed_item WHERE source_id=%s", (sid,)).fetchone()[0], "REJECTED")
 
+    def test_rifthunt_reimport_preserves_printings_and_personal_library(self):
+        from unittest.mock import Mock
+        from tcg_worker.catalog_sources.bulk import riftbound
+        from tcg_worker.sync import save_cards
+
+        rows = [{"name":"Fixture","set":"OGN","printing_id":str(uuid.uuid4()),"id":"legacy-" + suffix}
+                for suffix in ("base","promo")]
+        snapshot = {"sets":[{"id":"OGN","name":"Origins"}],"cards":rows}
+
+        def linked():
+            return self.db.execute("""
+                SELECT c.id,c.legacy_key,c.pack_id,v.id,v.sheet_id,v.col_idx,v.row_idx,
+                       b.owner_id,b.quantity,e.deck_id,e.section,e.quantity
+                  FROM card c JOIN card_variant v ON v.card_id=c.id
+                  JOIN binder_card b ON b.card_id=c.id JOIN deck_entry e ON e.card_id=c.id
+                 WHERE c.source_id=%s ORDER BY c.id
+            """, (source["id"],)).fetchall()
+
+        with self.db.transaction(force_rollback=True), patch("tcg_worker.catalog_sources.bulk.document", return_value=snapshot):
+            sid = self.db.execute("SELECT id FROM feed_source WHERE provider='CATALOG' AND game_code='RIFTBOUND'").fetchone()[0]
+            source = {"id":sid,"game_code":"RIFTBOUND","auto_publish":True}
+            self.assertEqual(save_cards(self.db, source, riftbound(Mock())), 2)
+            owner = self.db.execute("SELECT id FROM app_user WHERE email='fixture@example.test'").fetchone()[0]
+            deck = self.db.execute("""
+                INSERT INTO deck(owner_id,game_code,name,format,rule_version)
+                VALUES (%s,'RIFTBOUND','Fixture deck','CONSTRUCTED',2) RETURNING id
+            """,(owner,)).fetchone()[0]
+            sheet = self.db.execute("INSERT INTO image_sheet(storage_key,cell_width,cell_height) VALUES ('fixture-rift',30,44) RETURNING id").fetchone()[0]
+            for col,row in enumerate(rows):
+                card = self.db.execute("SELECT id FROM card WHERE legacy_key=%s", ("catalog:RIFTBOUND:en:"+row["printing_id"],)).fetchone()[0]
+                self.db.execute("UPDATE card_variant SET sheet_id=%s,col_idx=%s,row_idx=0 WHERE card_id=%s",(sheet,col,card))
+                self.db.execute("INSERT INTO binder_card(owner_id,card_id,quantity) VALUES (%s,%s,2)", (owner,card))
+                self.db.execute("""
+                    INSERT INTO deck_entry(deck_id,game_code,format,rule_version,card_id,section,quantity)
+                    VALUES (%s,'RIFTBOUND','CONSTRUCTED',2,%s,'MAIN',1)
+                """,(deck,card))
+            before = linked()
+            self.assertEqual(len(before), 2)
+            for row in rows:
+                del row["id"]
+                row.update(riftboundId="ogn-001-298",num=1)
+            self.assertEqual(save_cards(self.db, source, riftbound(Mock())), 0)
+            self.assertEqual(linked(), before)
+            actual = self.db.execute("SELECT number FROM card WHERE source_id=%s ORDER BY id", (sid,)).fetchall()
+            self.assertEqual(actual, [("ogn-001-298",),("ogn-001-298",)])
+
     def test_reimport_preserves_manual_review_snapshot(self):
         from datetime import datetime, timezone
         from tcg_worker.feeds import Headline
