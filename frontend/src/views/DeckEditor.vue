@@ -1,6 +1,6 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { request } from '../api'
 import { useSession } from '../stores/session'
 import { sectionLabel, savedDate, stateLabel } from '../library'
@@ -13,17 +13,46 @@ const shared=ref(false), loading=ref(true), busy=ref(false), error=ref(''), noti
 const history=ref(null), historyPage=ref(0), historyBusy=ref(false), historyError=ref(''), failedLoad=ref(false)
 const id=computed(()=>route.params.id), gameName=computed(()=>games.value.find(g=>g.code===game.value)?.name)
 const shareUrl=computed(()=>saved.value?.shareToken ? location.origin+'/shared/decks/'+saved.value.shareToken : '')
+const baseline=ref(null), practiceChoice=ref(null), errorElement=ref(null)
+const content=computed(()=>JSON.stringify([name.value,game.value,shared.value,
+  entries.value.map(e=>[e.cardId,e.section,e.quantity])]))
+const dirty=computed(()=>baseline.value!==null && baseline.value!==content.value)
 const preview=computed(()=>({name:name.value || '이름 없는 덱',gameCode:game.value,entries:entries.value,rule:rule.value,state:
-  saved.value && saved.value.name===name.value && JSON.stringify(entries.value)===JSON.stringify(saved.value.entries) ? saved.value.state : 'DRAFT'}))
+  saved.value && !dirty.value ? saved.value.state : 'DRAFT'}))
 let generation=0
+let approvedPractice=''
+function mayDiscard() {
+  return !dirty.value || (!busy.value && window.confirm('저장하지 않은 덱 변경 사항을 버리고 이동할까요?'))
+}
+onBeforeRouteLeave(to=>to.fullPath===approvedPractice || mayDiscard())
+onBeforeRouteUpdate((to,from)=>{
+  if(to.name!==from.name || to.params.id!==from.params.id ||
+    (to.name==='deck-new' && (to.query.card!==from.query.card || to.query.game!==from.query.game)))return mayDiscard()
+})
+function beforeUnload(event) {
+  event.preventDefault()
+  event.returnValue=''
+}
+function beforeLogout(event) { if(!mayDiscard())event.preventDefault() }
+watch(dirty,changed=>{
+  if(changed)window.addEventListener('beforeunload',beforeUnload)
+  else window.removeEventListener('beforeunload',beforeUnload)
+},{flush:'sync'})
+onMounted(()=>window.addEventListener('tcg-before-logout',beforeLogout))
+onBeforeUnmount(()=>{
+  window.removeEventListener('beforeunload',beforeUnload)
+  window.removeEventListener('tcg-before-logout',beforeLogout)
+})
 function fill(deck) {
   saved.value=deck;rule.value=deck.rule;game.value=deck.gameCode;name.value=deck.name
   entries.value=deck.entries.map(e=>({...e}));shared.value=!!deck.shareToken
+  baseline.value=content.value
   if (!rule.value.sections.some(s=>s.section===section.value)) section.value=rule.value.sections[0]?.section
 }
-watch([()=>session.account?.email,id,()=>route.name,reload],async([email,deckId,routeName],_,cleanup)=>{
+watch([()=>session.account?.email,id,()=>route.name,reload,
+  ()=>route.name==='deck-new'?route.query.card:null,()=>route.name==='deck-new'?route.query.game:null],async([email,deckId,routeName],_,cleanup)=>{
   const current=++generation, abort=new AbortController();cleanup(()=>abort.abort())
-  loading.value=true;error.value='';notice.value='';saved.value=null;rule.value=null;entries.value=[];history.value=null;historyError.value=''
+  baseline.value=null;loading.value=true;error.value='';notice.value='';saved.value=null;rule.value=null;entries.value=[];history.value=null;historyError.value=''
   failedLoad.value=false;name.value='';shared.value=false
   if(!email || !['deck-edit','deck-new'].includes(routeName))return
   try {
@@ -37,6 +66,8 @@ watch([()=>session.account?.email,id,()=>route.name,reload],async([email,deckId,
       const preferred=options.find(g=>g.code===route.query.game) || options.find(g=>g.code==='YUGIOH') || options[0]
       game.value=preferred.code
       await loadRule(current,abort.signal)
+      if(current!==generation)return
+      baseline.value=content.value
       if(current===generation && /^\d+$/.test(route.query.card || '')){
         const card=await request('/cards/'+route.query.card,{signal:abort.signal})
         if(current===generation && card.gameCode===game.value)add(card)
@@ -56,13 +87,22 @@ async function switchGame(e) {
 function add(card) {
   const item=entries.value.find(e=>e.cardId===card.id && e.section===section.value)
   if(item)item.quantity=Math.min(999,item.quantity+1)
-  else entries.value.push({cardId:card.id,name:card.name,number:card.number,packName:card.packName,section:section.value,quantity:1})
+  else entries.value.push({cardId:card.id,name:card.name,number:card.number,packName:card.packName,section:section.value,quantity:1,
+    image:card.image ?? card.variants?.find(v=>v.image)?.image ?? null})
   notice.value=sectionLabel(section.value)+'에 '+card.name+' 추가'
 }
-async function save(state) {
+async function showError(message) {
+  error.value=message
+  await nextTick()
+  errorElement.value?.focus()
+}
+const practiceRoute=deck=>({name:'play',query:{deck:deck.id,game:deck.gameCode}})
+async function save(state,practice=false) {
+  if(busy.value)return
+  practiceChoice.value?.close()
   error.value='';notice.value=''
-  if(!name.value.trim()){error.value='덱 이름을 입력해 주세요.';return}
-  if(entries.value.some(e=>!Number.isInteger(e.quantity)||e.quantity<1||e.quantity>999)){error.value='카드 수량은 1~999 사이의 정수로 입력해 주세요.';return}
+  if(!name.value.trim())return showError('덱 이름을 입력해 주세요.')
+  if(entries.value.some(e=>!Number.isInteger(e.quantity)||e.quantity<1||e.quantity>999))return showError('카드 수량은 1~999 사이의 정수로 입력해 주세요.')
   const current=generation,wasNew=!id.value
   busy.value=true
   try {
@@ -70,11 +110,23 @@ async function save(state) {
       name:name.value.trim(),state,gameCode:game.value,shared:shared.value,revision:saved.value?.revision??0,
       entries:entries.value.map(({cardId,quantity,section})=>({cardId,quantity,section}))}})
     if(current!==generation)return
+    fill(deck);history.value=null
     if(wasNew)await router.replace({name:'deck-edit',params:{id:deck.id}})
-    else {fill(deck);history.value=null}
+    if(practice){await router.push(practiceRoute(deck));return}
     notice.value=stateLabel(state)+' 상태로 저장했습니다.'
-  }catch(cause){if(current===generation)error.value=cause.message}
+  }catch(cause){if(current===generation)await showError(cause.message)}
   finally{busy.value=false}
+}
+function practice() {
+  if(!saved.value)return save('DRAFT',true)
+  if(!dirty.value)return router.push(practiceRoute(saved.value))
+  practiceChoice.value?.showModal()
+}
+async function useSaved() {
+  const to=practiceRoute(saved.value)
+  practiceChoice.value.close()
+  approvedPractice=router.resolve(to).fullPath
+  try{await router.push(to)}finally{approvedPractice=''}
 }
 async function loadHistory(page=0) {
   const current=generation
@@ -101,7 +153,7 @@ async function copyLink() {
 </script>
 <template>
   <LibraryAccess title="덱 편집"><header class="lib-heading"><h1>{{ id?'덱 편집':'새 덱' }}</h1><RouterLink to="/decks">내 덱 목록</RouterLink></header>
-    <p v-if="error" role="alert" class="inline-error">{{ error }} <button class="text-button" @click="reload++">저장된 구성 다시 불러오기</button></p>
+    <p v-if="error" ref="errorElement" tabindex="-1" role="alert" class="inline-error">{{ error }} <button class="text-button" @click="mayDiscard() && reload++">저장된 구성 다시 불러오기</button></p>
     <p v-if="notice" role="status">{{ notice }}</p>
     <p v-if="loading" role="status">덱을 불러오는 중입니다.</p>
     <div v-else-if="!failedLoad" class="lib-editor"><div class="library-grid">
@@ -117,9 +169,19 @@ async function copyLink() {
           </li></ul></section>
           <label class="lib-check"><input type="checkbox" v-model="shared" />링크가 있는 사람에게 덱 공개</label>
           <div class="lib-actions"><button type="button" class="secondary" @click="save('DRAFT')">임시 저장</button><button type="button" class="primary" @click="save('COMPLETE')">구성 완료 저장</button></div>
+          <p v-if="dirty" class="lib-unsaved" role="status">저장되지 않은 변경 사항이 있습니다.</p>
         </template></fieldset>
         <div v-if="shareUrl"><p><a :href="shareUrl">{{ shareUrl }}</a></p><button class="secondary" @click="copyLink">공유 링크 복사</button></div>
-        <RouterLink v-if="saved && ['YUGIOH','POKEMON'].includes(game)" :to="{name:'play',query:{deck:id,game}}">이 덱으로 연습</RouterLink>
+        <button v-if="rule && ['YUGIOH','POKEMON'].includes(game)" type="button" class="secondary" :disabled="busy || (!saved && !entries.length)" @click="practice">{{ saved?'이 덱으로 연습':'임시 저장 후 연습' }}</button>
+        <dialog ref="practiceChoice" class="lib-dialog" aria-labelledby="practice-choice-title">
+          <h2 id="practice-choice-title">어떤 구성으로 연습할까요?</h2>
+          <p>저장하지 않은 변경 사항이 있습니다.</p>
+          <div class="lib-dialog-actions">
+            <button class="primary" @click="save(saved.state,true)">변경 저장 후 연습</button>
+            <button class="secondary" @click="useSaved">변경 버리고 저장본으로 연습</button>
+            <button class="text-button" autofocus @click="practiceChoice.close()">편집 계속</button>
+          </div>
+        </dialog>
       </section>
       <div v-if="rule"><label class="lib-filter">카드를 넣을 구역<select v-model="section"><option v-for="s in rule.sections" :value="s.section" :key="s.section">{{ sectionLabel(s.section) }}</option></select></label>
         <CatalogPicker :game="game" :disabled="busy" @pick="add" /></div>

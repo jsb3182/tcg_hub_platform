@@ -31,7 +31,7 @@ watch([query, page, () => props.game, retry], (_, __, cleanup) => {
     <ul v-else class="lib-list">
       <li v-for="card in items" :key="card.id">
         <div class="lib-print"><LibraryThumbnail :image="card.image" /><div><strong>{{ card.name }}</strong><small>{{ [card.number,card.packName,card.rarity].filter(Boolean).join(' · ') }}</small></div></div>
-        <button type="button" class="secondary" :aria-label="card.name + ' 추가'" :disabled="disabled" @click="$emit('pick',card)">추가</button>
+        <button type="button" class="secondary" :aria-label="card.name + ' 추가'" :disabled="disabled" @click="$emit('pick',card,$event.currentTarget)">추가</button>
       </li>
     </ul>
     <nav v-if="total > 8" class="pagination" aria-label="도감 검색 페이지">
