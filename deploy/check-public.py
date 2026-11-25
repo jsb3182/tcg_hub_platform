@@ -15,28 +15,34 @@ class RouteError(ValueError):
 
 
 def check_routes(origin, team, fetch):
+    challenged = []
+
     def get(path):
         status, location, body = fetch(path)
+        if status is None:
+            challenged.append(path)
+            return status, location, body
         if status >= 500:
             raise ConnectionError(f"{path} returned HTTP {status}")
         return status, location, body
 
     status, _, body = get("/")
-    if status != 200 or b'id="app"' not in body:
+    if status is not None and (status != 200 or b'id="app"' not in body):
         raise RouteError(f"Public home page did not return the app (HTTP {status})")
     status, _, body = get("/api/v1/games")
-    if status != 200:
+    if status is not None and status != 200:
         raise RouteError(f"Public catalog returned HTTP {status}, expected 200")
     try:
-        games = json.loads(body)
-        if not isinstance(games, list) or {g["code"] for g in games} != GAMES:
-            raise ValueError()
+        if status == 200:
+            games = json.loads(body)
+            if not isinstance(games, list) or {g["code"] for g in games} != GAMES:
+                raise ValueError()
     except (UnicodeError, ValueError, KeyError, TypeError) as exc:
         raise RouteError("Public catalog did not return the five supported games") from exc
 
     for path in ("/admin", "/api/v1/admin/operations"):
         status, location, _ = get(path)
-        if status in (401, 403):
+        if status in (None, 401, 403):
             continue
         target = urlsplit(urljoin(origin, location or ""))
         if (status in (301, 302, 303, 307, 308)
@@ -46,8 +52,9 @@ def check_routes(origin, team, fetch):
         raise RouteError(f"{path} returned HTTP {status}, expected denial or Cloudflare Access sign-in")
 
     status, _, _ = get("/internal/ready")
-    if status not in (401, 403, 404):
+    if status not in (None, 401, 403, 404):
         raise RouteError(f"/internal/ready returned HTTP {status}, expected denial")
+    return challenged
 
 
 def main():
@@ -63,8 +70,10 @@ def main():
     def fetch(path):
         conn = http.client.HTTPSConnection(origin.hostname, timeout=6)
         try:
-            conn.request("GET", path, headers={"Cache-Control": "no-cache"})
+            conn.request("GET", path, headers={"Cache-Control": "no-cache", "User-Agent": "TCG-Hub/1.1 (public route check)"})
             response = conn.getresponse()
+            if response.getheader("cf-mitigated") == "challenge":
+                return None, None, b""
             body = response.read(16384) if path in ("/", "/api/v1/games") and response.status == 200 else b""
             return response.status, response.getheader("Location"), body
         finally:
@@ -72,7 +81,10 @@ def main():
 
     for attempt in range(3):
         try:
-            check_routes(args.origin, args.team, fetch)
+            challenged = check_routes(args.origin, args.team, fetch)
+            if challenged:
+                print(f"Cloudflare requires browser verification for: {', '.join(challenged)}", file=sys.stderr)
+                return 3
             print(f"Public catalog and anonymous route checks passed: {args.origin}")
             return 0
         except RouteError as exc:

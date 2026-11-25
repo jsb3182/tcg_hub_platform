@@ -134,7 +134,12 @@ start_public_tunnel() {
   local was_disabled=false
   if [[ -e $svroot/tcg-tunnel/down ]]; then was_disabled=true; fi
   if enable tunnel && wait_for_edge; then
-    if guest tcgtunnel /bin/bash "$guest_script" check-public-route; then return 0; fi
+    if guest tcgtunnel /bin/bash "$guest_script" check-public-route; then
+      return 0
+    elif [[ $? == 3 ]]; then
+      echo 'Connector is up. Finish the challenged routes in a browser on an external connection.' >&2
+      return 0
+    fi
     echo 'Check the public hostname, DNS and Cloudflare Access/WAF routes.' >&2
   else
     echo "Cloudflare connection could not be confirmed. See $PREFIX/var/log/tcg-tunnel/current." >&2

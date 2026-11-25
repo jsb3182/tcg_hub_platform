@@ -23,7 +23,7 @@ class PublicRouteTest(unittest.TestCase):
         }
 
     def check(self):
-        public.check_routes(self.site, self.team, self.responses.__getitem__)
+        return public.check_routes(self.site, self.team, self.responses.__getitem__)
 
     def test_catalog_public_while_admin_and_readiness_require_protection(self):
         self.check()
@@ -56,4 +56,11 @@ class PublicRouteTest(unittest.TestCase):
     def test_edge_not_ready_can_retry(self):
         self.responses["/api/v1/games"] = (503, None, b"")
         with self.assertRaises(ConnectionError):
+            self.check()
+
+    def test_browser_challenge_does_not_hide_an_open_admin_route(self):
+        self.responses["/"] = (None, None, b"")
+        self.assertEqual(["/"], self.check())
+        self.responses["/admin"] = (200, None, b"")
+        with self.assertRaises(public.RouteError):
             self.check()

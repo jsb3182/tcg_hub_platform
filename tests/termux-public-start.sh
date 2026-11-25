@@ -83,9 +83,16 @@ reject start_public_tunnel
 edge_json='{"status":200,"readyConnections":2}'
 guest_script=/opt/tcg-hub/current/deploy/ubuntu.sh
 route_ok=no
-guest() { [[ $* == "tcgtunnel /bin/bash $guest_script check-public-route" && $route_ok == yes ]]; }
+guest() {
+  [[ $* == "tcgtunnel /bin/bash $guest_script check-public-route" ]] || return 1
+  if [[ $route_ok == challenge ]]; then return 3; fi
+  [[ $route_ok == yes ]]
+}
 reject start_public_tunnel
 [[ -f $svroot/tcg-tunnel/down && $(wc -l < "$fixture/runlog") == 2 ]]
+route_ok=challenge
+start_public_tunnel
+[[ ! -e $svroot/tcg-tunnel/down ]]
 route_ok=yes
 start_public_tunnel
 [[ ! -e $svroot/tcg-tunnel/down ]]

@@ -136,6 +136,8 @@ tcgctl status
 
 APK의 공개 서버 켜기와 `tcgctl start`는 커넥터 연결 후 실제 공개 HTTPS 주소로 익명 요청을 보낸다. 도감 API의 다섯 종목, 관리자 화면·API의 접근 거부 또는 설정된 Access 로그인 경로, 내부 상태 경로의 접근 거부를 검사한다. 처음 터널을 켜는 중 이 검사가 실패하면 터널을 다시 끈다. 실행 중인 서버를 다시 점검할 때는 A90에서 `tcgctl check-public`을 실행한다. 다른 회선에 있는 PC에서는 저장소 또는 서버 배포본의 `python3 deploy/check-public.py https://cards.example.com your-team.cloudflareaccess.com`으로 동일한 익명 검사를 실행할 수 있다.
 
+Cloudflare가 검사 요청에 브라우저 확인 페이지(`cf-mitigated: challenge`)를 보내면 터널을 유지하고 해당 경로를 수동 확인 대상으로 표시한다. `tcgctl check-public`의 종료 코드 3은 브라우저 확인 대기를 뜻한다. 익명 요청의 401·403 응답만으로는 Cloudflare와 Spring 중 어느 쪽에서 거절했는지 알 수 없다. [Cloudflare 확인 페이지 식별](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/detect-response/)
+
 최종 확인은 **A90과 다른 휴대전화의 데이터 회선**에서 한다. 공개 주소로 도감을 열고 카드 검색·이미지 표시·PWA 설치를 확인한다. 관리자 경로에서는 허용된 관리자 계정으로 Access와 서비스 로그인을 거친 후 관리 상태를 조회한다. A90 내부의 `http://127.0.0.1:8080/internal/ready`는 HTTP 200이어야 한다.
 
 ## 6. 메모리와 서비스 상태
