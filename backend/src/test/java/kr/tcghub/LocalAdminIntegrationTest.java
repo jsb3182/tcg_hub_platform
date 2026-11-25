@@ -143,6 +143,7 @@ class LocalAdminIntegrationTest {
                     .andExpect(redirectedUrl(ORIGIN+path)).andExpect(header().string("Cache-Control","no-store"));
         }
         http.perform(localAlias(get("/admin"))).andExpect(redirectedUrl(ORIGIN+"/login?next=/admin"));
+        http.perform(localAlias(get("/binder/"))).andExpect(redirectedUrl(ORIGIN+"/binder"));
         http.perform(localAlias(get("/news"))).andExpect(forwardedUrl("/index.html"));
         http.perform(localAlias(get("/play"))).andExpect(forwardedUrl("/index.html"));
         http.perform(localAlias(get("/api/v1/me/binder"))).andExpect(status().isUnauthorized());

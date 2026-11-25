@@ -44,8 +44,9 @@ router.beforeEach(async (to, from) => {
     location.assign(to.fullPath)
     return false
   }
-  const path = to.name === 'admin' ? '/login?next=/admin' : to.fullPath
-  location.replace('http://127.0.0.1:8080' + path)
+  const entry = to.name === 'admin' ? '/login?next=/admin' :
+    router.resolve({name:to.name,params:to.params,query:to.query,hash:to.hash}).fullPath
+  location.replace('http://127.0.0.1:8080' + entry)
   return false
 })
 // An updated service worker only refreshes windows still running the previous alias-unaware bundle.

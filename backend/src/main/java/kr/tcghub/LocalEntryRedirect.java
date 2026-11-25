@@ -10,25 +10,27 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /** Move a local browser document before it prompts for credentials. API writes keep their original guard. */
 final class LocalEntryRedirect extends OncePerRequestFilter {
-    private static final Pattern PRIVATE_PAGE = Pattern.compile("/(?:login|binder|decks(?:/new|/[0-9]+)?)/?");
+    private static final Pattern PRIVATE_PAGE = Pattern.compile("/(?:login|binder|decks(?:/new|/[0-9]+)?)");
+    private static final Set<String> DOCUMENT_METHODS = Set.of("GET", "HEAD");
     private final LocalAdmin local;
-    LocalEntryRedirect(LocalAdmin local) { this.local=local; }
+    LocalEntryRedirect(LocalAdmin local) { this.local = local; }
 
-    @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain)
-            throws IOException,ServletException {
-        String path=request.getRequestURI();
-        boolean admin=path.equals("/admin") || path.startsWith("/admin/");
-        boolean practice=path.equals("/play") && request.getParameter("deck")!=null;
-        if (Set.of("GET","HEAD").contains(request.getMethod()) && (admin || practice || PRIVATE_PAGE.matcher(path).matches())
+    @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        String path = request.getRequestURI();
+        if (path.length() > 1 && path.endsWith("/")) path = path.substring(0,path.length()-1);
+        boolean admin = path.equals("/admin") || path.startsWith("/admin/");
+        boolean practice = path.equals("/play") && request.getParameter("deck") != null;
+        if (DOCUMENT_METHODS.contains(request.getMethod()) && (admin || practice || PRIVATE_PAGE.matcher(path).matches())
                 && local.localEntryAlias(request)) {
             // The authority is constant and the path has matched a registered application document.
             // A login's optional next parameter is validated by LoginView and never selects an HTTP destination here.
-            String query=request.getQueryString();
-            String target=admin ? "/login?next=/admin" : path + (query==null ? "" : "?"+query);
+            String query = request.getQueryString();
+            String target = admin ? "/login?next=/admin" : path + (query == null ? "" : "?" + query);
             response.setStatus(HttpServletResponse.SC_FOUND);
-            response.setHeader("Location",LocalAdmin.LOCAL_ORIGIN+target);
-            response.setHeader("Cache-Control","no-store");
-            response.setHeader("Referrer-Policy","no-referrer");
+            response.setHeader("Location", LocalAdmin.LOCAL_ORIGIN + target);
+            response.setHeader("Cache-Control", "no-store");
+            response.setHeader("Referrer-Policy", "no-referrer");
             return;
         }
         chain.doFilter(request,response);
