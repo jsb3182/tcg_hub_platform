@@ -1,6 +1,6 @@
 # Galaxy A90 홈서버 배포
 
-PC에서 Vue 정적 파일과 Java 실행 JAR를 빌드한다. A90에서는 Ubuntu 24.04 ARM64에서 Java 17과 Python 워커 한 개를 실행하고, 공개 배포 시 Cloudflare 터널을 연결한다. 이 기기의 Google Play판 Termux에서는 PostgreSQL과 PostGIS를 Termux에서 직접 실행한다. 터널의 HTTP 원본은 `127.0.0.1:8080`이며 DB 연결은 `127.0.0.1:5432`로 제한한다.
+**A90만 있다면** [휴대폰 설치 안내](ANDROID.md#pc-없이-처음-설치하거나-로컬-서버-업데이트하기)를 따른다. GitHub 릴리스에는 Vue 화면을 포함한 Java 실행 JAR와 Python 워커가 들어 있다. A90은 Ubuntu 24.04 ARM64에서 Java 17과 워커 한 개를 실행한다. Google Play판 Termux에서는 PostgreSQL과 PostGIS를 Termux에서 직접 실행한다. 외부 공개용 Cloudflare 터널은 `127.0.0.1:8080`에 연결하고, DB는 `127.0.0.1:5432`에서 접속을 받는다.
 
 ## 1. PC에서 배포본 만들기
 
@@ -10,7 +10,7 @@ JDK 17의 `java`·`jar`, Maven 3.9, Node 22.12 이상, npm, GNU tar·coreutils, 
 bash deploy/build-release.sh
 ```
 
-스크립트는 격리된 임시 디렉터리에서 Vue 생산 빌드를 JAR에 넣고 Maven의 package 단계를 수행한다. DB 통합 테스트는 별도 테스트 DB와 `TCG_TEST_DB=1`을 설정했을 때 실행된다. `backend/target/tcg-hub.jar`와 `dist`의 세 파일 `tcg-hub-release.tar.gz`, `tcg-hub-release.tar.gz.sha256`, `bootstrap-termux.sh`를 생성한다. PC에서 이 세 파일을 A90의 `Download/tcg-hub/<압축 파일 SHA-256 앞 12자리>/`에 함께 복사한다. 기존 도감 데이터는 5단계에서 가져온다.
+스크립트는 격리된 임시 디렉터리에서 Vue 생산 빌드를 JAR에 넣고 Maven의 package 단계를 수행한다. DB 통합 테스트는 별도 테스트 DB와 `TCG_TEST_DB=1`을 설정했을 때 실행된다. `backend/target/tcg-hub.jar`와 `dist`의 배포 압축 파일, 체크섬, `bootstrap-termux.sh`, `setup-termux.sh`를 생성한다. USB로 처음 설치할 때는 `tcg-hub-release.tar.gz`, `tcg-hub-release.tar.gz.sha256`, `bootstrap-termux.sh` 세 파일을 A90의 `Download/tcg-hub/<압축 파일 SHA-256 앞 12자리>/`에 함께 복사한다. 기존 도감 데이터는 5단계에서 가져온다.
 
 ### Cloudflare 등록 전 A90에서 먼저 열기
 
@@ -174,6 +174,8 @@ export TCG_RELEASE_DIR="$HOME/tcg-release-next"
 `service-controls`는 워커·API·터널 각각의 runit 디렉터리에 종료 처리를 등록한다. `maintenance`와 `backup`은 PRoot 하위에서 실제 실행 중인 서비스 프로세스에 TERM을 전달한 뒤 종료를 기다린다. 워커가 진행 중인 HTTP 요청과 DB 작업을 정리할 수 있도록 최대 180초를 기다린다.
 
 ## 8. 자동 수집과 모바일 운영
+
+A90에서 첫 수집이 끝났는지 보려면 Termux에서 `tcgctl media check-catalogs`를 실행한다. 게임마다 자동 수집한 공개 카드 수(`published`), 마지막으로 수집을 마친 시각(`last_success_at`), 현재 상태(`state`)가 표시된다. 다섯 게임 모두 수집 완료 이력과 공개 카드가 있으면 `initial_sync_complete`가 `true`다. 첫 수집 중에는 종료 코드 3을 반환하며 워커는 계속 작업한다. 이후 갱신 상태는 아래 관리자 화면에서 확인한다.
 
 관리자로 로그인해 관리 화면에서 소스별 지난 성공·실패 시각, 실제로 확인한 행 수, 새로 저장한 행 수, 다음 실행 시각을 본다. 지금 실행과 재시도는 큐에 요청을 남긴다. 제공자의 호출 제한이 남아 있으면 그 이후 실행한다. 일시정지는 이미 커밋한 카드와 소식을 유지한다. 긴 도감 수집은 배치 사이에서 중단되고 다음 실행에서 기존 카드 키와 대조한다.
 

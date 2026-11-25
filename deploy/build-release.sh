@@ -51,4 +51,5 @@ publish_file "$tmp/backend/target/tcg-hub.jar" "$root/backend/target/tcg-hub.jar
 publish_file tcg-hub-release.tar.gz "$root/dist/tcg-hub-release.tar.gz"
 publish_file tcg-hub-release.tar.gz.sha256 "$root/dist/tcg-hub-release.tar.gz.sha256"
 publish_file "$tmp/release/deploy/bootstrap-termux.sh" "$root/dist/bootstrap-termux.sh"
+publish_file "$tmp/release/deploy/setup-termux.sh" "$root/dist/setup-termux.sh"
 echo "Built $root/dist/tcg-hub-release.tar.gz"
