@@ -70,8 +70,9 @@ try {
     $aligned = Join-Path $work 'aligned.apk'
     $signed = Join-Path $work 'tcg-server-control.apk'
     Run "$tools\aapt2.exe" @('compile','--dir',(Join-Path $PSScriptRoot 'res'),'-o',$resources)
-    Run "$tools\aapt2.exe" @('link','-I',$platform,'--manifest',$manifest,'-o',$unsigned,$resources)
-    $source = (Get-ChildItem -Recurse -File -Filter '*.java' (Join-Path $PSScriptRoot 'src')).FullName
+    $generated = [IO.Directory]::CreateDirectory((Join-Path $work 'generated')).FullName
+    Run "$tools\aapt2.exe" @('link','--java',$generated,'-I',$platform,'--manifest',$manifest,'-o',$unsigned,$resources)
+    $source = (Get-ChildItem -Path @((Join-Path $PSScriptRoot 'src'), $generated) -Recurse -File -Filter '*.java').FullName
     Run $compiler (@('-encoding','UTF-8','--release','8','-classpath',$platform,'-d',$classes) + @($source))
     $bytecode = Join-Path $work 'classes.jar'
     Run $jar @('cf',$bytecode,'-C',$classes,'.')
