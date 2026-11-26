@@ -14,7 +14,7 @@ import time
 PREFIX = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr"))
 MAILBOX = Path.home() / "tcg-control"
 SERVICES = ("db", "api", "worker", "tunnel")
-REQUEST = re.compile(r"request-(\d{13})-([a-f0-9]{32})-(status|start-local|start-public|stop)")
+REQUEST = re.compile(r"request-(\d{13})-([a-f0-9]{32})-(status|start-local|start-public|stop|admin-setup)")
 REPLY = re.compile(r"reply-[a-f0-9]{32}\.json")
 ACTIVE = re.compile(r"\.active-([a-f0-9]{32})")
 LOCAL = "http://127.0.0.1:8080"
@@ -58,7 +58,49 @@ def snapshot(origin):
         ready = False
     finally:
         conn.close()
-    return {"origin": origin, "services": services, "ready": ready}
+    return {"origin": origin, "services": services, "ready": ready,
+            "adminSetup": origin == LOCAL and (PREFIX / "libexec/tcg-hub/admin-setup").is_file()}
+
+
+def launch_admin_session():
+    """One fixed interactive session. Only the TTY helper can acknowledge a launch."""
+    import fcntl
+    directory = PREFIX / "var/lib/tcg-hub/admin-session"
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    pending, started = directory / "pending", directory / "started"
+    with (directory / "lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return "session-open"
+    executable = PREFIX / "libexec/tcg-hub/admin-setup"
+    launcher = PREFIX / "bin/am"
+    if not executable.is_file() or not launcher.is_file():
+        return "session-unavailable"
+    uri = "com.termux.file:" + str(executable)
+    # Boot-launched runit may not inherit the build variables of an interactive shell.
+    play = (PREFIX / "libexec/tcg-hub/termux-play").exists() or os.environ.get("TERMUX_APK_RELEASE") == "GOOGLE_PLAY_STORE" or os.environ.get("TERMUX_VERSION", "").startswith("googleplay.")
+    if play:
+        args = ["start", "-a", "android.intent.action.RUN", "-n", "com.termux/.app.TermuxActivityInternal", "-d", uri]
+    else:
+        args = ["startservice", "-a", "com.termux.service_execute", "-n", "com.termux/.app.TermuxService", "-d", uri,
+                "--es", "com.termux.execute.session_action", "0"]
+    started.unlink(missing_ok=True)
+    pending.touch()
+    try:
+        try:
+            subprocess.run([str(launcher), *args], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=8, check=False)
+        except (OSError, subprocess.SubprocessError):
+            # A timed-out Android command may already have delivered its intent.
+            pass
+        for _ in range(36):
+            if started.is_file():
+                return "session-open"
+            time.sleep(.25)
+        return "session-unavailable"
+    finally:
+        pending.unlink(missing_ok=True)
 
 
 def execute(action):
@@ -67,7 +109,9 @@ def execute(action):
     except (OSError, subprocess.SubprocessError):
         origin = ""
     status = "ok"
-    if action != "status":
+    if action == "admin-setup":
+        status = launch_admin_session() if origin == LOCAL else "profile-changed"
+    elif action != "status":
         if action.startswith("start-") and (not origin or (action == "start-local") != (origin == LOCAL)):
             status = "profile-changed"
         else:
