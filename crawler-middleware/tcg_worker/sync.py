@@ -141,7 +141,9 @@ def save_cards(db, source, records):
         raw_name = card.get("pack_name") or code
         pack_key = None
         if raw_name:
-            identity = product_identity(code, raw_name)
+            # The regional catalog supplies one canonical product code; a newly verified
+            # Korean label for that product must not allocate another numeric pack ID.
+            identity = (code, "") if game == "ONEPIECE" and code else product_identity(code, raw_name)
             aliases = existing.get(identity)
             if aliases:
                 pack_key = aliases.get(raw_name) or next(iter(aliases.values()))
@@ -227,7 +229,11 @@ def sync_source(source, stop):
                     total += len(batch)
                 if total == 0:
                     raise FetchError("카드 목록이 비어 있습니다. 기존 카드 자료를 유지합니다.")
+                previous=cursor
                 cursor = {"count": total}
+                if source["source_key"]=="YUGIOH":
+                    from .catalog_art import queue_yugioh_art
+                    cursor["artAfter"]=queue_yugioh_art(db,sid,previous.get("artAfter",0),stop)
             else:
                 if source["provider"] == "X":
                     page = fetch_x_with_limits(db, source["source_key"], cursor)

@@ -1,10 +1,12 @@
 """Publisher and maintainer catalog adapters. Data files stay in the operator's private cache."""
 from .bulk import pokemon, riftbound, weiss, yugioh
 from .nivel import nivel
+from .onepiece import onepiece
 from .transport import CatalogHTTP
 
 
-_ADAPTERS = {"YUGIOH": yugioh, "POKEMON": pokemon, "WEISS": weiss, "NIVEL": nivel, "RIFTBOUND": riftbound}
+_ADAPTERS = {"YUGIOH": yugioh, "POKEMON": pokemon, "WEISS": weiss, "NIVEL": nivel, "RIFTBOUND": riftbound,
+             "ONEPIECE": onepiece}
 CATALOG_GAMES = frozenset(_ADAPTERS)
 
 
