@@ -31,7 +31,7 @@ d=/sdcard/Download/tcg-hub/DIGEST12; [ -r "$d/bootstrap-termux.sh" ] || { termux
 공개 주소를 받은 사람은 브라우저 또는 Android 앱에서 도감·소식·매장 지도를 바로 열 수 있다. 주소를 전달받은 다른 사람도 열 수 있다. 개인 바인더·덱은 서비스 계정 로그인 후 사용하고, 서버 켜기·끄기 권한은 A90에서 승인한 제어 폴더에만 부여한다. 아래 Access 앱의 적용 범위는 관리자 경로로 지정한다.
 
 1. 소유하거나 관리 권한이 있는 도메인을 Cloudflare에 추가해 zone이 **Active**가 되면 그 아래에 서비스 호스트명(예: `cards.example.com`)을 정한다. 이미 운영하는 사이트의 서브도메인을 쓸 수 있다. Zero Trust에서 조직의 팀 도메인과 관리자용 IdP를 확인한다. [공개 호스트용 Access 요건](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/)
-2. **Access → Applications**에서 Self-hosted 앱 한 개를 만든다. 동일 앱의 공개 hostname/path 항목으로 `cards.example.com/admin`, `cards.example.com/admin/*`, `cards.example.com/api/v1/admin`, `cards.example.com/api/v1/admin/*`를 등록한다. 허용할 관리자 계정/그룹과 IdP를 지정하고 IdP의 다중 인증 정책을 적용한다. 이 앱의 Application Audience(AUD)와 `팀명.cloudflareaccess.com`을 복사한다. Spring도 Access 서명·발급자·대상·만료를 검증한다. [Access 경로 규칙](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/)
+2. **Access → Applications**에서 Self-hosted 앱 한 개를 만든다. 동일 앱의 공개 hostname/path 항목으로 `cards.example.com/admin`, `cards.example.com/admin/*`, `cards.example.com/api/v1/admin`, `cards.example.com/api/v1/admin/*`, `cards.example.com/api/admin/server/*`를 등록한다. 허용할 관리자 계정/그룹과 IdP를 지정하고 IdP의 다중 인증 정책을 적용한다. 이 앱의 Application Audience(AUD)와 `팀명.cloudflareaccess.com`을 복사한다. Spring도 Access 서명·발급자·대상·만료를 검증한다. [Access 경로 규칙](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/)
 3. **Networking → Tunnels**에서 원격 관리형 `cloudflared` 터널을 생성한다. Published application route에서 공개 hostname을 위 주소로, 서비스 유형을 HTTP로, 주소를 `127.0.0.1:8080`으로 지정한다. DNS가 터널을 가리키고 zone의 HTTPS 인증서가 활성 상태인지 확인한다. 커넥터 토큰은 5단계에서 입력한다. 터널은 TCP 또는 UDP 7844 아웃바운드 연결을 사용한다. [터널 네트워크 구성](https://developers.cloudflare.com/tunnel/configuration/) · [토큰 파일 옵션](https://developers.cloudflare.com/tunnel/reference/run-parameters/)
 4. 해당 zone의 SSL/TLS에서 HTTP→HTTPS 리디렉션과 WAF의 managed rules 배포 상태를 확인한다. 무료 플랜은 Free Managed Ruleset이 기본 적용된다. WAF custom rule로 해당 hostname의 `/internal` 및 `/internal/` 하위 경로를 차단한다. 캐시 규칙을 추가했다면 `/admin` 및 하위 경로와 `/api/`, `/media/sheets/` 하위 요청을 캐시 우회로 설정한다. 공개를 중단한 시트는 다음 요청에서 원본 서버가 404를 반환한다. [Cloudflare WAF 구성](https://developers.cloudflare.com/waf/get-started/)
 
@@ -105,6 +105,8 @@ tcgctl account admin@example.com ROLE_ADMIN
 
 ### A90에서 로컬 관리자 로그인
 
+첫 기동 때 계정을 자동 생성할 경우 API 프로세스에 `TCG_BOOTSTRAP_ADMIN_EMAIL`과 `TCG_BOOTSTRAP_ADMIN_PASSWORD`를 전달한다. A90에서는 Ubuntu의 `/etc/tcg-hub/web-config/` 아래에 `tcg.bootstrap.email`과 `tcg.bootstrap.password`를 한 줄씩 담은 비공개 파일로 둘 수 있다. 디렉터리는 0700, 파일은 0600으로 설정하고 API 계정만 읽을 수 있게 한다. 관리자 생성 후 두 초기화 파일을 삭제하고 Termux에서 `tcgctl password 본인이메일`을 실행한다. 현재 비밀번호와 새 비밀번호를 터미널의 숨김 입력으로 받으며, 변경이 성공하면 기존 갱신 세션과 로컬 관리자 세션이 만료된다. 기존 관리자 계정이 있으면 최초 기동 설정을 건너뛴다.
+
 1. `tcgctl start-local`로 앱을 기동한다. 관리자 계정이 없으면 Termux에서 `tcgctl account admin@example.com ROLE_ADMIN`의 예시 이메일을 자신의 것으로 바꿔 실행한다. 비밀번호를 입력하는 동안 화면에는 글자가 표시되지 않는다. Enter를 누른 뒤 `Account created.`가 나오면 다음 단계로 간다. `Use at least 12 characters and at most 72 UTF-8 bytes`가 나오면 길이 조건에 맞는 새 비밀번호로 다시 실행한다.
 2. **A90의 Termux 터미널**에서 `tcgctl totp admin@example.com`을 실행한다. 인증 앱의 수동 등록 화면에서 키 종류를 시간 기반으로 지정하고 표시된 설정 키를 입력한다. 기본값은 SHA-1, 6자리, 30초다. 인증 앱이 설정 URI 입력을 지원하면 같은 화면에 표시된 URI를 사용할 수 있다. 인증 앱의 6자리 코드를 Termux에 입력하면 등록이 완료된다. [TOTP 규격](https://www.rfc-editor.org/rfc/rfc6238.html)
 3. A90의 브라우저로 `http://127.0.0.1:8080/login?to=admin`을 연다. 관리자 이메일과 암호로 로그인하고 **다음 6자리 코드**를 입력한다. 등록 확인에 사용한 코드는 이미 소비됐다. 인증 앱의 시각이 어긋나면 Android의 자동 날짜 및 시간을 확인한다.
@@ -142,7 +144,7 @@ tcgctl status
 
 `tcgctl start`는 실행 중인 Spring이 DB에 연결되고 관리자 인증 모드를 `CLOUDFLARE`로 보고하는지 검사한다. 커넥터가 Cloudflare에 연결되는지도 로컬 지표에서 최대 60초간 확인한다. 처음 활성화할 때 연결에 실패하면 터널을 다시 비활성화하므로 로그와 네트워크를 확인한 뒤 명령을 재실행한다. 앞서 활성화한 터널은 일시적으로 연결이 끊겨도 재접속을 시도한다. 기기 재부팅 후에도 터널 서비스는 같은 원본 검사를 통과한 뒤 연결한다. `tcgctl status`에서 현재 연결을 확인할 수 있다. [커넥터 준비 상태](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/deployment-guides/kubernetes/)
 
-APK의 공개 서버 켜기와 `tcgctl start`는 커넥터 연결 후 실제 공개 HTTPS 주소로 익명 요청을 보낸다. 도감 API의 다섯 종목, 관리자 화면·API의 접근 거부 또는 설정된 Access 로그인 경로, 내부 상태 경로의 접근 거부를 검사한다. 처음 터널을 켜는 중 이 검사가 실패하면 터널을 다시 끈다. 실행 중인 서버를 다시 점검할 때는 A90에서 `tcgctl check-public`을 실행한다. 다른 회선에 있는 PC에서는 저장소 또는 서버 배포본의 `python3 deploy/check-public.py https://cards.example.com your-team.cloudflareaccess.com`으로 동일한 익명 검사를 실행할 수 있다.
+APK의 공개 서버 켜기와 `tcgctl start`는 커넥터 연결 후 실제 공개 HTTPS 주소로 익명 요청을 보낸다. 도감 API의 여섯 종목, 관리자 화면·API의 접근 거부 또는 설정된 Access 로그인 경로, 내부 상태 경로의 접근 거부를 검사한다. 처음 터널을 켜는 중 이 검사가 실패하면 터널을 다시 끈다. 실행 중인 서버를 다시 점검할 때는 A90에서 `tcgctl check-public`을 실행한다. 다른 회선에 있는 PC에서는 저장소 또는 서버 배포본의 `python3 deploy/check-public.py https://cards.example.com your-team.cloudflareaccess.com`으로 동일한 익명 검사를 실행할 수 있다.
 
 Cloudflare가 검사 요청에 브라우저 확인 페이지(`cf-mitigated: challenge`)를 보내면 터널을 유지하고 해당 경로를 수동 확인 대상으로 표시한다. `tcgctl check-public`의 종료 코드 3은 브라우저 확인 대기를 뜻한다. 익명 요청의 401·403 응답만으로는 Cloudflare와 Spring 중 어느 쪽에서 거절했는지 알 수 없다. [Cloudflare 확인 페이지 식별](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/detect-response/)
 
@@ -183,7 +185,7 @@ export TCG_RELEASE_DIR="$HOME/tcg-release-next"
 
 ## 8. 자동 수집과 모바일 운영
 
-A90에서 첫 수집이 끝났는지 보려면 Termux에서 `tcgctl media check-catalogs`를 실행한다. 게임마다 자동 수집한 공개 카드 수(`published`), 마지막으로 수집을 마친 시각(`last_success_at`), 현재 상태(`state`)가 표시된다. 다섯 게임 모두 수집 완료 이력과 공개 카드가 있으면 `initial_sync_complete`가 `true`다. 첫 수집 중에는 종료 코드 3을 반환하며 워커는 계속 작업한다. 이후 갱신 상태는 아래 관리자 화면에서 확인한다.
+A90에서 첫 수집이 끝났는지 보려면 Termux에서 `tcgctl media check-catalogs`를 실행한다. 게임마다 자동 수집한 공개 카드 수(`published`), 마지막으로 수집을 마친 시각(`last_success_at`), 현재 상태(`state`)가 표시된다. 여섯 게임 모두 수집 완료 이력과 공개 카드가 있으면 `initial_sync_complete`가 `true`다. 첫 수집 중에는 종료 코드 3을 반환하며 워커는 계속 작업한다. 이후 갱신 상태는 아래 관리자 화면에서 확인한다.
 
 관리자로 로그인해 관리 화면에서 소스별 지난 성공·실패 시각, 실제로 확인한 행 수, 새로 저장한 행 수, 다음 실행 시각을 본다. 지금 실행과 재시도는 큐에 요청을 남긴다. 제공자의 호출 제한이 남아 있으면 그 이후 실행한다. 일시정지는 이미 커밋한 카드와 소식을 유지한다. 긴 도감 수집은 배치 사이에서 중단되고 다음 실행에서 기존 카드 키와 대조한다.
 

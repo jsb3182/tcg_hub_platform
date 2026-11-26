@@ -7,7 +7,7 @@ import time
 from urllib.parse import urljoin, urlsplit
 
 
-GAMES = {"NIVEL", "POKEMON", "RIFTBOUND", "WEISS", "YUGIOH"}
+GAMES = {"NIVEL", "ONEPIECE", "POKEMON", "RIFTBOUND", "WEISS", "YUGIOH"}
 
 
 class RouteError(ValueError):
@@ -38,9 +38,9 @@ def check_routes(origin, team, fetch):
             if not isinstance(games, list) or {g["code"] for g in games} != GAMES:
                 raise ValueError()
     except (UnicodeError, ValueError, KeyError, TypeError) as exc:
-        raise RouteError("Public catalog did not return the five supported games") from exc
+        raise RouteError("Public catalog did not return the six supported games") from exc
 
-    for path in ("/admin", "/api/v1/admin/operations"):
+    for path in ("/admin", "/api/v1/admin/operations", "/api/admin/server/status"):
         status, location, _ = get(path)
         if status in (None, 401, 403):
             continue
