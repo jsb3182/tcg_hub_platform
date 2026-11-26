@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
 import { request, artworkUrl } from '../api'
+import { editionName } from '../i18n'
 import { useSession } from '../stores/session'
 import { newRound, playGames, playText, practiceLanguage, practiceOpening,
   rememberPracticeLanguage, rememberPracticeOpening, validOpeningSize } from '../play'
@@ -209,11 +210,13 @@ function move(from, index, to) {
           <p v-if="!round[zone].length">{{ t.empty }}</p>
           <ul class="play-list"><li v-for="(id, i) in round[zone]" :key="id+'-'+i">
             <label v-if="zone==='hand'" class="exchange-card"><input type="checkbox" v-model="exchange" :value="i" :aria-label="$t('교환할 카드')+' '+label(id)?.name"></label>
-            <img v-if="artworkUrl(label(id)?.imageUrl)" class="play-art" :src="artworkUrl(label(id).imageUrl)" alt="" loading="lazy" referrerpolicy="no-referrer">
-            <LibraryThumbnail v-else-if="label(id)?.image" :image="label(id).image"/>
+            <figure v-if="artworkUrl(label(id)?.imageUrl) || label(id)?.image" class="practice-art">
+              <LibraryThumbnail :src="label(id)?.imageUrl" :image="label(id)?.image" show-edition :language="label(id)?.imageLanguage"/>
+            </figure>
+
             <span><strong :lang="label(id)?.language">{{ label(id)?.name }}</strong>
               <small v-if="label(id)?.language && label(id).language !== lang"> · {{ t.fallback }} ({{ label(id).language }})</small></span>
-            <details v-if="label(id)?.effect"><summary>{{ $t('효과') }}</summary><p :lang="label(id).effectLanguage">{{ label(id).effect }}</p></details>
+            <details v-if="label(id)?.effect"><summary>{{ $t('효과') }}</summary><small v-if="label(id).effectLanguage!==lang">{{ editionName(label(id).effectLanguage) }}</small><p :lang="label(id).effectLanguage || ''">{{ label(id).effect }}</p></details>
             <small v-if="zone==='table' && attached[i]">{{ game==='ONEPIECE'?'DON!!':$t('에너지') }} × {{ attached[i] }}</small>
             <button v-if="zone==='table' && game!=='YUGIOH'" class="secondary" :disabled="!stock" @click="attach(i)">{{ $t('부착') }}</button>
             <div><button v-if="zone === 'hand'" class="secondary" @click="move(zone,i,'table')">{{ t.place }}</button>
@@ -247,6 +250,6 @@ function move(from, index, to) {
 .play-search { align-items:end; }
 .play-search label { flex:1; }
 .resource-controls {display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;margin:1rem 0}
-.resource-controls input {width:5rem}.play-art {width:40px;height:56px;object-fit:contain}
+.resource-controls input {width:5rem}.practice-art{display:grid;gap:.2rem;margin:0;align-content:start}.practice-art :deep(.lib-thumbnail){width:40px;height:56px}
 .practice-zones li {flex-wrap:wrap}.play-page .exchange-card input {width:20px;height:20px}.practice-zones details p {white-space:pre-line}
 </style>

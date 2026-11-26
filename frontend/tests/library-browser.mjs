@@ -12,11 +12,11 @@ const host = 'http://127.0.0.1:19713'
 const mime = {'.html':'text/html;charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png','.webmanifest':'application/manifest+json'}
 const csp = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'"
 const image = {url:'/media/sheets/test.webp',sheetId:1,col:1,row:1,cellWidth:30,cellHeight:44}
-const card = {id:81,name:'달빛 카드',number:'QA-81',gameCode:'YUGIOH',image}
+const card = {id:81,name:'달빛 카드',number:'QA-81',gameCode:'YUGIOH',curveValue:5,image}
 const game = {code:'YUGIOH',name:'유희왕'}
 const rule = {version:2,sections:[{section:'MAIN',minCards:40,maxCards:60}]}
 const deck = {id:72,name:'연습 덱',gameCode:game.code,state:'DRAFT',revision:1,cards:1,updatedAt:'2026-10-10T00:00:00Z',shareToken:null,rule,
-  entries:[{cardId:card.id,name:card.name,number:card.number,section:'MAIN',quantity:1,image}]}
+  entries:[{cardId:card.id,name:card.name,number:card.number,section:'MAIN',quantity:1,curveValue:5,image}]}
 const owned = Array.from({length:24},(_,i)=>({cardId:i+1,name:'소장 카드 '+(i+1),quantity:1}))
 const expectedToken = 'Bearer fixture-library'
 const browser = await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH || undefined})
@@ -114,7 +114,14 @@ try {
   await link(deck.name).click()
   await visible(savedDeck())
   assert.equal(selectedLanguage(),'en')
+  const localDraw=page.locator('.opening-panel')
+  await localDraw.getByRole('button').click()
+  assert.equal(await localDraw.locator('.sample-hand li').count(),1)
   await savedDeck().fill('2')
+  await localDraw.locator('.sample-hand').waitFor({state:'hidden'})
+  assert.match(await page.locator('.curve-list').innerText(),/5\s+2/)
+  await localDraw.getByRole('button').click()
+  assert.equal(await localDraw.locator('.sample-hand li').count(),2)
   const reloadDismissed=page.waitForEvent('dialog').then(async d=>{assert.equal(d.type(),'beforeunload');await d.dismiss()})
   await page.evaluate(()=>location.reload())
   await reloadDismissed
