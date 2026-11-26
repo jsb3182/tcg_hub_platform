@@ -36,7 +36,7 @@ grep -Eq '^BOOT-INF/classes/db/migration/V[^/]+\.sql$' "$tmp/jar-contents"
 mkdir -p "$root/backend/target"
 cp target/tcg-hub.jar "$tmp/release/"
 cd "$root"
-cp -R deploy "$tmp/release/"
+tar --exclude='__pycache__' --exclude='*.pyc' -cf - deploy | tar -C "$tmp/release" -xf -
 cp crawler-middleware/requirements.txt crawler-middleware/README.md "$tmp/release/crawler-middleware/"
 tar --exclude='__pycache__' --exclude='*.pyc' -C crawler-middleware -cf - tcg_worker | tar -C "$tmp/release/crawler-middleware" -xf -
 mkdir -p "$tmp/release/docs"
