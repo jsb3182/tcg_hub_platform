@@ -26,7 +26,7 @@ class PlayApi {
                 ,coalesce(c.specs->>'type',c.specs->>'card_type',c.specs->>'k') as type,
                 array(select jsonb_array_elements_text(case when jsonb_typeof(c.specs->'colors')='array'
                          then c.specs->'colors' else '[]'::jsonb end)) as colors
-                """ + LibraryImage.COLUMNS + " from card c " + CardEdition.IMAGE_JOIN + LibraryImage.JOIN
+                """ + LibraryImage.COLUMNS + " from card c " + CardEdition.IMAGE_JOIN + LibraryImage.LOCALIZED_JOIN
                 + " where c.status='PUBLISHED' and c.game_code=:game";
         org.springframework.jdbc.core.RowMapper<CardLabel> map = (r,n) -> new CardLabel(r.getLong("id"),r.getString("name"),
                 r.getString("language"),r.getString("number"),r.getString("effect"),r.getString("effectLanguage"),

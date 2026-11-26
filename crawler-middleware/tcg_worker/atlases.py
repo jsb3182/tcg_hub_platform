@@ -48,16 +48,31 @@ def _rebuild(db, root, sheet_id, key, width, height):
     size = (width * COLUMNS, height * ROWS)
     if size[0] * size[1] > LIMIT_PIXELS:
         raise ValueError("Atlas exceeds the supported pixel count")
-    with Image.open(path, formats=["WEBP"]) as old:
-        if old.size != size or old.n_frames != 1:
-            raise ValueError("Unexpected atlas dimensions")
-        clean = Image.new("RGB", size, (24, 24, 24))
-        for col, row in {(col, row) for _, col, row in visible}:
-            box = (col * width, row * height, (col + 1) * width, (row + 1) * height)
-            clean.paste(old.crop(box), box)
-        target = store_sheet(db, root, clean, width, height)
+    with path.open("rb") as stream:
+        if key != "sheets/" + hashlib.file_digest(stream, "sha256").hexdigest() + ".webp":
+            raise ValueError("Atlas bytes differ from their storage key")
+        stream.seek(0)
+        with Image.open(stream, formats=["WEBP"]) as old:
+            if old.size != size or old.n_frames != 1:
+                raise ValueError("Unexpected atlas dimensions")
+            clean = Image.new("RGB", size, (24, 24, 24))
+            for col, row in {(col, row) for _, col, row in visible}:
+                box = (col * width, row * height, (col + 1) * width, (row + 1) * height)
+                clean.paste(old.crop(box), box)
+            target = store_sheet(db, root, clean, width, height)
+    visible_ids = [variant for variant, _, _ in visible]
+    # Only these locked variants supplied pixels. A later replacement has its own digest.
+    db.execute("""
+        INSERT INTO verified_atlas_edition(storage_key,col_idx,row_idx,language)
+        SELECT DISTINCT s.storage_key,v.col_idx,v.row_idx,e.language
+        FROM card_variant v JOIN verified_atlas_edition e
+          ON e.storage_key=%s AND e.col_idx=v.col_idx AND e.row_idx=v.row_idx
+        JOIN image_sheet s ON s.id=%s
+        WHERE v.id=ANY(%s)
+        ON CONFLICT DO NOTHING
+    """, (key, target, visible_ids))
     db.execute("UPDATE card_variant SET sheet_id=%s WHERE id=ANY(%s)",
-               (target, [variant for variant, _, _ in visible]))
+               (target, visible_ids))
     # Keep a private card's source for a later republication. Unused files are deleted on the next committed pass.
     db.execute("UPDATE image_sheet SET repack_at=CASE WHEN %s THEN now() END WHERE id=%s",
                (len(visible) == len(cells), sheet_id))

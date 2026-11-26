@@ -53,6 +53,39 @@ class CatalogIntegrationTest {
         api.perform(get("/api/v1/play/cards").param("game","POKEMON").param("lang","fr")).andExpect(status().isBadRequest());
     }
 
+    @Test void atlasLocaleFollowsTheDisplayedPixelsAcrossCatalogAndPlay() throws Exception {
+        String name = "atlas-" + UUID.randomUUID();
+        long id = db.sql("insert into card(game_code,name,status) values('YUGIOH',?,'PUBLISHED') returning id")
+                .param(name).query(Long.class).single();
+        String key = "sheets/" + "e".repeat(64) + ".webp";
+        long sheet = db.sql("insert into image_sheet(storage_key,cell_width,cell_height) values(?,200,290) returning id")
+                .param(key).query(Long.class).single();
+        db.sql("insert into verified_atlas_edition values (?,0,0,'en'),(?,1,0,'ja')").param(key).param(key).update();
+        db.sql("insert into card_variant(card_id,position,sheet_id,col_idx,row_idx) values (?,0,?,0,0),(?,1,?,1,0)")
+                .param(id).param(sheet).param(id).param(sheet).update();
+        for (String lang : java.util.List.of("ja","ko","en")) {
+            boolean japanese = lang.equals("ja");
+            String expected = japanese ? "ja" : "en";
+            api.perform(get("/api/v1/cards").param("q",name).param("lang",lang))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].image.language").value(expected))
+                    .andExpect(jsonPath("$.items[0].image.col").value(japanese ? 1 : 0));
+            api.perform(get("/api/v1/play/cards").param("game","YUGIOH").param("ids",String.valueOf(id)).param("lang",lang))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$[0].image.language").value(expected))
+                    .andExpect(jsonPath("$[0].image.col").value(japanese ? 1 : 0));
+        }
+        api.perform(get("/api/v1/cards/"+id).param("lang","ja")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.variants[0].image.language").value("en"))
+                .andExpect(jsonPath("$.variants[1].image.language").value("ja"))
+                .andExpect(jsonPath("$.imageLanguage").isEmpty());
+        long replacement = db.sql("insert into image_sheet(storage_key,cell_width,cell_height) values(?,200,290) returning id")
+                .param("sheets/" + "f".repeat(64) + ".webp").query(Long.class).single();
+        db.sql("update card_variant set sheet_id=? where card_id=? and position=0").param(replacement).param(id).update();
+        api.perform(get("/api/v1/cards/"+id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.variants[0].image.sheetId").value(replacement))
+                .andExpect(jsonPath("$.variants[0].image.language").isEmpty())
+                .andExpect(jsonPath("$.variants[1].image").isEmpty());
+    }
+
     @Test void onlyPublishedCardsAndCorrectTileReachTheCatalog() throws Exception {
         String keyword = "검증-" + UUID.randomUUID();
         long card = db.sql("insert into card(game_code,name,status) values('NIVEL',?,'PUBLISHED') returning id")
