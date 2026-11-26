@@ -1,0 +1,18 @@
+[Unit]
+Description=Accept one TCG Hub lifecycle request
+CollectMode=inactive-or-failed
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/tcg-hub/host-control.py
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+RuntimeMaxSec=8
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=

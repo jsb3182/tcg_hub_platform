@@ -1,17 +1,17 @@
 <resources>
-    <color name="canvas">#FBFAFD</color>
-    <color name="sheet">#F4F2F8</color>
-    <color name="tonal">#EDE8FF</color>
-    <color name="ink">#211F2B</color>
-    <color name="muted">#625E70</color>
-    <color name="primary">#5B3FD0</color>
+    <color name="canvas">#FAFAF7</color>
+    <color name="sheet">#FFFFFF</color>
+    <color name="tonal">#E4EFEB</color>
+    <color name="ink">#1D1D1B</color>
+    <color name="muted">#60635E</color>
+    <color name="primary">#13625E</color>
     <color name="on_primary">#FFFFFF</color>
-    <color name="edge">#CDC7D8</color>
-    <color name="hint">#635F6E</color>
-    <color name="on_tonal">#49338E</color>
-    <color name="disabled_surface">#E4E1E9</color>
-    <color name="disabled_ink">#56515F</color>
-    <color name="success">#216644</color>
+    <color name="edge">#D2D6CE</color>
+    <color name="hint">#62655F</color>
+    <color name="on_tonal">#225951</color>
+    <color name="disabled_surface">#E6E8E2</color>
+    <color name="disabled_ink">#62655F</color>
+    <color name="success">#236846</color>
     <style name="HubTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/canvas</item>
         <item name="android:colorAccent">@color/primary</item>

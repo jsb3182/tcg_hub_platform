@@ -1,0 +1,28 @@
+[Unit]
+Description=TCG Hub web and API
+Wants=network-online.target postgresql.service tcg-hub-worker.service
+After=network-online.target postgresql.service tcg-hub-control.socket
+
+[Service]
+Type=exec
+User=tcg-api
+Group=tcg-files
+SupplementaryGroups=tcg-api
+WorkingDirectory=/opt/tcg-hub/current
+EnvironmentFile=/etc/tcg-hub/host.env
+Environment=TCG_HOST_CONTROL_SOCKET=/run/tcg-hub-control/control.sock
+Environment=SERVER_ADDRESS=127.0.0.1
+Environment=SERVER_PORT=8080
+ExecStart=/usr/bin/java -Xms256m -Xmx1024m -XX:ActiveProcessorCount=2 -jar tcg-hub.jar --server.address=127.0.0.1 --server.port=8080
+Restart=on-failure
+RestartSec=8
+TimeoutStopSec=120
+UMask=0007
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/tcg-hub
+
+[Install]
+WantedBy=multi-user.target

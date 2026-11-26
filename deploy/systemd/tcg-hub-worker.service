@@ -1,0 +1,22 @@
+[Unit]
+Description=TCG Hub collection and media worker
+PartOf=tcg-hub-api.service
+After=tcg-hub-api.service
+
+[Service]
+Type=exec
+User=tcg-worker
+Group=tcg-files
+WorkingDirectory=/opt/tcg-hub/current/crawler-middleware
+EnvironmentFile=/etc/tcg-hub/worker.env
+ExecStartPre=/usr/bin/timeout 120 /bin/sh -c 'until /usr/bin/curl -fsS --max-time 3 http://127.0.0.1:8080/internal/ready >/dev/null; do sleep 3; done'
+ExecStart=/opt/tcg-hub/current/venv/bin/python -m tcg_worker run
+Restart=on-failure
+RestartSec=8
+TimeoutStopSec=180
+UMask=0007
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/tcg-hub

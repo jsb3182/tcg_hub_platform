@@ -25,19 +25,18 @@ final class SetupPanel {
     private SetupPanel() {}
 
     static void add(HubUi ui, LinearLayout parent, boolean update) {
-        ui.heading(parent, update ? "로컬 서버 업데이트" : "A90에 서버 설치", 28);
+        ui.heading(parent, update ? ui.activity.getString(R.string.local_update) : ui.activity.getString(R.string.install_server), 28);
         TextView body =
                 ui.label(
                         update
-                                ? "Termux에 명령을 붙여 넣고 Enter를 누르세요. 서버를 사용 중이라면 업데이트 동안 조회와 수집이"
-                                        + " 잠시 중단됩니다."
-                                : "Termux에 명령을 붙여 넣고 Enter를 누르세요.",
+                                ? ui.activity.getString(R.string.paste_update_cmd)
+                                : ui.activity.getString(R.string.paste_cmd),
                         16,
                         ui.muted,
                         false);
         body.setLineSpacing(ui.dp(2), 1);
         ui.add(parent, body, 8);
-        ui.add(parent, ui.label("서버 버전  " + SetupCommand.TAG, 14, ui.muted, false), 14);
+        ui.add(parent, ui.label(ui.activity.getString(R.string.server_version) + SetupCommand.TAG, 14, ui.muted, false), 14);
 
         String command = SetupCommand.forHashes(ReleasePin.HELPER, ReleasePin.ARCHIVE);
         TextView notice = ui.label("", 14, ui.muted, false);
@@ -45,7 +44,7 @@ final class SetupPanel {
         notice.setVisibility(View.GONE);
         Button copy =
                 ui.button(
-                        update ? "업데이트 명령 복사" : "설치 명령 복사",
+                        update ? ui.activity.getString(R.string.copy_update) : ui.activity.getString(R.string.copy_install),
                         HubUi.Action.FILLED,
                         v -> {
                             ClipboardManager clipboard =
@@ -53,34 +52,34 @@ final class SetupPanel {
                                             ui.activity.getSystemService(Context.CLIPBOARD_SERVICE);
                             clipboard.setPrimaryClip(
                                     ClipData.newPlainText("TCG 허브 " + SetupCommand.TAG, command));
-                            notice.setText("복사했습니다. Termux 터미널에 붙여 넣으세요.");
+                            notice.setText(ui.activity.getString(R.string.command_copied));
                             notice.setVisibility(View.VISIBLE);
                         });
         ui.add(parent, copy, 14);
         ui.add(
                 parent,
-                ui.button("Termux 열기", HubUi.Action.OUTLINED, v -> openTermux(ui.activity)),
+                ui.button(ui.activity.getString(R.string.termux_open), HubUi.Action.OUTLINED, v -> openTermux(ui.activity)),
                 8);
         ui.add(parent, notice, 8);
     }
 
     static void addPublicGuide(HubUi ui) {
-        ui.heading(ui.body, "공개 서버 업데이트", 28);
+        ui.heading(ui.body, ui.activity.getString(R.string.public_update), 28);
         ui.add(
                 ui.body,
                 ui.label(
-                        "Cloudflare 공개 설정을 유지하려면 배포 가이드의 백업 및 업데이트 절차를 따르세요.", 16, ui.muted, false),
+                        ui.activity.getString(R.string.public_update_detail), 16, ui.muted, false),
                 8);
         ui.add(
                 ui.body,
                 ui.button(
-                        "공개 서버 업데이트 절차",
+                        ui.activity.getString(R.string.public_update_guide),
                         HubUi.Action.FILLED,
                         v -> openUrl(ui.activity, PUBLIC_GUIDE)),
                 16);
         ui.add(
                 ui.body,
-                ui.button("Termux에서 계속", HubUi.Action.OUTLINED, v -> openTermux(ui.activity)),
+                ui.button(ui.activity.getString(R.string.continue_termux), HubUi.Action.OUTLINED, v -> openTermux(ui.activity)),
                 8);
     }
 
@@ -94,13 +93,12 @@ final class SetupPanel {
             activity.startActivity(intent);
         } catch (ActivityNotFoundException | SecurityException unavailable) {
             new AlertDialog.Builder(activity)
-                    .setTitle("Termux 열기")
+                    .setTitle(activity.getString(R.string.termux_open))
                     .setMessage(
-                            "Termux를 열 수 없습니다. A90용 Termux를 설치한 뒤 한 번 실행하세요. 기존 사용자는 원래 설치한 배포처를"
-                                    + " 이용하세요.")
+                            activity.getString(R.string.termux_missing))
                     .setPositiveButton("Google Play", (dialog, which) -> openUrl(activity, PLAY))
                     .setNeutralButton("F-Droid", (dialog, which) -> openUrl(activity, FDROID))
-                    .setNegativeButton("취소", null)
+                    .setNegativeButton(activity.getString(R.string.cancel), null)
                     .show();
         }
     }
@@ -112,9 +110,9 @@ final class SetupPanel {
                             .addCategory(Intent.CATEGORY_BROWSABLE));
         } catch (ActivityNotFoundException unavailable) {
             new AlertDialog.Builder(activity)
-                    .setTitle("브라우저에서 열 주소")
+                    .setTitle(activity.getString(R.string.open_address))
                     .setMessage(url)
-                    .setPositiveButton("닫기", null)
+                    .setPositiveButton(activity.getString(R.string.close), null)
                     .show();
         }
     }

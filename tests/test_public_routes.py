@@ -19,6 +19,7 @@ class PublicRouteTest(unittest.TestCase):
             "/api/v1/games": (200, None, json.dumps([{"code": code} for code in public.GAMES])),
             "/admin": (302, "https://" + self.team + "/cdn-cgi/access/login/cards.example.org", b""),
             "/api/v1/admin/operations": (403, None, b""),
+            "/api/admin/server/status": (403, None, b""),
             "/internal/ready": (403, None, b""),
         }
 
@@ -27,7 +28,7 @@ class PublicRouteTest(unittest.TestCase):
 
     def test_catalog_public_while_admin_and_readiness_require_protection(self):
         self.check()
-        for path in ("/admin", "/api/v1/admin/operations", "/internal/ready"):
+        for path in ("/admin", "/api/v1/admin/operations", "/api/admin/server/status", "/internal/ready"):
             with self.subTest(path=path):
                 original = self.responses[path]
                 self.responses[path] = (200, None, b"")

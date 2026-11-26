@@ -1,0 +1,15 @@
+[Unit]
+Description=Local TCG Hub lifecycle control
+
+[Socket]
+ListenStream=/run/tcg-hub-control/control.sock
+DirectoryMode=0755
+SocketMode=0660
+SocketUser=root
+SocketGroup=tcg-api
+Accept=yes
+MaxConnections=2
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target
