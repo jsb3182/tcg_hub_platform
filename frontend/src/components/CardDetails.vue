@@ -29,7 +29,7 @@ const tileStyle = computed(() => {
 })
 const title = computed(() => localizedCard(card.value))
 const editionLabels = { ko: "한국어판", en: "영어판", ja: "일본어판" }
-const editions = computed(() => Object.entries(card.value?.specs?.names || {}).filter(([code]) => Object.hasOwn(editionLabels, code)))
+const editions = computed(() => Object.entries(card.value?.specs?.names || {}).filter(([code]) => Object.prototype.hasOwnProperty.call(editionLabels, code)))
 const specs = computed(() => Object.entries(card.value?.specs || {}).filter(([key, value]) =>
     key !== 'xid' && key !== 'pk' && !['names','texts','images','sources'].includes(key) && value != null && value !== ''))
 const names = { k: "종류", at: "속성", lv: "레벨", mk: "링크 마커", rc: "종족", sub: "유형", ps: "펜듈럼 스케일", pe: "펜듈럼 효과", atk: "공격력", def: "수비력", or: "읽기", nw: "수록 구분", pr: "출처", pd: "발매 정보", ej: "일본어 효과", type: "유형", attribute: "속성", level: "레벨", race: "종족" }

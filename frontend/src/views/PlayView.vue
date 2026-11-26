@@ -10,7 +10,7 @@ import { newRound, playGames, playText, practiceLanguage, practiceOpening,
 const route = useRoute()
 const router = useRouter()
 const session = useSession()
-const game = computed(() => typeof route.query.game === 'string' && Object.hasOwn(playGames, route.query.game) ? route.query.game : 'YUGIOH')
+const game = computed(() => typeof route.query.game === 'string' && Object.prototype.hasOwnProperty.call(playGames, route.query.game) ? route.query.game : 'YUGIOH')
 const lang = computed(() => practiceLanguage(route.query.lang))
 const t = computed(() => playText[lang.value])
 const deckId = computed(() => typeof route.query.deck === 'string' && /^[1-9]\d*$/.test(route.query.deck) ? route.query.deck : '')

@@ -13,6 +13,16 @@ const titles={ko:'연습용 카드',en:'Practice card',ja:'練習カード'}, wr
 const deck={id:70,name:'Fixture deck',gameCode:'ONEPIECE',revision:1,state:'DRAFT',updatedAt:'2026-11-01T00:00:00Z',entries:[],rule:{version:1,sections:[{section:'MAIN',minCards:50,maxCards:50}]}}
 try {
  const context=await browser.newContext({viewport:{width:360,height:800},isMobile:true,hasTouch:true,serviceWorkers:'block'})
+ // Android System WebView 91 predates these built-ins. Disable them before any app module loads.
+ await context.addInitScript(()=>{
+   delete Object.hasOwn
+   delete Array.prototype.at
+   delete Array.prototype.toSorted
+   delete Array.prototype.toReversed
+   delete Array.prototype.toSpliced
+   delete globalThis.structuredClone
+   if (window.Crypto) delete Crypto.prototype.randomUUID
+ })
  const page=await context.newPage()
  page.setDefaultTimeout(4500)
  page.on('pageerror',e=>errors.push(e.message))
@@ -37,7 +47,7 @@ try {
    if(api==='me/favorites/stores')return json([])
    if(api==='play/cards')return json([card])
    if(api==='cards')return json({items:[card],total:1})
-   if(api==='cards/51')return json({...card,variants:[],specs:{}})
+   if(api==='cards/51')return json({...card,variants:[],specs:{names:titles}})
    if(api==='me/binder/stats')return json(codes.map(gameCode=>({gameCode,copies:0,uniqueCards:0})))
    if(api==='me/binder')return json({items:[{cardId:51,name:card.name,edition:'en',condition:'NM',tradable:true,quantity:2}],total:1,copies:2})
    if(api==='me/binder/51')return json({quantity:u.searchParams.get('edition')==='ja'?3:2})
@@ -61,6 +71,11 @@ try {
  const select=page.locator('.locale-switch select')
  const visible=e=>e.waitFor({state:'visible'})
  const fits=async()=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),360)
+ await go('/cards/51?lang=ja')
+ await visible(page.getByRole('heading',{name:'練習カード'}))
+ await visible(page.locator('.card-facts [lang=en]').filter({hasText:'Practice card'}))
+ assert.equal(await page.locator('html').getAttribute('lang'),'ja')
+ assert.equal(await select.inputValue(),'ja')
  await go('/'); await visible(page.locator('.catalog-games button').last());assert.equal(await page.locator('.catalog-games button').count(),7)
  await select.selectOption('en');await visible(page.getByRole('heading',{name:'Card catalog',exact:true}))
  await go('/news?game=ONEPIECE&lang=ja');await visible(page.getByRole('heading',{name:'練習カード'}));assert.equal(await page.locator('.story-summary').getAttribute('lang'),'en')

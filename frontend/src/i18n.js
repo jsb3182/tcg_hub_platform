@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { labels } from './labels'
 
 export const languages = { ko: '한국어', en: 'English', ja: '日本語' }
-export const supportedLanguage = value => typeof value === 'string' && Object.hasOwn(languages, value)
+export const supportedLanguage = value => typeof value === 'string' && Object.prototype.hasOwnProperty.call(languages, value)
 const key = 'tcg.interface.language'
 
 function initial() {
