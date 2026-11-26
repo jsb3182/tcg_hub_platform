@@ -48,6 +48,11 @@ class Index:
     def add(self, number, lang, value, priority, product=None, product_name=None, **facts):
         if not value.get("name"):
             return
+        if value.get("image"):
+            value = {**value, "imageSource": value.get("imageSource") or value["source"]}
+            # PROMO groups several products without a known set code.
+            if product and product != "PROMO":
+                value["imageProduct"] = product
         # Prefer the base art, then official edition metadata, then a stable source URL.
         rank = (priority, value.get("image", ""), value["name"])
         for group in [self.editions[number]] + ([self.printings[product, number]] if product else []):
@@ -66,7 +71,8 @@ class Index:
             lang = next(lang for lang in ("ko", "en", "ja") if lang in translations)
             card = translations[lang]
             fields = {}
-            for key, plural in (("name", "names"), ("text", "texts"), ("image", "images"), ("source", "sources")):
+            for key, plural in (("name", "names"), ("text", "texts"), ("image", "images"), ("source", "sources"),
+                                ("imageProduct", "imageProducts"), ("imageSource", "imageSources")):
                 fields[plural] = {language: value[key] for language, value in translations.items() if value.get(key)}
             product_names = self.products[product]
             name = next((product_names[k] for k in ("ko", "en", "ja") if k in product_names), product)
@@ -74,7 +80,7 @@ class Index:
             yield {"external_id": f"{product}:{number}", "pack_code": product, "pack_name": name,
                    "number": number, "name": card["name"], "original_name": translations.get("en", card)["name"],
                    "effect": card.get("text"), "rarity": info.get("rarity"), "release_date": None,
-                   "specs": {"language": lang, **fields, **info}, "source_url": card["source"]}
+                   "specs": {"language": lang, "productCode": product, **fields, **info}, "source_url": card["source"]}
 
 
 def koala(index, http):
@@ -115,7 +121,10 @@ def koala(index, http):
             for product in packs[pr["key"]] or [None]:
                 source = (product or {}).get("product_url") or "https://github.com/" + REPO
                 text = "\n".join(str(obs[k]) for k in ("effect", "trigger") if obs.get(k))
-                index.add(number, lang, edition(obs["name"], text, image, source),
+                value = edition(obs["name"], text, image, source)
+                if image:
+                    value["imageSource"] = (product or {}).get("product_url") or raw + f"data/printings/{site}.jsonl"
+                index.add(number, lang, value,
                           0 if pr.get("variant") == "base" else 2,
                           pack_code(product["code"]) if product and product.get("code") else None,
                           product.get("name") if product and product.get("code") else None,

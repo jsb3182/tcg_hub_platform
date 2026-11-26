@@ -98,6 +98,34 @@ class DatabaseTests(unittest.TestCase):
             self.assertEqual(save_news(self.db, source, [item]), 0)
             self.assertEqual(self.db.execute("SELECT status FROM feed_item WHERE source_id=%s", (sid,)).fetchone()[0], "REJECTED")
 
+    def test_onepiece_provenance_refresh_preserves_printing_and_variant_ids(self):
+        from tcg_worker.catalog_sources.onepiece import Index, edition
+        from tcg_worker.sync import save_cards
+
+        index = Index()
+        index.add("EB01-003", "en", edition("Card", "Effect", "en-art", "https://example.org/en"),
+                  0, "EB-01", "Original")
+        index.add("EB01-003", "ko", edition("카드", "효과", "ko-art", "https://example.org/ko"),
+                  2, "OP-14", "Reprint")
+        revised = list(index.records())
+        old = [{**row, "specs": {k: v for k, v in row["specs"].items()
+                                  if k not in {"productCode", "imageSources", "imageProducts"}}} for row in revised]
+        with self.db.transaction(force_rollback=True):
+            sid = self.db.execute("SELECT id FROM feed_source WHERE provider='CATALOG' AND game_code='ONEPIECE'").fetchone()[0]
+            source = {"id": sid, "game_code": "ONEPIECE", "auto_publish": True}
+            identity = """SELECT p.code,c.id,c.legacy_key,c.pack_id,v.id FROM card c
+                          JOIN pack p ON p.id=c.pack_id JOIN card_variant v ON v.card_id=c.id
+                          WHERE c.source_id=%s ORDER BY p.code"""
+            self.assertEqual(save_cards(self.db, source, old), 2)
+            ids = self.db.execute(identity, (sid,)).fetchall()
+            for _ in range(2):
+                self.assertEqual(save_cards(self.db, source, revised), 0)
+                self.assertEqual(self.db.execute(identity, (sid,)).fetchall(), ids)
+            provenance = self.db.execute("""SELECT specs->>'productCode',specs->'imageProducts'->>'ko',
+                        specs->'imageSources'->>'ko',edit_version FROM card WHERE source_id=%s ORDER BY 1""",
+                                         (sid,)).fetchall()
+            self.assertEqual(provenance, [(code, "OP-14", "https://example.org/ko", 2) for code in ("EB-01", "OP-14")])
+
     def test_rifthunt_reimport_preserves_printings_and_personal_library(self):
         from unittest.mock import Mock
         from tcg_worker.catalog_sources.bulk import riftbound
