@@ -1,38 +1,30 @@
 package kr.tcghub;
 
 import java.time.Instant;
-import java.util.Date;
 import java.util.UUID;
-import com.nimbusds.jose.*;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.jwk.*;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import com.nimbusds.jwt.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.web.client.RestTemplateCustomizer;
-import org.springframework.context.annotation.Bean;
-import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.hamcrest.Matchers.contains;
-import static org.springframework.test.web.client.ExpectedCount.manyTimes;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static kr.tcghub.TestAccessProvider.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(properties={"tcg.cf-team-domain=tcg-test-fixture.cloudflareaccess.com","tcg.cf-audience=test-ops"})
 @AutoConfigureMockMvc
+@Import(TestAccessProvider.class)
 @Transactional
 @EnabledIfEnvironmentVariable(named="TCG_TEST_DB",matches="1")
 class OperationsIntegrationTest {
@@ -40,32 +32,11 @@ class OperationsIntegrationTest {
     @Autowired JdbcClient db;
     @Autowired Tokens tokens;
     @Value("${tcg.public-origin}") String origin;
-    static final String ISSUER = "https://tcg-test-fixture.cloudflareaccess.com";
-    static final String ASSERTION = "Cf-Access-Jwt-Assertion";
-    @TestConfiguration(proxyBeanMethods=false)
-    static class TestIdentityProvider {
-        @Bean RSAKey testKey() throws JOSEException {
-            return new RSAKeyGenerator(2048).keyID("fixture").generate();
-        }
-        @Bean RestTemplateCustomizer publicKeys(RSAKey key) {
-            return client -> MockRestServiceServer.bindTo(client).build()
-                    .expect(manyTimes(),requestTo(ISSUER + "/cdn-cgi/access/certs"))
-                    .andRespond(withSuccess(new JWKSet(key.toPublicJWK()).toString(), MediaType.APPLICATION_JSON));
-        }
-    }
     @Autowired RSAKey key;
     String access;
     String admin;
     long source;
     long item;
-
-    private String assertion(RSAKey signingKey, String issuer, String audience, Instant expiry) throws JOSEException {
-        var claims = new JWTClaimsSet.Builder().issuer(issuer).audience(audience).subject("test-operator");
-        if (expiry!=null) claims.expirationTime(Date.from(expiry));
-        var signed = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(signingKey.getKeyID()).build(),claims.build());
-        signed.sign(new RSASSASigner(signingKey));
-        return signed.serialize();
-    }
 
     @BeforeEach void setup() throws JOSEException {
         access = assertion(key, ISSUER, "test-ops", Instant.now().plusSeconds(300));

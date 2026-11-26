@@ -75,6 +75,8 @@ class LibraryIntegrationTest {
             update card set number='ST99-001',legacy_key='catalog:ONEPIECE:fixture',
             effect='공식 한국어 효과',specs='{"type":"leader","colors":["red"],"language":"ko",
             "names":{"ja":"試験リーダー","en":"Test Leader"},"texts":{"ja":"日本語の効果"},
+            "productCode":"ST-99","imageProducts":{"ja":"ST-99","ko":"OP-14"},
+            "imageSources":{"ko":"https://example.invalid/kr/products/op-14"},
             "images":{"ko":"https://www.onepiece-cardgame.kr/fileDownload?downname=test"}}' where id=?
             """).param(leader).update();
         db.sql("update card set specs='{\"type\":\"character\",\"colors\":[\"red\"]}',effect='You may have any number of this card in your deck.' where id=?")
@@ -88,6 +90,9 @@ class LibraryIntegrationTest {
             assertEquals("試験リーダー",row.get("name").asText());
             assertEquals("ja",row.get("effectLanguage").asText());
             assertEquals("ko",row.get("imageLanguage").asText());
+            assertEquals("ST-99",row.get("productCode").asText());
+            assertEquals("OP-14",row.get("imageProduct").asText());
+            assertEquals("https://example.invalid/kr/products/op-14",row.get("imageSource").asText());
         }
         var legal=new DeckApi.Save("검증 덱",game,"COMPLETE",0,false,List.of(new DeckRules.Line(leader,"LEADER",1),
                 new DeckRules.Line(unit,"MAIN",50),new DeckRules.Line(don,"DON",10)));
@@ -186,6 +191,48 @@ class LibraryIntegrationTest {
         var legal=new DeckApi.Save("완성 덱","POKEMON","COMPLETE",0,false,List.of(
                 new DeckRules.Line(energy,"MAIN",59),new DeckRules.Line(basic,"MAIN",1)));
         api.perform(write(post(path),alice,legal)).andExpect(status().isCreated()).andExpect(jsonPath("$.state").value("COMPLETE"));
+    }
+    @Test void yugiohTokensCannotBeRegisteredInAnyDeckSection() throws Exception {
+        String path="/api/v1/me/decks";
+        long token=card("YUGIOH","Infernoid Token","PUBLISHED");
+        long legacyToken=card("YUGIOH","PRIDE AND SOUL","PUBLISHED");
+        long collector=card("YUGIOH","Token Collector","PUBLISHED");
+        long scapegoat=card("YUGIOH","희생양","PUBLISHED");
+        db.sql("update card set specs='{\"type\":\"Token\"}' where id=?").param(token).update();
+        db.sql("update card set specs='{\"k\":\"토큰\",\"sub\":\"\"}' where id=?").param(legacyToken).update();
+        db.sql("update card set specs='{\"type\":\"Effect Monster\"}',effect='If a Token is Special Summoned' where id=?")
+                .param(collector).update();
+        db.sql("update card set specs='{\"k\":\"마법\",\"sub\":\"속공\"}',effect='양 토큰을 특수 소환한다.' where id=?")
+                .param(scapegoat).update();
+
+        var main=new ArrayList<DeckRules.Line>();
+        main.add(new DeckRules.Line(collector,"MAIN",2));
+        main.add(new DeckRules.Line(scapegoat,"MAIN",2));
+        for (int i=0; i<12; i++) {
+            main.add(new DeckRules.Line(card("YUGIOH","일반 카드 "+i,"PUBLISHED"),"MAIN",3));
+        }
+        var original=new DeckApi.Save("40장 덱","YUGIOH","COMPLETE",0,true,main);
+        var result=api.perform(write(post(path),alice,original)).andExpect(status().isCreated()).andReturn().getResponse();
+        var shared=json.readTree(result.getContentAsByteArray());
+        var ownerPath=path+"/"+shared.get("id").asLong();
+        for (long tokenId : List.of(token,legacyToken)) {
+            for (String section : List.of("MAIN","SIDE","EXTRA")) {
+                var line=new DeckRules.Line(tokenId,section,1);
+                var attempted=new ArrayList<>(main);
+                if (section.equals("MAIN")) attempted.set(0,new DeckRules.Line(collector,"MAIN",1));
+                attempted.add(line);
+                var edit=new DeckApi.Save("수정 덱","YUGIOH","COMPLETE",1,true,attempted);
+                for (var attempt : List.of(
+                        write(post(path),alice,save(0,true,"DRAFT",line)),
+                        write(put(ownerPath),alice,edit))) {
+                    api.perform(attempt).andExpect(status().isUnprocessableEntity())
+                            .andExpect(jsonPath("$.detail").value("토큰은 덱에 넣을 수 없습니다."));
+                }
+            }
+        }
+        api.perform(get("/api/v1/shared/decks/"+shared.get("shareToken").asText()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.revision").value(1))
+                .andExpect(jsonPath("$.entries.length()").value(main.size()));
     }
     @Test void atlasTilesAreReusedAndUnpublishedCardsCloseThePublicLink() throws Exception {
         long sheet=db.sql("insert into image_sheet(storage_key,cell_width,cell_height) values(?,300,438) returning id")

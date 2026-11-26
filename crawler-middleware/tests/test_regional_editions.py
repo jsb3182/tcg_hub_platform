@@ -1,6 +1,6 @@
 import unittest
 
-from tcg_worker.catalog_sources.onepiece import Index, korean_page
+from tcg_worker.catalog_sources.onepiece import Index, edition, korean_page
 from tcg_worker.catalog_sources.card_names import PokemonNames, pokemon_edition, pokemon_effect
 
 class EditionTests(unittest.TestCase):
@@ -16,6 +16,45 @@ class EditionTests(unittest.TestCase):
         self.assertEqual((card["external_id"],card["name"],card["effect"]),("OP-01:OP01-001","시험 리더","효과"))
         self.assertEqual(card["specs"]["colors"],["red"])
         self.assertEqual(card["specs"]["images"],{})
+        self.assertEqual(card["specs"]["imageProducts"], {})
+        self.assertEqual(card["specs"]["imageSources"], {})
+
+    def test_onepiece_reprint_keeps_the_adopted_images_product_and_source(self):
+        number = "EB01-003"
+        korean = "https://www.onepiece-cardgame.kr/cardlist.do?series=OPK-14"
+        original = "https://en.onepiece-cardgame.com/cardlist/?series=eb01"
+        reprint = "https://en.onepiece-cardgame.com/cardlist/?series=op14"
+        index = Index()
+        page = """<div class="card_sch_list"><button class="item">
+            <p class="cardNumber">EB01-003_P2</p><p class="cardName">카드</p>
+            <p class="cardGet">[OPK-14] 부스터 팩 창해의 칠걸</p>
+            <p class="cardText">효과</p><img class="image" src="/fileDownload?downname=parallel">
+            </button></div>"""
+        korean_page(index, page, korean, "")
+        index.add(number, "en", edition("Card", "Effect", "original-art", original), 0, "EB-01", "Original")
+        index.add(number, "en", edition("Card", "Effect", "reprint-art", reprint), 2, "OP-14", "Reprint")
+        rows = {row["external_id"]: row["specs"] for row in index.records()}
+        self.assertEqual(set(rows), {"EB-01:EB01-003", "OP-14:EB01-003"})
+        for key, en_source, en_image in (("EB-01", original, "original-art"), ("OP-14", reprint, "reprint-art")):
+            specs = rows[f"{key}:{number}"]
+            self.assertEqual(specs["productCode"], key)
+            self.assertEqual(specs["imageProducts"], {"en": key, "ko": "OP-14"})
+            self.assertEqual(specs["imageSources"], {"en": en_source, "ko": korean})
+            self.assertEqual(specs["images"]["en"], en_image)
+            self.assertTrue(specs["images"]["ko"].endswith("downname=parallel"))
+            self.assertEqual(specs["texts"], {"en": "Effect", "ko": "효과"})
+            self.assertEqual(specs["names"], {"en": "Card", "ko": "카드"})
+
+    def test_onepiece_unknown_image_product_is_not_inferred_from_collector_number(self):
+        number = "OP01-001"
+        index = Index()
+        index.add(number, "en", edition("Card", None, None, "set-list"), 0, "OP-01", "Set")
+        index.add(number, "ko", edition("카드", "효과", "promo-art", "promo-list"), 0, "PROMO", "프로모션")
+        index.add(number, "ja", edition("カード", None, "other-art", "archive"), 0)
+        for row in index.records():
+            self.assertEqual(row["specs"]["images"], {"ko": "promo-art", "ja": "other-art"})
+            self.assertEqual(row["specs"]["imageProducts"], {})
+            self.assertEqual(row["specs"]["imageSources"], {"ko": "promo-list", "ja": "archive"})
 
     def test_pokemon_matches_effect_and_picture_independently_by_confirmed_identity(self):
         evidence=PokemonNames()

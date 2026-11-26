@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.*;
 @Transactional(readOnly = true)
 class PlayApi {
     record CardLabel(long id, String name, String language, String number, String effect, String effectLanguage,
-                     String imageUrl, String imageLanguage, String type, List<String> colors, CatalogApi.Image image) {}
+                     String imageUrl, String imageLanguage, String productCode, String imageProduct, String imageSource,
+                     String type, List<String> colors, CatalogApi.Image image) {}
 
     private final JdbcClient db;
     PlayApi(JdbcClient db) { this.db = db; }
@@ -25,10 +26,12 @@ class PlayApi {
                 ,coalesce(c.specs->>'type',c.specs->>'card_type',c.specs->>'k') as type,
                 array(select jsonb_array_elements_text(case when jsonb_typeof(c.specs->'colors')='array'
                          then c.specs->'colors' else '[]'::jsonb end)) as colors
-                """ + LibraryImage.COLUMNS + " from card c " + LibraryImage.JOIN + " where c.status='PUBLISHED' and c.game_code=:game";
+                """ + LibraryImage.COLUMNS + " from card c " + CardEdition.IMAGE_JOIN + LibraryImage.JOIN
+                + " where c.status='PUBLISHED' and c.game_code=:game";
         org.springframework.jdbc.core.RowMapper<CardLabel> map = (r,n) -> new CardLabel(r.getLong("id"),r.getString("name"),
                 r.getString("language"),r.getString("number"),r.getString("effect"),r.getString("effectLanguage"),
-                r.getString("imageUrl"),r.getString("imageLanguage"),r.getString("type"),List.of((String[])r.getArray("colors").getArray()),LibraryImage.read(r));
+                r.getString("imageUrl"),r.getString("imageLanguage"),r.getString("productCode"),r.getString("imageProduct"),
+                r.getString("imageSource"),r.getString("type"),List.of((String[])r.getArray("colors").getArray()),LibraryImage.read(r));
         if (ids != null) {
             return db.sql(select + " and id in (:ids) order by id").param("ids",ids)
                     .param("lang",lang).param("game",game).query(map).list();
