@@ -7,17 +7,22 @@ from pathlib import Path
 from psycopg.rows import dict_row
 
 from .jobs import connect
+from .social_brief import translate_facts
 
 LOG = logging.getLogger(__name__)
 LANGUAGES = ("ko", "en", "ja")
 DEFAULT_MODEL = "/var/lib/tcg-hub/models/m2m100-418m-int8"
 X_LABELS = {
+    "금제 소식": {"en": "Restricted list update", "ja": "禁止・制限情報"},
+    "덱 레시피": {"en": "Deck list", "ja": "デッキレシピ"},
+    "미확인 소식": {"en": "Unconfirmed report", "ja": "未確認情報"},
     "카드 공개": {"en": "Card reveal", "ja": "カード公開"},
     "발매 소식": {"en": "Release news", "ja": "発売情報"},
     "대회 소식": {"en": "Tournament news", "ja": "大会情報"},
     "새 게시물": {"en": "New post", "ja": "新着投稿"},
 }
 SOURCE_LANGUAGES = {
+    "onepiece-kr": "ko",
     "weiss-en": "en", "riftbound-en": "en",
     "pokemon-jp": "ja", "nivel-kr": "ja", "nivel-notice-kr": "ko", "tcggame": "ko",
 }
@@ -141,7 +146,9 @@ def translate_item(db, item, get_model, stop):
             title = f"{label[1]} · {X_LABELS[label[2]][target]}"
         else:
             title = get_model().translate(item["title"], source, target)
-        summary = get_model().translate(item["summary"], source, target) if item["summary"] else None
+        summary = translate_facts(item["summary"], target) if label else None
+        if item["summary"] and summary is None:
+            summary = get_model().translate(item["summary"], source, target)
         converted.append((item["id"], target, title, summary))
     with db.transaction():
         # Inference runs outside the transaction. A concurrent title edit has queued a new version.

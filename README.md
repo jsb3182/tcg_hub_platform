@@ -1,6 +1,6 @@
 # TCG 허브
 
-유희왕, 바이스 슈발츠, 포켓몬 TCG, 니벨아레나, 리프트바운드의 카드와 최신 소식을 조회하는 한국어 PWA다. Python 워커가 출처별 일정에 따라 카드 데이터와 공지를 갱신한다. 운영자는 휴대폰의 관리자 화면에서 수집 상태를 확인하고 작업을 제어한다. 운영 대상은 Galaxy A90 5G의 Termux·Ubuntu다.
+유희왕, 바이스 슈발츠, 포켓몬 TCG, 원피스 카드게임, 니벨아레나, 리프트바운드의 카드와 최신 소식을 조회하는 PWA다. 한국어·영어·일본어로 전환할 수 있다. Python 워커가 출처별 일정에 따라 카드 데이터와 공지를 갱신한다. 운영자는 휴대폰의 관리자 화면에서 수집 상태를 확인하고 작업을 제어한다. 운영 대상은 Galaxy A90 5G의 Termux·Ubuntu다.
 
 | 작업 | 시작점 |
 |---|---|
@@ -14,7 +14,7 @@
 | 자동 수집, 외부 소스 설정, 모바일 관리 | [수집과 운영](docs/COLLECTION.md) |
 | 게임별 카드 언어, 판본 범위, 원본 출처와 갱신 방식 | [도감 출처](docs/CARD_SOURCES.md) |
 
-**바인더**에서 보유 수량을 기록하고 **내 덱**에서 덱을 만들거나 수정한다. 저장한 덱은 공유 링크와 PNG로 내보낼 수 있다. **플레이**에서 유희왕·포켓몬의 인쇄 카드명을 세 언어로 검색해 손패를 연습하거나 저장한 메인 덱을 불러온다. 시작 손패의 기본값은 유희왕 5장, 포켓몬 실물 덱 7장이며 연습 전에 바꿀 수 있다. 실제 온라인 대전은 화면에서 연결한 공식 앱을 이용한다. Pokémon TCG Pocket에는 모바일 전용 카드와 규칙이 있다. [Master Duel](https://www.konami.com/yugioh/masterduel/asia/ko/) · [포켓몬 카드 게임 Pocket](https://www.pokemonkorea.co.kr/pokemon_tcg_pocket/)
+**바인더**에서 언어판·카드 상태·교환 가능 여부별 보유 수량을 기록하고 9포켓 또는 목록으로 본다. **내 덱**에서 덱을 만들거나 수정한다. 저장한 덱은 공유 링크·덱 코드·PNG로 내보낼 수 있다. 덱 코드를 가져오면 편집 가능한 새 덱이 열린다. **플레이**에서 유희왕·포켓몬·원피스의 인쇄 카드명을 세 언어로 검색해 손패를 연습하거나 저장한 메인 덱을 불러온다. 시작 손패의 기본값은 유희왕 5장, 포켓몬 실물 덱 7장이며 연습 전에 바꿀 수 있다. 실제 온라인 대전은 화면에서 연결한 공식 앱을 이용한다. Pokémon TCG Pocket에는 모바일 전용 카드와 규칙이 있다. [Master Duel](https://www.konami.com/yugioh/masterduel/asia/ko/) · [포켓몬 카드 게임 Pocket](https://www.pokemonkorea.co.kr/pokemon_tcg_pocket/)
 
 처음 방문하면 **바인더**나 **내 덱**에서 **회원가입**을 누른다. 이메일과 비밀번호를 등록하면 로그인되어 열려던 화면으로 돌아간다. 공개 도감과 매장 지도는 가입 전에도 볼 수 있다.
 
@@ -22,7 +22,7 @@
 
 관리자는 PC나 휴대폰의 `/admin`에서 팩·카드를 등록하고 게시 상태와 일러스트를 편집한다. 이미지는 저장 영역을 미리 확인한 뒤 4×3 WebP 시트에 반영한다. [도감 편집과 이미지 처리](docs/ARCHITECTURE.md#관리자-도감-편집)
 
-### A90 운영 현황
+### A90 실기기 측정 기록
 
 2026년 11월 25일 실기기에서 조회한 도감은 5종 89,244장이다. 이 수치는 수록 판본 단위이며 최초 이관한 994장을 포함한다. 매장 지도에는 국내 34곳이 등록돼 있다.
 
@@ -39,7 +39,7 @@
 1. Java 17과 Maven, Node.js 22.12 이상, Python 3.12, PostGIS를 설치한 전용 PostgreSQL DB를 준비한다.
 2. 배포 가이드에 따라 `DB_URL`(JDBC), `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`(난수 32바이트 이상의 Base64), `MEDIA_ROOT`를 설정한다. Vite 개발 서버 사용 시 `PUBLIC_ORIGIN=http://localhost:5173`으로 설정한다.
 3. `backend`에서 `mvn spring-boot:run`을 실행한다. Flyway가 마이그레이션을 적용하고 Spring이 루프백 8080에서 대기한다. `frontend`에서 `npm ci`, `npm run dev`를 실행하고 브라우저에서 `http://localhost:5173`을 연다.
-4. [워커 운영 가이드](crawler-middleware/README.md)에 따라 Python 환경을 설치한 뒤 `python -m tcg_worker run`을 실행한다. 다섯 게임 도감과 발행처 공지의 초기 수집이 시작된다. 기존 정적 사이트의 `js/app.js`, `imgd/`, `pk/`도 사용할 경우 `check-legacy`로 건수와 시트를 확인하고 `import-legacy`로 이관한다.
+4. [워커 운영 가이드](crawler-middleware/README.md)에 따라 Python 환경을 설치한 뒤 `python -m tcg_worker run`을 실행한다. 여섯 게임 도감과 발행처 공지의 초기 수집이 시작된다. 기존 정적 사이트의 `js/app.js`, `imgd/`, `pk/`도 사용할 경우 `check-legacy`로 건수와 시트를 확인하고 `import-legacy`로 이관한다.
 
 PWA 설치와 오프라인 동작은 배포 빌드에서 확인한다. A90 내부에서는 Termux에서 관리자 계정과 인증 앱을 등록한 뒤 휴대폰 브라우저의 `http://127.0.0.1:8080/admin`에서 비밀번호와 인증 코드를 입력한다. 공개 도메인에서는 Cloudflare Access와 관리자 계정으로 접속한다. [계정 등록과 접속 절차](docs/DEPLOYMENT.md)
 

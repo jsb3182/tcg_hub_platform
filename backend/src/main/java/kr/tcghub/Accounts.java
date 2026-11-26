@@ -77,6 +77,36 @@ class Accounts {
         return newSession(user);
     }
 
+    @Transactional
+    public void initializeAdministrator(String email, String password) {
+        // Serialize first start across replicas and public signup. Never adopt an existing user's password.
+        db.sql("LOCK TABLE app_user IN SHARE ROW EXCLUSIVE MODE").update();
+        if (db.sql("select exists(select from app_user where role='ROLE_ADMIN')").query(Boolean.class).single()) return;
+        String normalized = email.strip().toLowerCase(Locale.ROOT);
+        if (normalized.length() > 254 || !normalized.matches(EMAIL_PATTERN) || password.isBlank()
+                || password.codePointCount(0, password.length()) < 12 || tooLong(password))
+            throw new IllegalStateException("Check the bootstrap administrator email and password settings");
+        if (createAccount(normalized, password, "ROLE_ADMIN").isEmpty())
+            throw new IllegalStateException("The bootstrap email is already registered");
+    }
+
+    boolean activeAdministrator(String email) {
+        return db.sql("select exists(select from app_user where email=? and enabled and role='ROLE_ADMIN')")
+                .param(email).query(Boolean.class).single();
+    }
+
+    @Transactional
+    public void changePassword(String email, String current, String next) {
+        var account = db.sql("select * from app_user where email=? and enabled for update")
+                .param(email.strip().toLowerCase(Locale.ROOT)).query(Account.class).optional().orElseThrow(Accounts::unauthorized);
+        if (tooLong(current) || !passwords.matches(current, account.passwordHash())) throw unauthorized();
+        if (next.isBlank() || next.equals(current) || next.codePointCount(0, next.length()) < 12 || tooLong(next))
+            throw new IllegalArgumentException("Choose a different password of at least 12 characters and at most 72 UTF-8 bytes");
+        db.sql("update app_user set password_hash=? where id=?").param(passwords.encode(next)).param(account.id()).update();
+        db.sql("delete from refresh_session where user_id=?").param(account.id()).update();
+        db.sql("delete from local_admin_session where user_id=?").param(account.id()).update();
+    }
+
     private Optional<Account> createAccount(String email, String password, String role) {
         return db.sql("""
             insert into app_user(email,password_hash,role) values(?,?,?) on conflict(email) do nothing

@@ -18,13 +18,19 @@ interface CardRepository extends Repository<Card, Long> {
         String getNumber();
         String getRarity();
         String getEffect();
+        String getLanguage();
+        String getEffectLanguage();
+        String getImageUrl();
+        String getImageLanguage();
         java.time.LocalDate getReleaseDate();
         String getSourceUrl();
         String getSourceName();
     }
     String SELECT = """
         select c.id, c.game_code as "gameCode", c.pack_id as "packId", p.name as "packName",
-               c.name, c.original_name as "originalName", c.number, c.rarity, c.effect,
+               c.original_name as "originalName", c.number, c.rarity,
+        """ + CardEdition.FIELDS + """
+               ,
                c.release_date as "releaseDate", c.source_url as "sourceUrl", src.label as "sourceName"
           from card c left join pack p on p.id=c.pack_id left join feed_source src on src.id=c.source_id
         """;
@@ -41,9 +47,9 @@ interface CardRepository extends Repository<Card, Long> {
         """;
 
     @Query(value=SELECT + FILTER + " order by c.id", countQuery="select count(*) from card c" + FILTER, nativeQuery=true)
-    Page<Summary> search(@Param("game") String game, @Param("packId") Long packId,
+    Page<Summary> search(@Param("game") String game, @Param("packId") Long packId, @Param("lang") String lang,
                          @Param("rarity") String rarity, @Param("q") String q, Pageable pageable);
 
     @Query(value=SELECT + " where c.status='PUBLISHED' and c.id=:id", nativeQuery=true)
-    Optional<Summary> published(@Param("id") long id);
+    Optional<Summary> published(@Param("id") long id, @Param("lang") String lang);
 }

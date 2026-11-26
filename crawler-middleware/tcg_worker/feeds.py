@@ -15,9 +15,11 @@ from xml.etree import ElementTree
 
 from bs4 import BeautifulSoup
 from protego import Protego
+from .social_brief import summarize
 
 AGENT = "TCGHub/1.0"
 NEWS = {
+    "onepiece-kr": "https://www.onepiece-cardgame.kr/topics.do",
     "weiss-en": "https://en.ws-tcg.com/information/feed/",
     "pokemon-jp": "https://www.pokemon-card.com/info/",
     "nivel-kr": "https://www.gamemarket.jp/booth/blog/5657",
@@ -237,6 +239,20 @@ def parse_news(key, body):
             day = entry.find("time")
             yield headline(base, entry["href"], entry["aria-label"],
                            published(day.get("datetime") if day else None))
+    elif key == "onepiece-kr":
+        for entry in soup.select("a.item[href]"):
+            title = entry.select_one(".desc_wrap .tit")
+            if not title:
+                continue
+            dest = urlsplit(urljoin(base, entry.get("href", "")))
+            if (dest.scheme != "https" or dest.netloc not in ("www.onepiece-cardgame.kr", "onepiece-cardgame.kr")
+                    or not re.fullmatch(r"/(?:topics|events|products)/view\.do", dest.path)
+                    or not re.fullmatch(r"brdno=\d+", dest.query)):
+                continue
+            href = dest.path + "?" + dest.query
+            day = entry.select_one(".date")
+            yield headline(base, href, title.get_text(" ", strip=True),
+                           published(day.get_text(strip=True), JST) if day else None, key=href)
     elif key == "nivel-kr":
         for entry in soup.select(".itemList-child"):
             anchor, title = entry.select_one('a[href^="/blog/"]'), entry.select_one("dt.title")
@@ -432,14 +448,9 @@ def x_news(username, cursor, *, on_x_limit=None):
         post_id = post.get("id") if isinstance(post, dict) else None
         if not x_id(post_id) or (since and int(post_id) <= int(since)) or (until and int(post_id) >= int(until)):
             raise FetchError("X API가 요청 범위 밖의 게시물 번호를 반환했습니다.")
-        # Keep original posts on X. Classify locally and persist a link and attribution.
-        text = post.get("text", "").lower()
-        category = next((label for pattern, label in (
-            (r"reveal|선공개|신규 카드|公開", "카드 공개"), (r"release|booster|발매|입고|発売", "발매 소식"),
-            (r"tournament|championship|대회|大会", "대회 소식"),
-        ) if re.search(pattern, text)), "새 게시물")
+        category, brief = summarize(post.get("text") or "")
         items.append(Headline(post_id, f"@{username} · {category}", f"https://x.com/{username}/status/{post_id}",
-                              published(post.get("created_at"))))
+                              published(post.get("created_at")), brief))
     ids = [int(item.external_id) for item in items]
     if ids and (meta.get("newest_id", str(max(ids))) != str(max(ids))
                 or meta.get("oldest_id", str(min(ids))) != str(min(ids))):

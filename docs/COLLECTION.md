@@ -4,11 +4,12 @@
 
 ## 자동 수집
 
-A90의 로컬 설치에서는 `tcgctl start-local`, 공개 HTTPS 설치에서는 `tcgctl start`로 Python 워커를 실행한다. 도감 5개는 기본 24시간마다, 활성화된 발행처 공지 5개는 1시간마다 확인한다. DB에 원본 키와 체크포인트를 보관하므로 앱을 닫아도 서버에서 수집이 계속된다. 기존 한국어 유희왕 정적 도감도 함께 보관할 수 있다. [이관 도구](../crawler-middleware/README.md)
+A90의 로컬 설치에서는 `tcgctl start-local`, 공개 HTTPS 설치에서는 `tcgctl start`로 Python 워커를 실행한다. 도감 6개는 기본 24시간마다, 활성화된 발행처 공지는 1시간마다 확인한다. DB에 원본 키와 체크포인트를 보관하므로 앱을 닫아도 서버에서 수집이 계속된다. 기존 한국어 유희왕 정적 도감도 함께 보관할 수 있다. [이관 도구](../crawler-middleware/README.md)
 
 | 게임 | 발행처 소식 | X 계정 |
 |---|---|---|
 | 유희왕 | 한국과 아시아 공식 공지는 원문을 직접 연다. [한국 공지](https://www.yugioh.co.kr/board/board_list.php?b_category=notice) · [아시아 공지](https://www.yugioh-card.com/asia/news/) | [@YuGiOh_TCG](https://x.com/YuGiOh_TCG) |
+| 원피스 | [한국 공식 공지](https://www.onepiece-cardgame.kr/topics.do) | [@ONEPIECE_tcg_KR](https://x.com/ONEPIECE_tcg_KR) |
 | 바이스 슈발츠 | [부시로드 공식 RSS](https://en.ws-tcg.com/information/feed/) | [@weissschwarz_en](https://x.com/weissschwarz_en) |
 | 포켓몬 TCG | [포켓몬 카드 일본 공지](https://www.pokemon-card.com/info/) | [@PokemonTCG](https://x.com/PokemonTCG) |
 | 니벨아레나 | [젬블로 국내 공지](http://nivelarena.co.kr/bbs/board.php?bo_table=notice) · [일본 게임마켓의 출전사 소식](https://www.gamemarket.jp/booth/blog/5657) | [@NivelArena](https://x.com/NivelArena) |

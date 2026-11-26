@@ -18,7 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/admin/catalog")
 @Transactional(readOnly=true)
 class AdminCatalogApi {
-    static final String GAMES = "YUGIOH|POKEMON|WEISS|NIVEL|RIFTBOUND";
+    static final String GAMES = "YUGIOH|POKEMON|ONEPIECE|WEISS|NIVEL|RIFTBOUND";
     record PackInput(@NotNull @Pattern(regexp=GAMES) String gameCode, @NotBlank @Size(max=320) String name,
                      @Size(max=96) String code, LocalDate releaseDate, @Size(max=200) String releaseLabel,
                      JsonNode metadata, @Positive Long version) {}

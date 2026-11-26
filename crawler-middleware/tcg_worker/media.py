@@ -45,11 +45,13 @@ def normalized_png(source: Path) -> bytes:
     return result.getvalue()
 
 
-def atomic_write(path: Path, data: bytes) -> None:
+def atomic_write(path: Path, data: bytes, *, group_readable: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     handle, temp = tempfile.mkstemp(prefix=".tmp-", dir=path.parent)
     try:
         with os.fdopen(handle, "wb") as output:
+            if group_readable and os.name == "posix":
+                os.fchmod(output.fileno(), 0o640)
             output.write(data)
             output.flush()
             os.fsync(output.fileno())
@@ -67,7 +69,7 @@ def atomic_write(path: Path, data: bytes) -> None:
 def publish(root: Path, directory: str, data: bytes) -> str:
     key = f"{directory}/{hashlib.sha256(data).hexdigest()}.webp"
     if not (root / key).is_file():
-        atomic_write(root / key, data)
+        atomic_write(root / key, data, group_readable=True)
     return key
 
 

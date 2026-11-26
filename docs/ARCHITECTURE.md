@@ -5,7 +5,7 @@
 ```text
 모바일 PWA / PC 웹 ── HTTPS ── Cloudflare TLS · DDoS · WAF
                                       │ 관리자 화면과 API에 Access 정책
-                               이미 연결된 Tunnel
+                               Cloudflare Tunnel
                                       │
                      Galaxy A90 ┌── cloudflared
                                 │        ↓ HTTP / loopback
@@ -18,7 +18,7 @@
                                 │                     └─ 파일 시트 ┘
                                 └── Termux:Boot와 runit 서비스 감독
 
-카드 제공자 5곳 ──── 도감 수집 작업 ───┐
+6종 카드 제공자 ──── 도감 수집 작업 ───┐
 발행처·X·TCG 갤러리 ─ 공지 수집 작업 ───┴── Python 워커 ── PostgreSQL
 A90 내부 /admin ── 인증 앱(TOTP) + 관리자 JWT ─┐
 공개 도메인 /admin ── Access + 관리자 JWT ─────┴─ 운영 API ── 수집 요청 · 검수 · 감사 기록
@@ -29,6 +29,7 @@ A90 내부 /admin ── 인증 앱(TOTP) + 관리자 JWT ─┐
 | `frontend/` | Vue Composition API, Router와 Pinia, 공개 도감·새 소식·로그인·모바일 관리자 화면, 설치형 PWA |
 | `backend/` | 조회 API, 인증·인가, 원본 미디어 제공, 계정 생성 CLI, Flyway |
 | `crawler-middleware/` | 게임별 카드 어댑터, 발행처·X·갤러리 수집, 로컬 정적 사이트 이관, 이미지 검증과 WebP 패킹 |
+| `android/` | 공개 플랫폼 WebView, A90 서비스 관리, 원격 상태 조회와 로컬 네트워크 Wake-on-LAN |
 | `deploy/` | PC 릴리스 빌드, Ubuntu 구성, Termux 서비스와 운영 명령 |
 
 운영 서버 한 대에서 PostgreSQL이 조회 데이터와 작업 큐를 함께 보관한다. 브라우저는 같은 출처에서 API와 미디어를 사용한다. 이미지 처리에는 외부 요청을 받는 HTTP 포트가 필요하지 않다.
@@ -79,6 +80,23 @@ WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3
 4. PWA는 목록을 페이지 단위로 가져오고 펼친 카드의 상세와 시트를 읽는다. 앱 셸을 미리 캐시하며 최근 공개 조회 응답 80건, 공개 시트·배너 32개를 상한으로 둔다. 인증·관리자 응답과 탐색은 런타임 캐시 대상에서 제외한다.
 
 ## 관리자 도감 편집
+
+### 운영 API
+
+관리자 웹과 Android 운영 화면은 같은 인증 검사를 거친다. 서버는 요청마다 관리자 계정의 현재 권한을 확인한다.
+
+| 경로 | 동작 |
+|---|---|
+| `GET /api/admin/server/status` | DB 연결, JVM 힙, 워커 하트비트, 예약 상태와 서비스 제어 가능 여부 |
+| `POST /api/admin/server/sync` | 활성 출처의 수집 요청 등록. 발행처 재시도 시각을 준수한다. |
+| `POST /api/admin/server/scheduler/{pause,resume}` | 자동 예약 일시정지 또는 재개 |
+| `POST /api/admin/server/crawler/{start,stop}` | 워커가 새 수집 작업을 가져가는 동작 제어 |
+| `POST /api/admin/server/{restart,shutdown}` | 등록한 systemd 서비스의 재시작 또는 정지 |
+| `/api/v1/admin/stores` | 좌표·종목·공인 여부·공개 상태 등록 및 수정, 매장별 대회 등록 |
+
+공개 매장 응답의 `events`는 현재 진행 중이거나 앞으로 7일 안에 시작하는 공개 대회다. 공인 여부가 확인되지 않은 매장은 `official: null`로 응답한다. 바인더는 카드와 소유자에 언어판·상태·교환 여부를 더해 수량을 기록한다. 기존 보유 기록은 판본과 상태 미지정으로 이관한다.
+
+### 카드 편집
 
 관리 화면에서 종목을 고른 뒤 팩을 등록하고, 카드 이름·번호·레어도·발매일과 게임별 상세 속성을 입력한다. 새 카드는 검수 대기로 저장할 수 있고, 팩은 등록 후 바로 검색할 수 있다. 다른 운영자가 먼저 수정한 카드는 최신 버전을 다시 연 뒤 저장한다. 자동 수집한 카드의 원본 필드는 출처에서 갱신하고 운영자는 게시 상태를 결정한다.
 

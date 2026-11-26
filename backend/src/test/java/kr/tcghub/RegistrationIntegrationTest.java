@@ -30,6 +30,20 @@ class RegistrationIntegrationTest {
     @Autowired MockMvc api;
     @Autowired ObjectMapper json;
     @Autowired JdbcClient db;
+    @Autowired Accounts accounts;
+
+    @Test @Transactional void bootstrapIsIdempotentAndRotationRevokesRefreshSessions() {
+        String email=UUID.randomUUID()+"@example.invalid";
+        String first=UUID.randomUUID().toString(), next=UUID.randomUUID().toString();
+        accounts.initializeAdministrator(email,first);
+        accounts.initializeAdministrator(email,next);
+        var old=accounts.login(new Accounts.Login(email,first));
+        assertEquals("ROLE_ADMIN",old.access().role());
+        accounts.changePassword(email,first,next);
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,()->accounts.rotate(old.refresh()));
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,()->accounts.login(new Accounts.Login(email,first)));
+        assertEquals("ROLE_ADMIN",accounts.login(new Accounts.Login(email,next)).access().role());
+    }
     @Value("${tcg.public-origin}") String origin;
 
     private MockHttpServletRequestBuilder write(MockHttpServletRequestBuilder request, Object body) throws Exception {

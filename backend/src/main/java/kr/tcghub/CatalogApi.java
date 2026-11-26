@@ -52,12 +52,13 @@ class CatalogApi {
 
     @GetMapping("/cards")
     PageResult list(@RequestParam(defaultValue="") @Size(max=32) String game,
+                    @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang,
                     @RequestParam(required=false) @Positive Long packId,
                     @RequestParam(defaultValue="") @Size(max=64) String rarity,
                     @RequestParam(defaultValue="") @Size(max=120) String q,
                     @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
                     @RequestParam(defaultValue="24") @Min(1) @Max(100) int size) {
-        var result = cards.search(game, packId, rarity.strip(), q.strip(), PageRequest.of(page,size));
+        var result = cards.search(game, packId, lang, rarity.strip(), q.strip(), PageRequest.of(page,size));
         var images = new HashMap<Long,Image>();
         if (!result.isEmpty()) {
             var ids = result.getContent().stream().map(CardRepository.Summary::getId).toList();
@@ -73,8 +74,9 @@ class CatalogApi {
     }
 
     @GetMapping("/cards/{id}")
-    Details details(@PathVariable @Positive long id) throws java.io.IOException {
-        var card = cards.published(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    Details details(@PathVariable @Positive long id,
+                    @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) throws java.io.IOException {
+        var card = cards.published(id,lang).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         var specs = db.sql("select specs::text from card where id=?").param(id).query(String.class).single();
         var variants = db.sql("""
             select v.id, v.rarity, v.sheet_id, v.col_idx, v.row_idx, s.storage_key, s.cell_width, s.cell_height

@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote, urlencode
 
-from .card_names import PokemonNames, ygo_names
+from .card_names import PokemonNames, pokemon_edition, pokemon_effect, ygo_names
 
 def document(path):
     with path.open(encoding="utf-8-sig") as stream:
@@ -38,13 +38,7 @@ def pokemon_record(card, file):
     ident = str(card.get("ko_id") or f"{code or 'no_set'}/{PurePosixPath(file).stem}")
     specs = selected(card, ("card_type", "hp", "types", "regulation", "stage", "pokedex_number", "attacks",
                             "abilities", "weakness", "resistance", "retreat", "set_total", "author"))
-    effect = card.get("effect")
-    if isinstance(effect, list):
-        effect = "\n".join(map(str, effect))
-    if not effect:
-        actions = (card.get("abilities") or []) + (card.get("attacks") or [])
-        effect = "\n".join(" ".join(str(item[k]) for k in ("name", "damage", "effect") if item.get(k))
-                           for item in actions if isinstance(item, dict)).strip()
+    effect = pokemon_effect(card)
     return {"external_id": "ko:" + ident, "pack_code": code, "pack_name": card.get("set_full_name") or code,
             "number": number, "name": name, "original_name": name, "rarity": card.get("rarity"),
             "effect": effect or None, "release_date": None, "specs": {"language": "ko", **specs},
@@ -54,7 +48,10 @@ def pokemon_record(card, file):
 def pokemon(http):
     repo = "type-null/PTCG-database"
     sha = revision(http, repo, None)
-    derived = http.root / hashlib.sha256(f"pokemon-localized-v2:{sha}".encode()).hexdigest()
+    # Check the maintained English image index weekly even if the Korean provider is unchanged.
+    from datetime import date
+    week = date.today().toordinal() // 7
+    derived = http.root / hashlib.sha256(f"pokemon-localized-v3:{sha}:{week}".encode()).hexdigest()
     if derived.is_file():
         http.remember_revision("pokemon-korean-archive", derived)
         with derived.open(encoding="utf-8") as cache:
@@ -62,11 +59,12 @@ def pokemon(http):
                 yield json.loads(line)
         return
     archive = http.get(f"https://codeload.github.com/{repo}/tar.gz/{sha}", ttl=365 * 86400, size=320_000_000,
-                       family="pokemon-korean-archive")
+                       family="pokemon-source-archive")
     fd, temp = tempfile.mkstemp(dir=http.root, prefix=".pokemon-")
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as output:
-            for row in pokemon_archive(archive, http.root):
+            art = pokemon_english_art(http)
+            for row in pokemon_archive(archive, http.root, art):
                 output.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
                 yield row
         os.replace(temp, derived)
@@ -75,7 +73,26 @@ def pokemon(http):
         Path(temp).unlink(missing_ok=True)
 
 
-def pokemon_archive(archive, workdir=None):
+def pokemon_english_art(http):
+    from urllib.parse import urlsplit
+    sets=document(http.get("https://raw.githubusercontent.com/PokemonTCG/pokemon-tcg-data/master/sets/en.json",ttl=7*86400))
+    rows=document(http.get("https://api.tcgdex.net/v2/en/cards",ttl=7*86400,size=12_000_000))
+    aliases={s["id"].lower():str(s.get("ptcgoCode") or "").lower() for s in sets}
+    art={}
+    for row in rows:
+        number=str(row.get("localId") or "")
+        ident=row.get("id") or ""
+        base=row.get("image") or ""
+        url=urlsplit(base)
+        if not number or not ident.endswith("-"+number) or url.scheme!="https" or url.netloc!="assets.tcgdex.net" or not url.path.startswith("/en/"):
+            continue
+        key=ident[:-len(number)-1].lower()
+        for group in (key,aliases.get(key)):
+            if group: art[group,number.lstrip("0") or "0",row["name"]]=base+"/high.webp"
+    return art
+
+
+def pokemon_archive(archive, workdir=None, english_art=None):
     seen = set()
     names = PokemonNames()
     languages = {"data_ko": "ko", "data_en": "en", "data_jp": "ja"}
@@ -93,9 +110,11 @@ def pokemon_archive(archive, workdir=None):
                 with bundle.extractfile(entry) as stream:
                     card = json.load(stream)
                 lang = languages[parts[1]]
-                names.add(lang, card)
+                edition=pokemon_edition(lang,card,english_art or {})
+                names.add(lang, card, edition)
                 if lang == "ko" and len(parts) == 4:
                     record = pokemon_record(card, parts[-1])
+                    record["specs"].update({k:{"ko":v} for k,v in edition.items()})
                     if record["external_id"] not in seen:
                         seen.add(record["external_id"])
                         korean.write(json.dumps([record, card.get("print_key"), card.get("card_key")],
@@ -105,7 +124,9 @@ def pokemon_archive(archive, workdir=None):
         korean.seek(0)
         for line in korean:
             record, print_key, card_key = json.loads(line)
-            record["specs"]["names"] = names.localized(record["name"], print_key, card_key)
+            editions=names.editions(record["name"], print_key, card_key)
+            for key, values in editions.items():
+                record["specs"][key]={**values,**record["specs"].get(key,{})}
             yield record
 
 
@@ -158,7 +179,7 @@ def riftbound(http):
                "number": number, "name": name, "original_name": name, "rarity": card.get("rarity"),
                "effect": card.get("text"), "release_date": group.get("released"),
                "specs": {"language": "en", **selected(card, ("variant", "num", "type", "supertype", "energy",
-                                                               "might", "power", "domains", "artist", "finishes"))},
+                                                               "might", "power", "domains", "tags", "cleanName", "artist", "finishes"))},
                "source_url": "https://api.rifthunt.com/cards/" + quote(card["printing_id"], safe="")}
 
 
@@ -178,10 +199,13 @@ def yugioh(http):
         for card in rows:
             misc = (card.get("misc_info") or [{}])[0]
             printings = card.get("card_sets") or []
+            art = next((v.get("image_url_small") for v in card.get("card_images",[])
+                        if v.get("id")==card["id"] and v.get("image_url_small")==f"https://images.ygoprodeck.com/images/cards_small/{card['id']}.jpg"),None)
             if not printings and not any(key in misc for key in ("ocg_date", "tcg_date")):
                 continue
             for printing in printings or [{}]:
                 name = card["name"]
+                local = translations.get(str(misc.get("konami_id")), {})
                 number = printing.get("set_code")
                 pack_name = printing.get("set_name")
                 pack = sets.get(pack_name, {})
@@ -197,7 +221,13 @@ def yugioh(http):
                        "number": number or str(card["id"]), "name": name, "original_name": name, "rarity": rarity,
                        "effect": card.get("desc"), "release_date": pack.get("tcg_date") if printing else misc.get("ocg_date") or misc.get("tcg_date"),
                        "specs": {"language": "en", "passcode": card["id"],
-                                 "names": {"en": name, **translations.get(str(misc.get("konami_id")), {})},
+                                 **({"representativeArt":art} if art and misc.get("tcg_date") else {}),
+                                 "names": {"en": name, **local.get("names", {})},
+                                 "texts": {"en": card.get("desc") or "", **local.get("texts", {})},
+                                 "legality": local.get("legality", {}),
+                                 "sources": {k: "https://www.db.yugioh-card.com/yugiohdb/card_search.action?" +
+                                             urlencode({"ope":2,"cid":misc["konami_id"],"request_locale":k})
+                                             for k in ("ko","en","ja") if misc.get("konami_id")},
                                  **selected(card, ("type", "race", "level", "attribute", "atk", "def",
                                                    "archetype", "scale", "linkval", "linkmarkers")),
                                  **selected(misc, ("ocg_date", "tcg_date", "formats", "konami_id"))},

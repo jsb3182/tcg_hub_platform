@@ -54,7 +54,8 @@ class DatabaseTests(unittest.TestCase):
         with self.db.transaction(force_rollback=True):
             self.db.execute("INSERT INTO card(game_code,name,status) VALUES ('YUGIOH','manual','PUBLISHED')")
             before = check_catalogs(self.db)
-            self.assertEqual(len(before["catalogs"]), 5)
+            self.assertEqual({row["game"] for row in before["catalogs"]},
+                             {"YUGIOH", "POKEMON", "ONEPIECE", "WEISS", "NIVEL", "RIFTBOUND"})
             self.assertTrue(all(row["published"] == 0 for row in before["catalogs"]))
             self.assertFalse(before["initial_sync_complete"])
             self.db.execute("""

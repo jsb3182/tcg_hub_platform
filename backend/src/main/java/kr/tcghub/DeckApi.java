@@ -34,7 +34,16 @@ class DeckApi {
     private final JdbcClient db;
     private final DeckRules rules;
     private final ObjectMapper json;
-    DeckApi(JdbcClient db, DeckRules rules, ObjectMapper json) { this.db=db; this.rules=rules; this.json=json; }
+    private final DeckCodes codes;
+    DeckApi(JdbcClient db, DeckRules rules, ObjectMapper json,DeckCodes codes) {this.db=db;this.rules=rules;this.json=json;this.codes=codes;}
+
+    @GetMapping("/me/decks/{id}/code")
+    DeckCodes.Code code(Principal user,@PathVariable @Positive long id) {return codes.encode(owned(user,id,false));}
+
+    @PostMapping("/me/decks/import")
+    @Transactional
+    @ResponseStatus(HttpStatus.CREATED)
+    Details importCode(Principal user,@RequestBody DeckCodes.Code input) {return create(user,codes.decode(input.code()));}
 
     @ExceptionHandler(DeckRules.Invalid.class)
     ResponseEntity<Map<String,String>> invalid(DeckRules.Invalid e) {
@@ -43,7 +52,7 @@ class DeckApi {
     private static ResponseStatusException missing() { return new ResponseStatusException(HttpStatus.NOT_FOUND); }
 
     @GetMapping("/me/decks/rules/{game}")
-    DeckRules.Rule rule(@PathVariable @Size(max=32) String game) { return rules.rule(game,"CONSTRUCTED",2); }
+    DeckRules.Rule rule(@PathVariable @Size(max=32) String game) { return rules.current(game); }
 
     @GetMapping("/me/decks")
     Page list(Principal user,@RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page) {
@@ -84,12 +93,12 @@ class DeckApi {
     @ResponseStatus(HttpStatus.CREATED)
     Details create(Principal user,@RequestBody @Valid Save data) {
         if(data.revision()!=0) throw new ResponseStatusException(HttpStatus.CONFLICT);
-        var rule=rules.rule(data.gameCode(),"CONSTRUCTED",2);
+        var rule=rules.current(data.gameCode());
         rules.validate(rule,data.entries(),data.state().equals("COMPLETE"));
         long id=db.sql("""
             insert into deck(owner_id,game_code,name,format,rule_version,state,share_token)
-            select id,?,?,'CONSTRUCTED',2,?,? from app_user where email=? and enabled returning id
-            """).param(data.gameCode()).param(data.name().strip()).param(data.state())
+            select id,?,?,'CONSTRUCTED',?,?,? from app_user where email=? and enabled returning id
+            """).param(data.gameCode()).param(data.name().strip()).param(rule.version()).param(data.state())
                 .param(data.shared()?UUID.randomUUID():null).param(user.getName()).query(Long.class).optional().orElseThrow(DeckApi::missing);
         return writeEntries(user,id,rule,data.entries());
     }
