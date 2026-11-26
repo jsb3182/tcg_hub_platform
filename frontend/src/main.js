@@ -3,6 +3,8 @@ import { createPinia } from 'pinia'
 import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
 import { useSession } from './stores/session'
 import App from './App.vue'
+import { locale, t } from './i18n'
+import { watchEffect } from 'vue'
 import CatalogView from './views/CatalogView.vue'
 import './styles/tokens.css'
 import './styles/app.css'
@@ -53,5 +55,10 @@ router.beforeEach(async (to, from) => {
 navigator.serviceWorker?.addEventListener('message', event => {
   if (event.data === 'tcg-local-entry-ready') event.ports[0]?.postMessage(true)
 })
-router.afterEach(to => { document.title = to.meta.title + ' · TCG 허브' })
-createApp(App).use(createPinia()).use(router).mount('#app')
+watchEffect(() => {
+  document.documentElement.lang = locale.value
+  document.title = t(router.currentRoute.value.meta.title || '카드 도감') + ' · ' + t('TCG 허브')
+})
+const app = createApp(App)
+app.config.globalProperties.$t = t
+app.use(createPinia()).use(router).mount('#app')
