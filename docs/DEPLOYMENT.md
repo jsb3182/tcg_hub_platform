@@ -108,7 +108,10 @@ tcgctl account admin@example.com ROLE_ADMIN
 첫 기동 때 계정을 자동 생성할 경우 API 프로세스에 `TCG_BOOTSTRAP_ADMIN_EMAIL`과 `TCG_BOOTSTRAP_ADMIN_PASSWORD`를 전달한다. A90에서는 Ubuntu의 `/etc/tcg-hub/web-config/` 아래에 `tcg.bootstrap.email`과 `tcg.bootstrap.password`를 한 줄씩 담은 비공개 파일로 둘 수 있다. 디렉터리는 0700, 파일은 0600으로 설정하고 API 계정만 읽을 수 있게 한다. 관리자 생성 후 두 초기화 파일을 삭제하고 Termux에서 `tcgctl password 본인이메일`을 실행한다. 현재 비밀번호와 새 비밀번호를 터미널의 숨김 입력으로 받으며, 변경이 성공하면 기존 갱신 세션과 로컬 관리자 세션이 만료된다. 기존 관리자 계정이 있으면 최초 기동 설정을 건너뛴다.
 
 1. `tcgctl start-local`로 앱을 기동한다. 관리자 계정이 없으면 Termux에서 `tcgctl account admin@example.com ROLE_ADMIN`의 예시 이메일을 자신의 것으로 바꿔 실행한다. 비밀번호를 입력하는 동안 화면에는 글자가 표시되지 않는다. Enter를 누른 뒤 `Account created.`가 나오면 다음 단계로 간다. `Use at least 12 characters and at most 72 UTF-8 bytes`가 나오면 길이 조건에 맞는 새 비밀번호로 다시 실행한다.
-2. **A90의 Termux 터미널**에서 `tcgctl totp admin@example.com`을 실행한다. 인증 앱의 수동 등록 화면에서 키 종류를 시간 기반으로 지정하고 표시된 설정 키를 입력한다. 기본값은 SHA-1, 6자리, 30초다. 인증 앱이 설정 URI 입력을 지원하면 같은 화면에 표시된 URI를 사용할 수 있다. 인증 앱의 6자리 코드를 Termux에 입력하면 등록이 완료된다. [TOTP 규격](https://www.rfc-editor.org/rfc/rfc6238.html)
+2. Termux에서 `tcgctl totp admin@example.com`의 이메일을 등록한 주소로 바꿔 실행한다. 이미 **설정 키**가 보이면 그 창에서 이어간다. 같은 A90에서 Google OTP를 쓰는 경우 다음 순서로 등록한다.
+   - Termux에서 **설정 키** 옆에 있는 영문·숫자 32자만 길게 눌러 복사한다.
+   - 최근 앱으로 Google OTP를 열고 **코드 추가(+) → 설정 키 입력**을 누른다. 계정 이름은 `TCG 허브`, 내 키는 방금 복사한 값, 키 유형은 **시간 기준**으로 설정하고 **추가**를 누른다. 다른 인증 앱의 수동 설정값은 SHA-1, 6자리, 30초다. [Google OTP](https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2) · [TOTP 규격](https://www.rfc-editor.org/rfc/rfc6238.html)
+   - 최근 앱에서 **기존 Termux 창**으로 돌아와 인증 앱의 현재 6자리 숫자를 공백 없이 입력하고 Enter를 누른다. 숫자를 입력하는 동안 화면은 비어 있다. **인증 앱 등록을 마쳤습니다**가 뜨면 완료다. 설정 키와 코드는 기기 안에서만 입력한다.
 3. A90의 브라우저로 `http://127.0.0.1:8080/login?to=admin`을 연다. 관리자 이메일과 암호로 로그인하고 **다음 6자리 코드**를 입력한다. 등록 확인에 사용한 코드는 이미 소비됐다. 인증 앱의 시각이 어긋나면 Android의 자동 날짜 및 시간을 확인한다.
 4. 인증 앱을 교체하거나 분실하면 기기를 직접 열고 `tcgctl totp admin@example.com --rotate`를 실행한다. 새 앱의 코드 확인과 교체가 성공하면 기존 로컬 관리자 세션이 만료된다. 교체가 취소되거나 코드가 틀리면 기존 앱과 세션을 계속 사용할 수 있다.
 
