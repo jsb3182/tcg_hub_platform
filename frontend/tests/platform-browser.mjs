@@ -1,13 +1,15 @@
 // Run after npm run build. Uses in-memory contract fixtures and the installed Chromium.
 import assert from 'node:assert/strict'
 import {createRequire} from 'node:module'
-import {readFile} from 'node:fs/promises'
+import {readFile,mkdir} from 'node:fs/promises'
 import {extname,join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE||'playwright')
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||undefined})
 const dist=fileURLToPath(new URL('../dist/',import.meta.url)), origin='http://127.0.0.1:19891'
 const mime={'.html':'text/html;charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png'}
+const subscriptions=[]
+let fixtureRole='ROLE_ADMIN'
 const codes=['YUGIOH','POKEMON','ONEPIECE','WEISS','NIVEL','RIFTBOUND']
 const titles={ko:'연습용 카드',en:'Practice card',ja:'練習カード'}, writes=[],errors=[]
 const deck={id:70,name:'Fixture deck',gameCode:'ONEPIECE',revision:1,state:'DRAFT',updatedAt:'2026-11-01T00:00:00Z',entries:[],rule:{version:1,sections:[{section:'MAIN',minCards:50,maxCards:50}]}}
@@ -38,16 +40,25 @@ try {
      const body=req.postData()?req.postDataJSON():null
      writes.push({api,query:Object.fromEntries(u.searchParams),body})
    }
-   if(api==='auth/refresh')return json({accessToken:'fixture',email:'operator@example.invalid',role:'ROLE_ADMIN'})
+   if(api==='auth/refresh')return json({accessToken:'fixture',email:'operator@example.invalid',role:fixtureRole})
    if(api==='auth/admin-mode')return json({mode:'CLOUDFLARE'})
    if(api==='games')return json(codes.map(code=>({code,name:code})))
    if(api==='packs')return json([])
    if(api==='config')return json({kakaoMapKey:''})
-   if(api==='stores')return json({items:[{id:8,name:'Fixture shop',address:'Seoul',lat:37.5,lon:127,games:[{code:'ONEPIECE'}],official:true,events:[{id:5,title:'Store tournament',gameCode:'ONEPIECE',startsAt:'2026-11-25T10:00:00Z'}]}],total:1})
+   if(api==='stores')return json({items:[{id:8,name:'Fixture shop',address:'Seoul',lat:37.5,lon:127,games:[{code:'ONEPIECE'}],official:true,events:[
+     {id:5,category:'TOURNAMENT',title:'Store championship',gameCode:'ONEPIECE',startsAt:'2026-11-25T10:00:00Z',sourceUrl:'https://example.invalid/official-store-event'},
+     {id:6,category:'RESTOCK',title:'신상품 입고',gameCode:null,startsAt:'2026-11-25T13:30:00Z',sourceUrl:'https://example.invalid/store-restock'}
+   ]}],total:1})
    if(api==='me/favorites/stores')return json([])
    if(api==='play/cards')return json([card])
    if(api==='cards')return json({items:[card],total:1})
-   if(api==='cards/51')return json({...card,variants:[],specs:{names:titles}})
+   if(api==='cards/51')return json({...card,variants:[],specs:{names:titles,sources:{ja:"https://example.invalid/public-card-ja"}},effectLanguage:'en',imageUrl:'/media/fixture.webp',imageLanguage:'en'})
+   if(api.startsWith('shared/decks/')){
+     const gameCode=api.split('/').pop()
+     assert.ok(codes.includes(gameCode))
+     const entries=[{name:'First card',cardId:10,quantity:3,curveValue:0},{name:'Second card',cardId:11,quantity:3,curveValue:4},{name:'Unknown value',cardId:12,quantity:2,curveValue:null}].map(e=>({...e,section:'MAIN'}))
+     return json({...deck,gameCode,entries:[...entries,{name:'Excluded card',cardId:73,section:'SIDE',quantity:15,curveValue:9}]})
+   }
    if(api==='me/binder/stats')return json(codes.map(gameCode=>({gameCode,copies:0,uniqueCards:0})))
    if(api==='me/binder')return json({items:[{cardId:51,name:card.name,edition:'en',condition:'NM',tradable:true,quantity:2}],total:1,copies:2})
    if(api==='me/binder/51')return json({quantity:u.searchParams.get('edition')==='ja'?3:2})
@@ -55,15 +66,24 @@ try {
    if(api==='me/decks/import')return json(deck,201)
    if(api==='me/decks/70')return json(deck)
    if(api==='me/decks/70/code')return json({code:'TCGHUB1-fixture'})
-   if(api==='admin/operations')return json({cardCounts:{ONEPIECE:1},sources:[]})
+   if(api==='admin/operations')return json({cardCounts:{ONEPIECE:1},sources:subscriptions})
+   if(api==='admin/sources/x'){
+     const {username,gameCode,storeId}=req.postDataJSON()
+     if(username==='invalid_store')return json({},400)
+     if(subscriptions.some(source=>source.name==='@'+username))return json({},409)
+     subscriptions.push({id:90+subscriptions.length,name:'@'+username,enabled:true,provider:'X',state:'IDLE',gameCode,storeId,intervalSeconds:7200})
+     return json({id:subscriptions[subscriptions.length-1].id},201)
+   }
    if(api==='admin/server/status')return json({database:'UP',schedulerEnabled:true,crawlerEnabled:true,hostControlAvailable:false})
    if(api==='admin/actions')return json([{action:'TEST_ACTION',occurredAt:'2026-11-01T00:00:00Z'}])
    if(api==='admin/users')return json([{id:8,email:'fixture@example.invalid',role:'ROLE_USER',enabled:true}])
    if(api==='admin/posts')return json({items:[{id:4,title:'Fixture post',hidden:false,pinned:false}],total:1})
+   if(api==='admin/stores' && u.searchParams.get('q')==='not-a-store')return json([])
    if(api==='admin/stores')return json([{id:8,name:'Fixture shop',address:'Seoul',gameCodes:['ONEPIECE'],version:2}])
    if(api==='news')return json({items:[{id:3,title:titles[lang],originalTitle:'Practice card',originalLanguage:'en',originalSummary:'Original summary',summary:'Original summary',contentLanguage:lang,summaryLanguage:'en',translationStatus:lang==='en'?'ORIGINAL':'TRANSLATED',gameCode:'ONEPIECE',sourceUrl:'https://example.invalid/news/3'}],total:1})
    errors.push('Unknown route '+api);return json({},404)
   }
+  if(path==='/media/fixture.webp')return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2ZkAAAAASUVORK5CYII=','base64')})
   const file=(path.startsWith('/assets/')||extname(path))?path.slice(1):'index.html'
   try{return await route.fulfill({contentType:mime[extname(file)],body:await readFile(join(dist,file))})}catch{return route.fulfill({status:404,body:''})}
  })
@@ -76,6 +96,29 @@ try {
  await visible(page.locator('.card-facts [lang=en]').filter({hasText:'Practice card'}))
  assert.equal(await page.locator('html').getAttribute('lang'),'ja')
  assert.equal(await select.inputValue(),'ja')
+ assert.equal(await page.locator('.card-facts [lang=ja] a').getAttribute('href'),'https://example.invalid/public-card-ja')
+ await visible(page.locator('.illustration .edition-note').filter({hasText:'英語版'}))
+ await visible(page.locator('.detail-section .edition-note').filter({hasText:'英語版'}))
+ for(const [game,size] of Object.entries({YUGIOH:5,POKEMON:7,ONEPIECE:5,WEISS:5,NIVEL:5,RIFTBOUND:4})){
+   await go('/shared/decks/'+game+'?lang=en')
+   await visible(page.getByRole('heading',{name:'Deck curve',exact:true}))
+   const opening=page.locator('.opening-panel')
+   assert.equal(await opening.getByRole('spinbutton').inputValue(),String(size))
+   assert.equal(await page.locator('.curve-list li').count(),2)
+   assert.match(await page.locator('.curve-list li').first().innerText(),/0\s+3/)
+   await visible(page.locator('.curve-panel').getByText(/No recorded value.*2/))
+   await opening.getByRole('button').click()
+   assert.equal(await opening.locator('ol li').count(),size)
+   assert.ok(!(await opening.innerText()).includes('Excluded card'))
+   await opening.getByRole('spinbutton').fill('10')
+   await opening.getByRole('button').click()
+   assert.equal(await opening.locator('ol li').count(),8)
+   await fits()
+   if(game==='ONEPIECE' && process.env.QA_SCREENSHOTS) {
+     await mkdir(process.env.QA_SCREENSHOTS,{recursive:true})
+     await page.locator('.deck-analysis').screenshot({path:join(process.env.QA_SCREENSHOTS,'deck-analysis-360.png')})
+   }
+ }
  await go('/'); await visible(page.locator('.catalog-games button').last());assert.equal(await page.locator('.catalog-games button').count(),7)
  await select.selectOption('en');await visible(page.getByRole('heading',{name:'Card catalog',exact:true}))
  await go('/news?game=ONEPIECE&lang=ja');await visible(page.getByRole('heading',{name:'練習カード'}));assert.equal(await page.locator('.story-summary').getAttribute('lang'),'en')
@@ -103,12 +146,56 @@ try {
  await page.locator('.view-control button').last().click();assert.equal(await page.locator('.binder-pockets').count(),0);await fits()
  await go('/decks');await page.locator('.deck-code summary').click();await page.locator('.deck-code textarea').fill('TCGHUB1-fixture');await page.locator('.deck-code button').click()
  await page.waitForURL('**/decks/70**');await page.locator('.deck-code summary').click();await page.locator('.deck-code button').click();assert.equal(await page.locator('.deck-code textarea').inputValue(),'TCGHUB1-fixture')
- await go('/stores');await page.locator('.store-select').click();await visible(page.getByText('Store tournament',{exact:false}));await visible(page.locator('.ol-viewport'));await fits()
- await go('/admin');await btn('Server controls').click();await visible(page.getByText('TEST_ACTION'));assert.equal(await btn('Shut down server').isDisabled(),true)
+ await go('/stores');await page.locator('.store-select').click();await visible(page.locator('.ol-viewport'))
+ const notices=page.locator('.store-events li')
+ for(const [lang,heading,tournament,restock,arrival] of [
+   ['ko','향후 7일 대회·입고','대회','입고','신상품 입고'],
+   ['ja','今後7日間の大会・入荷','大会','入荷','新商品の入荷'],
+   ['en','Tournaments and restocks in the next 7 days','Tournament','Restock','New product arrival']
+ ]){
+   await select.selectOption(lang)
+   await visible(page.getByRole('heading',{name:heading,exact:true}))
+   await visible(notices.first().getByText(tournament,{exact:true}))
+   await visible(notices.first().getByText('Store championship',{exact:true}))
+   await visible(notices.last().getByText(restock,{exact:true}))
+   await visible(notices.last().getByText(arrival,{exact:true}))
+   assert.match(await notices.first().locator('time').innerText(),/19:00 KST/)
+   assert.match(await notices.last().locator('time').innerText(),/22:30 KST/)
+   assert.equal(await notices.first().locator('a').getAttribute('href'),'https://example.invalid/official-store-event')
+   assert.equal(await notices.last().locator('a').getAttribute('href'),'https://example.invalid/store-restock')
+   await fits()
+ }
+ await go('/admin')
+ const sourcesTab=page.locator('.admin-tabs button').nth(1)
+ await sourcesTab.click()
+ const sourceForm=page.locator('.x-source')
+ await sourceForm.locator('summary').click()
+ await sourceForm.getByLabel('X username').fill('@qa_decks')
+ await sourceForm.locator('#source-game').selectOption('ONEPIECE')
+ await sourceForm.locator('#source-store-search').fill('not-a-store')
+ await visible(sourceForm.getByRole('button',{name:'Continue without a store'}))
+ assert.equal(await sourceForm.getByRole('button',{name:'Add subscription'}).isDisabled(),true)
+ await sourceForm.locator('#source-store-search').fill('Fixture')
+ await sourceForm.locator('#source-store-choice').selectOption('8')
+ await btn('Add subscription').click()
+ await visible(page.getByRole('heading',{name:'@qa_decks'}))
+ assert.deepEqual(writes.filter(x=>x.api==='admin/sources/x')[0].body,{username:'qa_decks',gameCode:'ONEPIECE',storeId:8})
+ await sourceForm.getByLabel('X username').fill('qa_decks');await btn('Add subscription').click()
+ await visible(sourceForm.getByRole('alert').filter({hasText:'already subscribed'}))
+ await sourceForm.getByLabel('X username').fill('invalid_store');await btn('Add subscription').click()
+ await visible(sourceForm.getByRole('alert').filter({hasText:'Check the X username, game and store.'}))
+ await sourceForm.getByLabel('X username').fill('qa_all');await btn('Add subscription').click()
+ await visible(page.getByRole('heading',{name:'@qa_all'}))
+ assert.deepEqual(writes.filter(x=>x.api==='admin/sources/x').pop().body,{username:'qa_all',gameCode:null,storeId:null})
+ await select.selectOption('ja');await visible(sourceForm.getByLabel('Xユーザー名'))
+ await select.selectOption('ko');await visible(sourceForm.getByLabel('X 사용자명'));await fits()
+ await select.selectOption('en');await btn('Server controls').click();await visible(page.getByText('TEST_ACTION'));assert.equal(await btn('Shut down server').isDisabled(),true)
  await btn('Member roles').click();await visible(page.getByText('fixture@example.invalid'))
  await btn('Posts').click();await visible(page.getByText('Fixture post'))
  await btn('Stores').click();await visible(page.getByText('Fixture shop'))
  await select.selectOption('ja');await visible(btn('店舗を登録'));await fits()
+ fixtureRole='ROLE_USER';await page.reload();await visible(page.getByRole('alert'))
+ assert.equal(await page.locator('.x-source').count(),0)
  assert.deepEqual(errors,[])
- console.log('360px Chrome passed: six-game catalog; trilingual navigation and original news; One Piece redraw, draw, field and DON!!; differentiated binder writes; deck-code import/export; OSM store/event selection; four admin tools and disabled host actions.')
+ console.log('360px Chrome passed: six opening-hand sizes and copy-weighted curves; original-edition labels; six-game catalog; trilingual navigation and original news; One Piece redraw, draw, field and DON!!; differentiated binder writes; deck-code import/export; OSM store/event selection; admin X subscription, store lookup, 400/409, role guard and disabled host actions.')
 }finally{await browser.close()}

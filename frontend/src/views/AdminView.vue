@@ -8,6 +8,7 @@ import { bytes, dateTime, providerName } from '../presentation'
 import NewsItem from '../components/NewsItem.vue'
 import AdminAccess from '../components/AdminAccess.vue'
 import AdminTools from '../components/AdminTools.vue'
+import AdminXSource from '../components/AdminXSource.vue'
 import { locale, gameName } from '../i18n'
 import AdminCatalog from '../components/AdminCatalog.vue'
 
@@ -88,6 +89,10 @@ async function loadReview() {
 function refresh() {
   if (tab.value === 'review') loadReview()
   else loadSnapshot()
+}
+function onSubscriptionSaved(username) {
+  notice.value='@'+username+' · '+uiText('구독을 추가했습니다.')
+  loadSnapshot()
 }
 function refreshWhenVisible() {
   if (document.visibilityState === 'visible' && session.isAdmin && ['overview','sources'].includes(tab.value) &&
@@ -172,6 +177,8 @@ onBeforeUnmount(() => {
       <AdminTools v-if="['posts','stores','users','server'].includes(tab)" :tab="tab"/>
       <AdminCatalog v-else-if="tab === 'catalog'" ref="catalogPanel" :games="games" @editing="catalogBusy=$event.busy" />
       <template v-else-if="tab !== 'review'">
+        <AdminXSource v-if="tab==='sources'" :disabled="!!activeAction && activeAction!=='subscribe'"
+          @saving="value=>{activeAction=value?'subscribe':''}" @saved="onSubscriptionSaved"/>
         <p v-if="snapshotError" role="alert" class="inline-error">{{ snapshotError }}</p>
         <p v-if="snapshotBusy && !snapshot" role="status" class="state">{{ $t("운영 상태를 불러오는 중입니다.") }}</p>
         <template v-if="snapshot">

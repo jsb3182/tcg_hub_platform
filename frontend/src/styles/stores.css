@@ -11,6 +11,10 @@
 .store-detail,.store-results {border:1px solid var(--bd); border-radius:.7rem; padding:.9rem; background:var(--sf)}
 .store-detail {margin-top:.65rem}
 .store-detail h2,.store-results h2 {margin:0 0 .55rem; font-size:1.15rem}
+.store-events {list-style:none; margin:0; padding:0}
+.store-events li {border-top:1px solid var(--bd); padding:.6rem 0; overflow-wrap:anywhere}
+.store-events a {display:inline-block; margin-inline-start:.35rem; font-size:.85rem}
+.event-meta {display:flex; flex-wrap:wrap; gap:.2rem .7rem; margin-bottom:.2rem; color:var(--mu); font-size:.82rem}
 .store-detail a,.store-results a {text-decoration:underline; text-underline-offset:.12em}
 .store-results h2 span,.store-coverage,.store-select small {color:var(--mu); font-size:.83rem}
 .store-results ul {list-style:none; padding:0; margin:0; max-height:57vh; overflow:auto}
