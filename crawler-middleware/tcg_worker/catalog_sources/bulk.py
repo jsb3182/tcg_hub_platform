@@ -51,7 +51,7 @@ def pokemon(http):
     # Check the maintained English image index weekly even if the Korean provider is unchanged.
     from datetime import date
     week = date.today().toordinal() // 7
-    derived = http.root / hashlib.sha256(f"pokemon-localized-v3:{sha}:{week}".encode()).hexdigest()
+    derived = http.root / hashlib.sha256(f"pokemon-localized-v4:{sha}:{week}".encode()).hexdigest()
     if derived.is_file():
         http.remember_revision("pokemon-korean-archive", derived)
         with derived.open(encoding="utf-8") as cache:
@@ -74,22 +74,9 @@ def pokemon(http):
 
 
 def pokemon_english_art(http):
-    from urllib.parse import urlsplit
-    sets=document(http.get("https://raw.githubusercontent.com/PokemonTCG/pokemon-tcg-data/master/sets/en.json",ttl=7*86400))
+    from .pokemon_api import english_art
     rows=document(http.get("https://api.tcgdex.net/v2/en/cards",ttl=7*86400,size=12_000_000))
-    aliases={s["id"].lower():str(s.get("ptcgoCode") or "").lower() for s in sets}
-    art={}
-    for row in rows:
-        number=str(row.get("localId") or "")
-        ident=row.get("id") or ""
-        base=row.get("image") or ""
-        url=urlsplit(base)
-        if not number or not ident.endswith("-"+number) or url.scheme!="https" or url.netloc!="assets.tcgdex.net" or not url.path.startswith("/en/"):
-            continue
-        key=ident[:-len(number)-1].lower()
-        for group in (key,aliases.get(key)):
-            if group: art[group,number.lstrip("0") or "0",row["name"]]=base+"/high.webp"
-    return art
+    return english_art(http,revision,rows)
 
 
 def pokemon_archive(archive, workdir=None, english_art=None):

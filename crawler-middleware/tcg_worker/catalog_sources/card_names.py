@@ -94,14 +94,18 @@ def pokemon_effect(card):
 
 def pokemon_edition(lang, card, english_art):
     image = card.get("img") or ""
+    source = card.get("url")
     url = urlsplit(image)
     allowed = {"ko": ("cards.image.pokemonkorea.co.kr","/data/wmimages/"),
                "ja": ("www.pokemon-card.com","/assets/images/card_images/large/")}
     if lang == "en":
         image = english_art.get((str(card.get("set_code") or "").lower(),str(card.get("number") or "").lstrip("0") or "0",card.get("name")))
+        if isinstance(image,tuple):
+            image,source=image
     elif url.scheme!="https" or url.netloc!=allowed[lang][0] or not url.path.startswith(allowed[lang][1]):
         image = None
-    return {k:v for k,v in {"texts":pokemon_effect(card),"images":image,"sources":card.get("url")}.items() if v}
+    return {k:v for k,v in {"texts":pokemon_effect(card),"images":image,"sources":card.get("url"),
+                            "imageSources":source if image else None}.items() if v}
 
 
 class PokemonNames:
@@ -135,7 +139,7 @@ class PokemonNames:
 
     def editions(self, source_name, print_key, card_key):
         names = self.localized(source_name, print_key, card_key)
-        result = {"names":names,"texts":{},"images":{},"sources":{}}
+        result = {"names":names,"texts":{},"images":{},"sources":{},"imageSources":{}}
         for lang, name in names.items():
             for field,key,groups in (("print_key",print_key,self.prints),("card_key",card_key,self.cards)):
                 group=groups.get(key,{})

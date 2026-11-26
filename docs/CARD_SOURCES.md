@@ -20,7 +20,11 @@
 
 영문 유희왕 대표 이미지는 일일 카드 동기화 시 공개 인쇄본 최대 12개를 받아 기존 WebP 아틀라스 작업 대기열에 등록한다. 카드 API의 작은 대표 이미지 URL을 검증하고 1년간 재사용하며 운영자가 작업한 변형 이미지는 유지한다. 출처가 특정 팩의 일러스트나 판본 언어를 보증하지 않는 이미지는 대표 그림으로 표시한다.
 
-포켓몬 인쇄본의 기준은 한국판 `ko_id`다. 이름과 인쇄본 키 또는 카드 지문이 일치하고 해당 필드가 하나로 결정될 때 언어별 기술·효과와 이미지를 연결한다. 한국·일본판은 지역 발행사 이미지 URL을 사용하고 영문판은 TCGdex 제품·번호·영문명이 일치하는 이미지를 사용한다. Pokémon TCG API 유지관리자의 세트 코드 목록으로 영문 별칭을 확인한다. 영어 Pokémon TCG API 신규 키 발급은 종료됐으며 기존 키 지원 종료 예정일은 2027년 3월 1일이다. 11월 26일 한국 인쇄본 20,323건에서 영어 이미지 7,115건, 일본어 이미지 13,766건을 대조했다. [Pokémon TCG API 공지](https://docs.pokemontcg.io/getting-started/rate-limits/) · [카드 API 데이터](https://github.com/PokemonTCG/pokemon-tcg-data) · [TCGdex](https://tcgdex.dev/)
+포켓몬 인쇄본의 기준은 한국판 `ko_id`다. 이름과 인쇄본 키 또는 카드 지문이 일치하고 해당 필드가 하나로 결정될 때 언어별 기술·효과와 이미지를 연결한다. 한국·일본판은 지역 발행사 이미지 URL을 사용한다. 영어 그림은 제품·번호·영문명을 대조한다. TCGdex의 영문 카드 목록과 Pokémon TCG API 유지관리자가 커밋별로 배포한 카드 데이터를 읽으며, 그림의 근거 URL을 `specs.imageSources.en`에 저장한다. [TCGdex REST](https://tcgdex.dev/) · [Pokémon TCG API 데이터](https://github.com/PokemonTCG/pokemon-tcg-data)
+
+영어 인덱스 갱신 시 워커는 키 없이 Pokémon TCG API의 `GET /v2/sets`로 세트 별칭을 확인하고, 이미 존재하는 카드 ID를 순환하며 주당 최대 4개 `GET /v2/cards/{id}` 응답을 카드 번호·세트·이름과 대조한다. 요청 사이에는 최소 2.1초를 둔다. 성공한 응답과 소스 URL을 보존하고, 오류 시에는 기존 검증 자료와 배포 스냅샷을 사용한다. `Retry-After`는 재시작 후에도 지킨다. 신규 키 발급은 종료됐으며 기존 키 지원 종료 예정일은 2027년 3월 1일이다. [카드 상세 사양](https://docs.pokemontcg.io/api-reference/cards/get-card/) · [호출 한도 및 중단 안내](https://docs.pokemontcg.io/getting-started/rate-limits/)
+
+2026년 11월 26일 한국 인쇄본 20,323건에서 영어 그림 9,961건, 일본어 그림 13,766건을 확인했다. 기존 영문 TCGdex 매칭만 적용했을 때보다 영어 그림이 2,846건 늘었다. 같은 날 Pokémon TCG API의 177세트 목록과 `base1-4` 상세가 HTTP 200을 반환했고, 다른 호출에서는 5xx가 발생했다.
 
 리프트바운드의 새 덱은 2026년 10월 9일 종합·대회 규칙과 11월 23일 금지 목록을 적용한다. 메인 40장에 선택한 챔피언 1장이 포함되고, 룬 12장·서로 다른 전장 3장·레전드 1장·사이드보드 최대 10장을 검사한다. 기존 저장 덱의 규칙 버전은 유지한다. [Riot 공식 규칙과 금지 목록](https://playriftbound.com/en-us/rules-hub/)
 
