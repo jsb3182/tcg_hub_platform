@@ -211,7 +211,8 @@ function move(from, index, to) {
           <ul class="play-list"><li v-for="(id, i) in round[zone]" :key="id+'-'+i">
             <label v-if="zone==='hand'" class="exchange-card"><input type="checkbox" v-model="exchange" :value="i" :aria-label="$t('교환할 카드')+' '+label(id)?.name"></label>
             <figure v-if="artworkUrl(label(id)?.imageUrl) || label(id)?.image" class="practice-art">
-              <LibraryThumbnail :src="label(id)?.imageUrl" :image="label(id)?.image" show-edition :language="label(id)?.imageLanguage"/>
+              <LibraryThumbnail :src="label(id)?.imageUrl" :image="label(id)?.image" show-edition :language="label(id)?.imageLanguage"
+                :printing="game==='ONEPIECE' ? label(id) : null"/>
             </figure>
 
             <span><strong :lang="label(id)?.language">{{ label(id)?.name }}</strong>

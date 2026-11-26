@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { editionName } from '../i18n'
+import ArtworkCredit from './ArtworkCredit.vue'
 import { mediaPath, artworkUrl } from '../api'
-const props=defineProps({image:Object,src:String,language:String,showEdition:Boolean})
+const props=defineProps({image:Object,src:String,language:String,showEdition:Boolean,printing:Object})
 const failed=ref('')
 const art=computed(()=>artworkUrl(props.src))
 const style=computed(()=>{
@@ -12,6 +12,12 @@ const style=computed(()=>{
     aspectRatio:tile.cellWidth+' / '+tile.cellHeight}
 })
 </script>
-<template><img v-if="art && failed!==art" :src="art" alt="" loading="lazy" class="lib-thumbnail inline-art" referrerpolicy="no-referrer" @error="failed=art"><span v-else-if="style" class="lib-thumbnail" :style="style" aria-hidden="true"></span><figcaption v-if="showEdition && ((art && failed!==art) || style)" class="art-language">{{ editionName(art && failed!==art ? language : null) }}</figcaption></template>
+<template>
+  <img v-if="art && failed!==art" :src="art" alt="" loading="lazy" class="lib-thumbnail inline-art" referrerpolicy="no-referrer" @error="failed=art">
+  <span v-else-if="style" class="lib-thumbnail" :style="style" aria-hidden="true"></span>
+  <figcaption v-if="showEdition && ((art && failed!==art) || style)" class="art-language">
+    <ArtworkCredit :language="art && failed!==art ? language : null" :printing="art && failed!==art ? printing : null"/>
+  </figcaption>
+</template>
 
 <style scoped>.art-language{color:var(--mu);font-size:.78rem}.inline-art{object-fit:contain;aspect-ratio:300 / 438}</style>

@@ -3,6 +3,7 @@ import { t as uiText, locale, localizedCard, editionName } from '../i18n'
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { artworkUrl, mediaPath, request, sourceLink } from '../api'
+import ArtworkCredit from './ArtworkCredit.vue'
 
 const props = defineProps({ cardId: { type: [Number, String], required: true }, lazy: Boolean })
 const host = ref()
@@ -35,7 +36,8 @@ const title = computed(() => localizedCard(card.value))
 const editionLabels = { ko: "한국어판", en: "영어판", ja: "일본어판" }
 const editions = computed(() => Object.entries(card.value?.specs?.names || {}).filter(([code]) => Object.prototype.hasOwnProperty.call(editionLabels, code)))
 const specs = computed(() => Object.entries(card.value?.specs || {}).filter(([key, value]) =>
-    key !== 'xid' && key !== 'pk' && !['names','texts','images','sources'].includes(key) && value != null && value !== ''))
+    !['xid','pk','names','texts','images','sources'].includes(key) && value != null && value !== '' &&
+    !(card.value?.gameCode==='ONEPIECE' && ['productCode','imageProducts','imageSources'].includes(key))))
 const names = { k: "종류", at: "속성", lv: "레벨", mk: "링크 마커", rc: "종족", sub: "유형", ps: "펜듈럼 스케일", pe: "펜듈럼 효과", atk: "공격력", def: "수비력", or: "읽기", nw: "수록 구분", pr: "출처", pd: "발매 정보", ej: "일본어 효과", type: "유형", attribute: "속성", level: "레벨", race: "종족" }
 function display(value) {
   if (typeof value === 'boolean') return value ? uiText("예") : uiText("아니요")
@@ -79,7 +81,9 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
         <div class="illustration">
           <button v-if="directImage" class="localized-card" @click="dialog.showModal()"><img :src="localizedImage" :alt="title" @error="failedImage=localizedImage" loading="lazy" referrerpolicy="no-referrer"></button><button v-else-if="tileStyle" class="atlas" :style="tileStyle" type="button" :aria-label="title + $t(' 이미지 확대')" @click="dialog.showModal()"></button>
           <span v-else class="atlas missing">{{ $t("이미지 미등록") }}</span>
-          <small v-if="directImage || tileStyle" class="edition-note">{{ $t('카드 이미지') }} · {{ editionName(imageLanguage) }}</small>
+          <small v-if="directImage || tileStyle" class="edition-note">{{ $t('카드 이미지') }} ·
+            <ArtworkCredit :language="imageLanguage" :printing="directImage && card.gameCode==='ONEPIECE' ? card : null"/>
+          </small>
           <div v-if="card.variants.length > 1" class="variant-nav">
             <button type="button" :disabled="index === 0" @click="index--" :aria-label="$t('이전 일러스트')">‹</button>
             <span>{{ index + 1 }} / {{ card.variants.length }}</span>
