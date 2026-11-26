@@ -22,13 +22,14 @@ interface CardRepository extends Repository<Card, Long> {
         String getEffectLanguage();
         String getImageUrl();
         String getImageLanguage();
+        Integer getCurveValue();
         java.time.LocalDate getReleaseDate();
         String getSourceUrl();
         String getSourceName();
     }
     String SELECT = """
         select c.id, c.game_code as "gameCode", c.pack_id as "packId", p.name as "packName",
-               c.original_name as "originalName", c.number, c.rarity,
+               c.original_name as "originalName", c.number, c.rarity, card_curve_value(c.game_code,c.specs) as "curveValue",
         """ + CardEdition.FIELDS + """
                ,
                c.release_date as "releaseDate", c.source_url as "sourceUrl", src.label as "sourceName"

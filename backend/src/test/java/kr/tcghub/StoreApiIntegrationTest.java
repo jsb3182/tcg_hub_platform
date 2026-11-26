@@ -27,6 +27,30 @@ class StoreApiIntegrationTest {
     static final String SEARCH="/api/v1/stores";
     static final String FAVORITES="/api/v1/me/favorites/stores";
 
+    @Test void publicWeekIncludesRestocksAndSuppressesUnreviewedOrHiddenSources() throws Exception {
+        long store=db.sql("select id from store where name='카드숲' limit 1").query(Long.class).single();
+        long source=db.sql("select id from feed_source where provider='X' and game_code='ONEPIECE' limit 1").query(Long.class).single();
+        db.sql("update feed_source set policy_note=null where id=?").param(source).update();
+        String url="https://example.invalid/store-event-"+UUID.randomUUID();
+        long item=db.sql("insert into feed_item(source_id,external_id,source_url,payload,status) values(?,?,?,'{}','PENDING') returning id")
+                .param(source).param(UUID.randomUUID().toString()).param(url).query(Long.class).single();
+        db.sql("""
+            insert into calendar_event(store_id,game_code,feed_item_id,source_event_key,title,category,starts_at,status)
+            values(?,'ONEPIECE',?,'restock','검증 입고','RESTOCK',now()+interval '1 hour','PUBLISHED')
+            """).param(store).param(item).update();
+        var query=get(SEARCH).param("q","카드숲");
+        String target="$.items[0].events[?(@.title=='검증 입고')]";
+        http.perform(query).andExpect(status().isOk()).andExpect(jsonPath(target).isEmpty());
+        db.sql("update feed_item set status='PUBLISHED' where id=?").param(item).update();
+        http.perform(query).andExpect(jsonPath(target+".category",contains("RESTOCK")))
+                .andExpect(jsonPath(target+".sourceUrl",contains(url)));
+        db.sql("update feed_item set hidden=true where id=?").param(item).update();
+        http.perform(query).andExpect(jsonPath(target).isEmpty());
+        db.sql("update feed_item set hidden=false where id=?").param(item).update();
+        db.sql("update feed_source set enabled=false,policy_note='fixture' where id=?").param(source).update();
+        http.perform(query).andExpect(jsonPath(target).isEmpty());
+    }
+
     @Test void seedHasAttributableKoreanLocationsAndIndexedRadiusResults() throws Exception {
         var point=db.sql("SELECT ST_X(location::geometry),ST_Y(location::geometry) FROM store WHERE semas_id='MA0101202608A0104832'")
                 .query((rs,n) -> new double[]{rs.getDouble(1),rs.getDouble(2)}).single();

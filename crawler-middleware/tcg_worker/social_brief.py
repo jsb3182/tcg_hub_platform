@@ -16,9 +16,18 @@ FACTS = (
 )
 
 
-def summarize(text):
+EVENT_LABELS = {
+    "TOURNAMENT": ("대회 시작", "Tournament start", "大会開始"),
+    "RESTOCK": ("입고 예정", "Scheduled restock", "入荷予定"),
+}
+
+
+def summarize(text, event=None):
     topic = next((label for expression, label in TOPICS if re.search(expression, text, re.I)), "새 게시물")
     lines = []
+    if event:
+        kind, start = event
+        lines.append(EVENT_LABELS[kind][0] + " · " + start.strftime("%Y-%m-%d %H:%M KST"))
     for ko, _, _, pattern in FACTS:
         values = list(dict.fromkeys(pattern.findall(text)))[:6]
         if values:
@@ -30,6 +39,7 @@ def translate_facts(summary, target):
     if not summary:
         return None
     labels = {ko: (en if target == "en" else ja) for ko, en, ja, _ in FACTS}
+    labels.update({ko: en if target == "en" else ja for ko, en, ja in EVENT_LABELS.values()})
     translated = []
     for line in summary.splitlines():
         label, separator, value = line.partition(" · ")

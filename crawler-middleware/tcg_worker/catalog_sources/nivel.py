@@ -45,7 +45,8 @@ def parse_detail(html, ident):
     if not name or len(parts) < 2 or not parts[0]:
         raise ValueError(f"Missing Nivel card details for article {ident}")
     fields = {}
-    for label, value in re.findall(r"<td\s+class=['\"]h3['\"][^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>", html, re.I | re.S):
+    # An effect heading can occupy an entire row. Its label must end at its own cell.
+    for label, value in re.findall(r"<td\s+class=['\"]h3['\"][^>]*>((?:(?!</td>).)*)</td>\s*<td[^>]*>(.*?)</td>", html, re.I | re.S):
         fields[as_text(label)] = as_text(value)
     number = parts[0]
     pack = number.partition("-")[0]

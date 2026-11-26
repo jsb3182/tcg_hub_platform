@@ -16,6 +16,7 @@ from xml.etree import ElementTree
 from bs4 import BeautifulSoup
 from protego import Protego
 from .social_brief import summarize
+from .store_notice import scheduled_event
 
 AGENT = "TCGHub/1.0"
 NEWS = {
@@ -51,6 +52,7 @@ class Headline:
     url: str
     published: datetime | None
     summary: str | None = None
+    event: tuple[str, datetime] | None = None
 
 
 @dataclass
@@ -448,9 +450,11 @@ def x_news(username, cursor, *, on_x_limit=None):
         post_id = post.get("id") if isinstance(post, dict) else None
         if not x_id(post_id) or (since and int(post_id) <= int(since)) or (until and int(post_id) >= int(until)):
             raise FetchError("X API가 요청 범위 밖의 게시물 번호를 반환했습니다.")
-        category, brief = summarize(post.get("text") or "")
+        text = post.get("text") or ""
+        event = scheduled_event(text)
+        category, brief = summarize(text, event)
         items.append(Headline(post_id, f"@{username} · {category}", f"https://x.com/{username}/status/{post_id}",
-                              published(post.get("created_at")), brief))
+                              published(post.get("created_at")), brief, event))
     ids = [int(item.external_id) for item in items]
     if ids and (meta.get("newest_id", str(max(ids))) != str(max(ids))
                 or meta.get("oldest_id", str(min(ids))) != str(min(ids))):

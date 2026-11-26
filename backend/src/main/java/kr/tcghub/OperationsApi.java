@@ -18,6 +18,9 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 class OperationsApi {
     record Enabled(@NotNull Boolean enabled) {}
+    record XSource(@NotBlank @Pattern(regexp="@?[A-Za-z0-9_]{1,15}") String username,
+                   @Pattern(regexp="YUGIOH|POKEMON|ONEPIECE|WEISS|NIVEL|RIFTBOUND") String gameCode,
+                   @Positive Long storeId) {}
     enum Verdict { PUBLISHED, REJECTED }
     record Decision(@NotNull Verdict status, @Pattern(regexp="YUGIOH|POKEMON|ONEPIECE|WEISS|NIVEL|RIFTBOUND") String gameCode) {}
     record Interval(@NotNull @Min(60) @Max(2592000) Integer seconds) {}
@@ -84,6 +87,29 @@ class OperationsApi {
         audit(principal,body.enabled() ? "ENABLE_SOURCE" : "PAUSE_SOURCE",id);
     }
 
+    @PostMapping("/sources/x") @ResponseStatus(HttpStatus.CREATED)
+    Map<String,Long> subscribe(@Valid @RequestBody XSource input, Principal principal) {
+        String handle=input.username().replaceFirst("^@","");
+        String label="@"+handle;
+        if(input.storeId()!=null) {
+            String shop=db.sql("select name from store where id=? for share").param(input.storeId()).query(String.class)
+                    .optional().orElseThrow(()->new ResponseStatusException(HttpStatus.BAD_REQUEST));
+            label=shop+" · @"+handle;
+        }
+        // A differently capitalized handle still refers to the same timeline.
+        db.sql("lock table feed_source in share row exclusive mode").update();
+        long id=db.sql("""
+            insert into feed_source(provider,source_key,label,game_code,store_id,auto_publish,interval_seconds,next_fetch_at)
+              select 'X',:handle,:label,:game,:store,false,3600,now() where not exists (
+                select from feed_source where provider='X' and lower(source_key)=lower(:handle))
+              returning id
+            """).param("handle",handle).param("label",label).param("game",input.gameCode(),java.sql.Types.VARCHAR)
+                .param("store",input.storeId(),java.sql.Types.BIGINT).query(Long.class).optional()
+                .orElseThrow(()->new ResponseStatusException(HttpStatus.CONFLICT));
+        audit(principal,"SUBSCRIBE_X_SOURCE",id);
+        return Map.of("id",id);
+    }
+
     @PostMapping("/sources/{id}/run")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void run(@PathVariable @Positive long id, Principal principal) {
@@ -121,6 +147,11 @@ class OperationsApi {
             from feed_source s where i.id=:id and s.id=i.source_id
             """).param("status",body.status().name()).param("user",user).param("id",id)
                 .param("game",body.gameCode(),java.sql.Types.VARCHAR).update();
+        db.sql("""
+                update calendar_event e set status=i.status,game_code=coalesce(i.payload->>'gameCode',s.game_code)
+                from feed_item i join feed_source s on s.id=i.source_id
+                where e.feed_item_id=i.id and i.id=? and e.source_event_key='store-notice' and s.provider='X'
+                """).param(id).update();
         audit(principal,"REVIEW_" + body.status(),id);
     }
 

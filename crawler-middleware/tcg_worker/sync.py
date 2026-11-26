@@ -88,6 +88,15 @@ def save_news(db, source, items):
         """, (source["id"], item.external_id, item.url, Jsonb(payload), item.published,
               "PUBLISHED" if source["auto_publish"] else "PENDING")).fetchone()
         added += int(row is not None)
+        if row and item.event and source.get("provider") == "X" and source.get("store_id"):
+            category, starts = item.event
+            db.execute("""
+                INSERT INTO calendar_event(store_id,game_code,feed_item_id,source_event_key,title,category,starts_at,status)
+                SELECT s.store_id,s.game_code,i.id,'store-notice',%s,%s,%s,i.status
+                  FROM feed_item i JOIN feed_source s ON s.id=i.source_id
+                 WHERE i.id=%s AND s.provider='X' AND s.store_id IS NOT NULL
+                ON CONFLICT(feed_item_id,source_event_key) DO NOTHING
+            """, ("매장 대회" if category == "TOURNAMENT" else "신상품 입고", category, starts, row[0]))
         if row is None and source["auto_publish"]:
             # A moderation decision applies to the exact text and link presented for review.
             # Only automatically published official news may take subsequent publisher edits.
@@ -115,7 +124,7 @@ def existing_product_keys(db, game, prefix, records):
     codes = {card.get("pack_code") for card in records}
     rows = db.execute(
         """SELECT legacy_key,code,name FROM pack WHERE game_code=%s AND starts_with(legacy_key,%s)
-           AND NOT starts_with(legacy_key,%s)
+           AND (game_code='NIVEL' OR NOT starts_with(legacy_key,%s))
            AND (code=ANY(%s::text[]) OR (code IS NULL AND %s)) ORDER BY id""",
         (game, prefix, prefix + "product:", [code for code in codes if code is not None], None in codes),
     )
@@ -209,6 +218,7 @@ def sync_source(source, stop):
             cursor = json.loads(source["cursor_value"] or "{}")
             more, floor = False, 0
             page = None
+            schedule = None
             if source["provider"] == "CATALOG":
                 from .catalog_sources import iter_catalog
                 total = 0
@@ -234,6 +244,10 @@ def sync_source(source, stop):
                 if source["source_key"]=="YUGIOH":
                     from .catalog_art import queue_yugioh_art
                     cursor["artAfter"]=queue_yugioh_art(db,sid,previous.get("artAfter",0),stop)
+            elif source["provider"] == "STORE_SCHEDULE":
+                from .store_schedules import fetch
+                schedule = fetch(source["source_key"], cursor)
+                cursor, more = schedule.cursor, schedule.more
             else:
                 if source["provider"] == "X":
                     page = fetch_x_with_limits(db, source["source_key"], cursor)
@@ -242,6 +256,20 @@ def sync_source(source, stop):
                 cursor, more, floor = page.cursor, page.more, page.retry_after
             with db.transaction():
                 interrupted(db, sid, stop)
+                if schedule is not None:
+                    if schedule.deferred:
+                        db.execute("""
+                            UPDATE feed_source SET state='ERROR',last_finished_at=now(),last_error_at=now(),
+                                last_error=%s,failure_count=failure_count+1,cursor_value=%s,
+                                next_fetch_at=now()+make_interval(secs=>CASE WHEN requested_at IS NOT NULL
+                                    THEN 0 WHEN %s THEN 60 ELSE interval_seconds END)
+                                WHERE id=%s
+                            """, (f"공식 행사 {schedule.notice}: {schedule.deferred}"[:300],
+                                  json.dumps(cursor),more,sid))
+                        return
+                    from .store_schedules import save
+                    seen, added = save(db, sid, schedule)
+                    db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s WHERE id=%s", (seen, added, sid))
                 if source["provider"] == "CATALOG" and source["source_key"] == "YUGIOH":
                     cursor["news"] = finish_yugioh_scan(db, sid, releases)
                 if page is not None:

@@ -35,12 +35,15 @@ class CatalogTests(unittest.TestCase):
 
     def test_nivel_html_preserves_inline_icon_and_original_title(self):
         html = """<h2 id='subject'>가상 카드</h3><h2 id='type'>EX-01 / 유닛 / 파도</h3>
-        <td class='h3'>레어도</td><td>R</td><td class='h3'>제품명</td><td>테스트 <예시></td>
+        <td class='h3'>레어도</td><td>R</td><tr><td class='h3' colspan='3'>효과</td></tr>
+        <tr><td colspan='4'>여러 줄 효과</td></tr>
+        <tr><td class='h3'>제품명</td><td>테스트 <예시></td></tr>
         <div id='content'><img alt='패시브' src='/icon'> 테스트<br>다음 줄</div>"""
         card = parse_detail(html, "7")
         self.assertEqual((card["name"], card["number"], card["rarity"]), ("가상 카드", "EX-01", "R"))
         self.assertEqual(card["effect"], "[패시브] 테스트\n다음 줄")
         self.assertEqual(card["pack_name"], "테스트 <예시>")
+        self.assertFalse(any("\n" in key for key in card["specs"]))
 
     def test_rifthunt_numbers_do_not_identify_printings(self):
         fields = [
