@@ -1,6 +1,5 @@
 package kr.tcghub.control;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -73,7 +72,9 @@ public final class ControlActivity extends LocalizedActivity {
         addServerRow(ui, getString(R.string.remote_server), getString(R.string.remote_description), RemoteActivity.class);
         addServerRow(ui, getString(R.string.local_server), getString(R.string.local_description), ServerActivity.class);
         if (state == null && Intent.ACTION_MAIN.equals(getIntent().getAction())) {
-            String saved = PublicSite.root(prefs.getString("publicSite", ""));
+            String saved = PlatformOrigin.launchRoot(prefs.getBoolean("lastWasLocal", false),
+                    prefs.getString("publicSite", ""), prefs.getString("publicSuggestion", ""),
+                    ControlFolder.paired(getContentResolver(), prefs.getString("tree", "")) != null);
             if (!saved.isEmpty()) PlatformActivity.open(this, saved);
         }
     }
@@ -123,7 +124,6 @@ public final class ControlActivity extends LocalizedActivity {
             return;
         }
         address.setText(root);
-        prefs.edit().putString("publicSite", root).apply();
-        PlatformActivity.open(this, root);
+        PlatformActivity.openSelected(this, root);
     }
 }

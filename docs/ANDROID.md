@@ -1,6 +1,10 @@
 # Android 플랫폼과 서버 운영
 
-`TCG 허브` 2.0.4는 Android 9 이상에서 카드 도감·바인더·덱·연습·소식·매장을 앱 안에 연다. 이전 버전에서 업데이트하면 저장한 플랫폼 주소와 A90 제어 폴더 권한을 이어서 사용한다.
+`TCG 허브` 2.0.5는 Android 9 이상에서 카드 도감·바인더·덱·연습·소식·매장을 앱 안에 연다. 앱 아이콘으로 다시 열면 마지막에 직접 열었던 플랫폼으로 돌아간다.
+
+- **서버를 운영하는 A90**에서 제어 폴더를 연결하고 **카드 플랫폼 열기**로 로컬 도감을 한 번 열면 다음 실행에도 그 도감이 열린다. 이후 **플랫폼 연결**에서 공개 HTTPS 주소를 직접 열면 그 주소를 기억한다. 2.0.4에서 처음 업데이트할 때는 기존에 저장한 공개 주소를 우선한다. 공개 주소를 저장하지 않은 A90은 제어 폴더 권한이 유효하면 기존에 확인한 공개 서버 주소 또는 로컬 도감을 연다.
+- **일반 방문자**는 처음 실행할 때 **플랫폼 연결**에 운영자가 알려 준 HTTPS 주소를 입력한다. 다음 실행에는 저장한 사이트가 열린다.
+- 서버가 꺼져 있으면 **플랫폼에 연결할 수 없습니다**가 표시된다. A90에서는 **연결 설정 → A90 서버 관리 → 서버 켜기**를 누른 뒤 다시 도감을 연다. 연결만 잠시 끊겼다면 **다시 시도**를 누른다. 로컬 도감을 쓰다가 제어 폴더 권한을 해제한 경우에는 **플랫폼 연결**에서 폴더를 다시 연결할 수 있다.
 
 ## 다른 휴대폰에서 공개 사이트 열기
 
@@ -43,6 +47,45 @@ bash "$HOME/setup-termux.sh" --release a90-2026.11.26.5
 ```
 
 Termux에서 설치가 끝나면 A90 브라우저로 `http://127.0.0.1:8080/`을 연다. 카드와 소식은 워커가 백그라운드에서 수집한다. `tcgctl media check-catalogs`를 실행하면 여섯 도감에 실제로 저장된 자동 수집 카드 수와 첫 수집 완료 여부를 볼 수 있다. 기존 로컬 배포의 백업은 `$HOME/tcg-backups/`에 보관된다.
+
+## Windows PC에서 USB로 A90 도감 열기
+
+USB 케이블을 연결한 동안 PC 브라우저에서 A90의 공개 도감·소식·지도를 볼 수 있다. PC 주소는 `http://127.0.0.1:18085/`, A90 자체의 주소는 `http://127.0.0.1:8080/`이다. 로컬 회원가입·로그인, 바인더·덱 저장과 관리자 인증은 A90에서 진행한다.
+
+1. A90에서 로컬 서버를 켜고 폰 브라우저에서 도감이 열리는지 확인한다. 신뢰하는 Windows PC에 Android SDK Platform-Tools를 준비하고, A90의 개발자 옵션에서 **USB 디버깅**을 켠다. 데이터 전송이 가능한 USB 케이블로 연결한 뒤 A90에서 이 PC의 디버깅을 허용한다. [공식 다운로드](https://developer.android.com/tools/releases/platform-tools) · [Android USB 연결 및 포트 전달](https://developer.android.com/tools/adb#forwardports)
+2. PowerShell에서 ADB와 대상 기기를 확인한다. 이미 실행 중인 ADB 서버가 있으면 그 서버와 같은 실행 파일을 사용한다. 아래 예시는 기본 ADB 서버 포트 `5037`을 사용한다. 설치된 도구의 경로가 다르면 `$adb`를 실제 `adb.exe` 경로로 지정한다.
+
+   ```powershell
+   $adbPort = 5037
+   $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+   $listener = Get-NetTCPConnection -LocalPort $adbPort -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+   if ($listener) {
+       $owner = Get-Process -Id $listener.OwningProcess
+       if ($owner.ProcessName -ne 'adb') { throw "ADB 서버 포트를 다른 프로그램이 사용 중입니다." }
+       $adb = $owner.Path
+   }
+   & $adb -P $adbPort devices -l
+   ```
+
+3. 목록에서 A90 모델을 확인한다. 상태가 `device`인 A90 행의 맨 앞 일련번호를 입력한다. `unauthorized`라면 폰을 잠금 해제해 USB 디버깅 확인을 마친다.
+
+   ```powershell
+   $serial = Read-Host 'A90 일련번호'
+   & $adb -P $adbPort -s $serial forward --list
+   ```
+
+   목록에 같은 일련번호와 `tcp:18085 tcp:8080`가 이미 있으면 바로 브라우저를 연다. 해당 매핑이 없고 PC 포트 18085가 비어 있으면 다음 명령으로 등록한다. 다른 기기나 프로그램이 18085를 사용 중이면 빈 포트를 골라 명령과 브라우저 주소를 함께 바꾼다.
+
+   ```powershell
+   & $adb -P $adbPort -s $serial forward --no-rebind tcp:18085 tcp:8080
+   Get-NetTCPConnection -LocalPort 18085 -State Listen | Select-Object LocalAddress,LocalPort
+   ```
+
+4. 수신 주소가 `127.0.0.1` 또는 `::1`인지 확인하고 PC에서 `http://127.0.0.1:18085/`를 연다. `0.0.0.0`이나 `::`가 나오면 아래 해제 명령을 실행한 뒤 기본 루프백 모드의 ADB를 사용한다. 케이블을 다시 연결하거나 PC·ADB를 재시작한 뒤에는 3단계에서 기존 매핑부터 확인한다. 사용을 마치면 이 연결만 해제할 수 있다.
+
+   ```powershell
+   & $adb -P $adbPort -s $serial forward --remove tcp:18085
+   ```
 
 ## A90 제어 폴더를 처음 연결할 때
 
