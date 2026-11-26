@@ -11,6 +11,7 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from tcg_worker import translation
+from tcg_worker.social_brief import summarize, translate_facts
 
 
 class RecordingModel:
@@ -26,6 +27,13 @@ class RecordingModel:
 
 
 class GiveawayTitleTests(unittest.TestCase):
+    def test_unconfirmed_banlist_keeps_its_status_and_literal_card_codes(self):
+        topic, facts = summarize("Unconfirmed banlist: OP01-001, OP01-001. 2026年11月26日 #OnePiece")
+        self.assertEqual(topic, "미확인 소식")
+        self.assertEqual(translate_facts(facts, "en"), "Card numbers · OP01-001\nDates mentioned · 2026年11月26日\nHashtags · #OnePiece")
+        self.assertEqual(translate_facts(facts, "ja").splitlines()[0], "カード番号 · OP01-001")
+        self.assertEqual(summarize("일반 소식"), ("새 게시물", None))
+
     def test_preserves_product_edition_and_distinguishes_winners(self):
         cases = [
             ("【Giveaway】Booster Pack A:B -Two Worlds- Vol.3",
