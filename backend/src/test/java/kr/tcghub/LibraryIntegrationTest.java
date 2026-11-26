@@ -49,6 +49,17 @@ class LibraryIntegrationTest {
         return as(req,token).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsBytes(data));
     }
     String binder(long id){return "/api/v1/me/binder/"+id;}
+
+    @Test void separatePhysicalPrintingsHaveIndependentQuantitiesAndOneUniqueCard() throws Exception {
+        api.perform(write(put(binder(first)),alice,new BinderApi.Quantity(2,0))).andExpect(status().isOk());
+        var japanese=put(binder(first)).param("edition","ja").param("condition","NM").param("tradable","true");
+        api.perform(write(japanese,alice,new BinderApi.Quantity(3,0))).andExpect(status().isOk());
+        api.perform(as(get("/api/v1/me/binder").param("edition","ja").param("tradable","true"),alice))
+                .andExpect(jsonPath("$.copies").value(3)).andExpect(jsonPath("$.items[0].condition").value("NM"));
+        api.perform(as(get("/api/v1/me/binder/stats"),alice))
+                .andExpect(jsonPath("$[?(@.gameCode=='YUGIOH')].uniqueCards").value(org.hamcrest.Matchers.contains(1)))
+                .andExpect(jsonPath("$[?(@.gameCode=='YUGIOH')].copies").value(org.hamcrest.Matchers.contains(5)));
+    }
     @Test void binderIsOwnerScopedAndConcurrentEditsAreDetected() throws Exception {
         api.perform(get("/api/v1/me/binder")).andExpect(status().isUnauthorized());
         api.perform(write(put(binder(first)),alice,new BinderApi.Quantity(3,0))).andExpect(status().isOk());
