@@ -116,4 +116,13 @@
     <string name="copy_update">"更新コマンドをコピー"</string>
     <string name="invalid_mac">"PCの有線LANアダプターのMACアドレスを入力してください。"</string>
     <string name="language">"言語"</string>
+    <string name="admin_setup">"パスワード変更・認証アプリ登録"</string>
+    <string name="admin_setup_detail">"Termuxで管理者メールを入力し、パスワード変更または認証アプリ登録を選びます。セッションがいっぱいのときはコマンドをコピーし、待機中の端末に貼り付けてください。"</string>
+    <string name="open_setup_termux">"Termuxで開始"</string>
+    <string name="copy_admin_command">"コマンドをコピー"</string>
+    <string name="admin_old_detail">"このサーバーは手動設定です。コマンドをコピーしてTermuxに貼り付け、スペースの後に管理者メールを入力してください。パスワード変更後に認証アプリを登録します。"</string>
+    <string name="copy_password">"変更コマンドをコピー"</string>
+    <string name="copy_totp">"登録コマンドをコピー"</string>
+    <string name="session_started">"Termuxで設定セッションが開きました。結果はその画面で確認してください。"</string>
+    <string name="session_unavailable">"設定画面が開きませんでした。パスワード変更・認証アプリ登録からコマンドをコピーして、待機中のTermux端末で実行してください。"</string>
 </resources>

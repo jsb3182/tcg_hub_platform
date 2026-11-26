@@ -116,4 +116,13 @@
     <string name="copy_update">"업데이트 명령 복사"</string>
     <string name="invalid_mac">"개인 PC의 유선 랜카드 MAC 주소를 입력하세요."</string>
     <string name="language">"언어"</string>
+    <string name="admin_setup">"비밀번호 변경·인증 앱 등록"</string>
+    <string name="admin_setup_detail">"Termux에서 관리자 이메일을 입력한 뒤 비밀번호 변경 또는 인증 앱 등록을 선택하세요. 창이 가득 차면 명령 복사를 눌러 기존 빈 터미널에 붙여 넣으세요."</string>
+    <string name="open_setup_termux">"Termux에서 시작"</string>
+    <string name="copy_admin_command">"명령 복사"</string>
+    <string name="admin_old_detail">"현재 서버는 수동 설정을 사용합니다. 아래 명령을 복사해 빈 Termux 터미널에 붙여 넣고 공백 뒤에 관리자 이메일을 입력하세요. 비밀번호 변경 후 인증 앱을 등록하세요."</string>
+    <string name="copy_password">"비밀번호 명령 복사"</string>
+    <string name="copy_totp">"인증 앱 명령 복사"</string>
+    <string name="session_started">"Termux에서 설정 세션을 열었습니다. 완료 결과는 그 창에 표시됩니다."</string>
+    <string name="session_unavailable">"설정 창이 열리지 않았습니다. 비밀번호 변경·인증 앱 등록에서 명령 복사를 선택해 빈 Termux 터미널에서 실행하세요."</string>
 </resources>
