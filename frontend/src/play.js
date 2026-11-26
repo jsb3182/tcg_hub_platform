@@ -1,7 +1,6 @@
-export const playLanguages = { ko: '한국어', en: 'English', ja: '日本語' }
-const languageKey = 'tcg.play.language'
+import { languages, locale, selectLocale, supportedLanguage } from './i18n'
+export const playLanguages = languages
 const openingKey = game => 'tcg.play.opening.' + game
-const supportedLanguage = code => typeof code === 'string' && Object.hasOwn(playLanguages, code)
 
 function stored(key) {
   try { return sessionStorage.getItem(key) } catch { return null }
@@ -11,11 +10,10 @@ function remember(key, value) {
 }
 export function practiceLanguage(code) {
   if (supportedLanguage(code)) return code
-  const previous = stored(languageKey)
-  return supportedLanguage(previous) ? previous : 'ko'
+  return locale.value
 }
 export function rememberPracticeLanguage(code) {
-  if (supportedLanguage(code)) remember(languageKey, code)
+  if (supportedLanguage(code)) selectLocale(code)
 }
 export const validOpeningSize = size => Number.isInteger(size) && size >= 1 && size <= 10
 export function practiceOpening(game) {
@@ -27,6 +25,10 @@ export function rememberPracticeOpening(game, size) {
 }
 
 export const playGames = {
+  ONEPIECE: {
+    opening: 5,
+    name: {ko:'원피스',en:'ONE PIECE',ja:'ワンピース'},
+  },
   YUGIOH: {
     opening: 5,
     name: { ko: '유희왕', en: 'Yu-Gi-Oh!', ja: '遊戯王' },

@@ -15,7 +15,7 @@ export default defineConfig({
         start_url: '/',
         display: 'standalone',
         background_color: '#fafaf7',
-        theme_color: '#5b3fd0',
+        theme_color: '#13625e',
         icons: [192, 512].map(size => ({
           src: '/icon-' + size + '.png', sizes: size + 'x' + size,
           type: 'image/png', purpose: 'any maskable',

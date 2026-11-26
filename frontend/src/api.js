@@ -1,3 +1,4 @@
+import { t } from './i18n'
 const baseUrl = '/api/v1'
 
 export class ApiError extends Error {
@@ -12,7 +13,7 @@ export class ApiError extends Error {
       415: '지원하지 않는 이미지 형식입니다.',
       429: '요청이 많습니다. 잠시 뒤 다시 시도해 주세요.',
     }
-    super(descriptions[status] || '서버에 연결할 수 없습니다. 잠시 뒤 다시 시도해 주세요.')
+    super(t(descriptions[status] || '서버에 연결할 수 없습니다. 잠시 뒤 다시 시도해 주세요.'))
     this.status = status
   }
 }
@@ -27,7 +28,7 @@ export async function request(path, options = {}) {
   if (token) headers.Authorization = 'Bearer ' + token
   let response
   try {
-    response = await fetch(baseUrl + path, {
+    response = await fetch(path.startsWith('/admin/server/') ? '/api'+path : baseUrl + path, {
       method, headers, signal, body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),
       credentials: privateRequest ? 'same-origin' : 'omit',
       cache: privateRequest ? 'no-store' : 'default',
@@ -67,4 +68,11 @@ export function sourceLink(rawUrl) {
     const url = new URL(rawUrl)
     return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : ''
   } catch { return '' }
+}
+
+export function artworkUrl(value) {
+  const local = mediaPath(value)
+  if (local) return local
+  const external = sourceLink(value)
+  return external.startsWith('https://') ? external : ''
 }

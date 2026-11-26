@@ -1,4 +1,6 @@
 <script setup>
+import { t as uiText, gameName } from '../i18n'
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { request } from '../api'
@@ -12,18 +14,18 @@ const route=useRoute(), router=useRouter(), session=useSession()
 const games=ref([]), game=ref(''), name=ref(''), section=ref('MAIN'), entries=ref([]), saved=ref(null), rule=ref(null)
 const shared=ref(false), loading=ref(true), busy=ref(false), error=ref(''), notice=ref(''), reload=ref(0)
 const history=ref(null), historyPage=ref(0), historyBusy=ref(false), historyError=ref(''), failedLoad=ref(false)
-const id=computed(()=>route.params.id), gameName=computed(()=>games.value.find(g=>g.code===game.value)?.name)
+const id=computed(()=>route.params.id), selectedGameName=computed(()=>gameName(game.value))
 const shareUrl=computed(()=>saved.value?.shareToken ? location.origin+'/shared/decks/'+saved.value.shareToken : '')
 const baseline=ref(null), practiceChoice=ref(null), errorElement=ref(null)
 const content=computed(()=>JSON.stringify([name.value,game.value,shared.value,
   entries.value.map(e=>[e.cardId,e.section,e.quantity])]))
 const dirty=computed(()=>baseline.value!==null && baseline.value!==content.value)
-const preview=computed(()=>({name:name.value || '이름 없는 덱',gameCode:game.value,entries:entries.value,rule:rule.value,state:
+const preview=computed(()=>({name:name.value || uiText("이름 없는 덱"),gameCode:game.value,entries:entries.value,rule:rule.value,state:
   saved.value && !dirty.value ? saved.value.state : 'DRAFT'}))
 let generation=0
 let approvedPractice=''
 function mayDiscard() {
-  return !dirty.value || (!busy.value && window.confirm('저장하지 않은 덱 변경 사항을 버리고 이동할까요?'))
+  return !dirty.value || (!busy.value && window.confirm(uiText("저장하지 않은 덱 변경 사항을 버리고 이동할까요?")))
 }
 onBeforeRouteLeave(to=>to.fullPath===approvedPractice || mayDiscard())
 onBeforeRouteUpdate((to,from)=>{
@@ -70,7 +72,7 @@ watch([()=>session.account?.email,id,()=>route.name,reload,
       if(current!==generation)return
       baseline.value=content.value
       if(current===generation && /^\d+$/.test(route.query.card || '')){
-        const card=await request('/cards/'+route.query.card,{signal:abort.signal})
+        const card=await request('/cards/'+route.query.card+'?lang='+practiceLanguage(route.query.lang),{signal:abort.signal})
         if(current===generation && card.gameCode===game.value)add(card)
       }
     }
@@ -89,8 +91,8 @@ function add(card) {
   const item=entries.value.find(e=>e.cardId===card.id && e.section===section.value)
   if(item)item.quantity=Math.min(999,item.quantity+1)
   else entries.value.push({cardId:card.id,name:card.name,number:card.number,packName:card.packName,section:section.value,quantity:1,
-    image:card.image ?? card.variants?.find(v=>v.image)?.image ?? null})
-  notice.value=sectionLabel(section.value)+'에 '+card.name+' 추가'
+    imageUrl:card.imageUrl,image:card.image ?? card.variants?.find(v=>v.image)?.image ?? null})
+  notice.value=sectionLabel(section.value)+uiText("에 ")+card.name+uiText(" 추가")
 }
 async function showError(message) {
   error.value=message
@@ -103,8 +105,8 @@ async function save(state,practice=false) {
   if(busy.value)return
   practiceChoice.value?.close()
   error.value='';notice.value=''
-  if(!name.value.trim())return showError('덱 이름을 입력해 주세요.')
-  if(entries.value.some(e=>!Number.isInteger(e.quantity)||e.quantity<1||e.quantity>999))return showError('카드 수량은 1~999 사이의 정수로 입력해 주세요.')
+  if(!name.value.trim())return showError(uiText("덱 이름을 입력해 주세요."))
+  if(entries.value.some(e=>!Number.isInteger(e.quantity)||e.quantity<1||e.quantity>999))return showError(uiText("카드 수량은 1~999 사이의 정수로 입력해 주세요."))
   const current=generation,wasNew=!id.value
   busy.value=true
   try {
@@ -115,7 +117,7 @@ async function save(state,practice=false) {
     fill(deck);history.value=null
     if(wasNew)await router.replace({name:'deck-edit',params:{id:deck.id},query:languageQuery.value})
     if(practice){await router.push(practiceRoute(deck));return}
-    notice.value=stateLabel(state)+' 상태로 저장했습니다.'
+    notice.value=stateLabel(state)+uiText(" 상태로 저장했습니다.")
   }catch(cause){if(current===generation)await showError(cause.message)}
   finally{busy.value=false}
 }
@@ -144,56 +146,65 @@ async function applyRevision(rev) {
   historyBusy.value=true;historyError.value=''
   try{
     const snapshot=await session.authenticatedRequest('/me/decks/'+id.value+'/history/'+rev)
-    if(current===generation){name.value=snapshot.name;entries.value=snapshot.entries.map(e=>({...e}));notice.value=rev+'번째 구성을 편집기에 불러왔습니다. 저장하면 새 내역으로 기록됩니다.'}
+    if(current===generation){name.value=snapshot.name;entries.value=snapshot.entries.map(e=>({...e}));notice.value=rev+uiText("번째 구성을 편집기에 불러왔습니다. 저장하면 새 내역으로 기록됩니다.")}
   }catch(cause){if(current===generation)historyError.value=cause.message}
   finally{historyBusy.value=false}
 }
+const exportedCode=ref('')
+async function exportCode(){
+  try{
+    const result=await session.authenticatedRequest('/me/decks/'+id.value+'/code')
+    exportedCode.value=result.code
+  }catch(cause){await showError(cause.message)}
+}
+watch(id,()=>{exportedCode.value=''})
 async function copyLink() {
-  try{await navigator.clipboard.writeText(shareUrl.value);notice.value='공유 링크를 복사했습니다.'}
-  catch{notice.value='공유 주소를 길게 눌러 복사해 주세요.'}
+  try{await navigator.clipboard.writeText(shareUrl.value);notice.value=uiText("공유 링크를 복사했습니다.")}
+  catch{notice.value=uiText("공유 주소를 길게 눌러 복사해 주세요.")}
 }
 </script>
 <template>
-  <LibraryAccess title="덱 편집"><header class="lib-heading"><h1>{{ id?'덱 편집':'새 덱' }}</h1><RouterLink :to="{name:'decks',query:languageQuery}">내 덱 목록</RouterLink></header>
-    <p v-if="error" ref="errorElement" tabindex="-1" role="alert" class="inline-error">{{ error }} <button class="text-button" @click="mayDiscard() && reload++">저장된 구성 다시 불러오기</button></p>
+  <LibraryAccess :title="$t('덱 편집')"><header class="lib-heading"><h1>{{ id?$t("덱 편집"):$t("새 덱") }}</h1><RouterLink :to="{name:'decks',query:languageQuery}">{{ $t("내 덱 목록") }}</RouterLink></header>
+    <details v-if="saved" class="lib-panel deck-code"><summary>{{ $t("덱 코드 내보내기") }}</summary><button class="secondary" @click="exportCode">{{ $t("저장본 코드 보기") }}</button><label v-if="exportedCode">{{ $t("덱 코드") }}<textarea readonly rows="3" :value="exportedCode" @focus="$event.target.select()"/></label></details>
+    <p v-if="error" ref="errorElement" tabindex="-1" role="alert" class="inline-error">{{ error }} <button class="text-button" @click="mayDiscard() && reload++">{{ $t("저장된 구성 다시 불러오기") }}</button></p>
     <p v-if="notice" role="status">{{ notice }}</p>
-    <p v-if="loading" role="status">덱을 불러오는 중입니다.</p>
+    <p v-if="loading" role="status">{{ $t("덱을 불러오는 중입니다.") }}</p>
     <div v-else-if="!failedLoad" class="lib-editor"><div class="library-grid">
-      <section class="lib-panel"><fieldset :disabled="busy"><label>덱 이름<input v-model="name" maxlength="100" placeholder="덱 이름" /></label>
-        <label>게임<select :value="game" :disabled="!!id || entries.length>0" @change="switchGame"><option v-for="g in games" :key="g.code" :value="g.code">{{ g.name }}</option></select></label>
-        <template v-if="rule"><p>기본 구성 규칙 · 버전 {{ rule.version }} <a v-if="rule.source" :href="rule.source" target="_blank" rel="noopener noreferrer">공식 규칙</a></p>
-          <p class="muted">구역별 장수와 중복 수량을 검사합니다. 금지·제한 목록과 개별 카드 예외는 대회 규정을 확인해 주세요.</p>
+      <section class="lib-panel"><fieldset :disabled="busy"><label>{{ $t("덱 이름") }}<input v-model="name" maxlength="100" :placeholder="$t('덱 이름')" /></label>
+        <label>{{ $t("게임") }}<select :value="game" :disabled="!!id || entries.length>0" @change="switchGame"><option v-for="g in games" :key="g.code" :value="g.code">{{ gameName(g.code,g.name) }}</option></select></label>
+        <template v-if="rule"><p>{{ $t("기본 구성 규칙 · 버전") }} {{ rule.version }} <a v-if="rule.source" :href="rule.source" target="_blank" rel="noopener noreferrer">{{ $t("공식 규칙") }}</a></p>
+          <p class="muted">{{ $t("구역별 장수와 중복 수량을 검사합니다. 금지·제한 목록과 개별 카드 예외는 대회 규정을 확인해 주세요.") }}</p>
           <section v-for="s in rule.sections" :key="s.section"><h2>{{ sectionLabel(s.section) }}
-            <small>{{ entries.filter(e=>e.section===s.section).reduce((n,e)=>n+(Number(e.quantity)||0),0) }}장 · 규칙 {{ s.minCards ?? 0 }}{{ s.maxCards===s.minCards?'':'~'+(s.maxCards ?? '제한 없음') }}장</small>
+            <small>{{ entries.filter(e=>e.section===s.section).reduce((n,e)=>n+(Number(e.quantity)||0),0) }}{{ $t("장 · 규칙") }} {{ s.minCards ?? 0 }}{{ s.maxCards===s.minCards?'':'~'+(s.maxCards ?? $t("제한 없음")) }}{{ $t("장") }}</small>
           </h2>
           <ul class="lib-list"><li v-for="e in entries.filter(e=>e.section===s.section)" :key="e.cardId"><div><strong>{{ e.name }}</strong><small>{{ [e.number,e.packName].filter(Boolean).join(' · ') }}</small></div>
-            <div class="lib-controls"><input v-model.number="e.quantity" type="number" min="1" max="999" :aria-label="e.name+' 수량'" /><button type="button" class="text-button" :aria-label="e.name+' 빼기'" @click="entries.splice(entries.indexOf(e),1)">빼기</button></div>
+            <div class="lib-controls"><input v-model.number="e.quantity" type="number" min="1" max="999" :aria-label="e.name+$t(' 수량')" /><button type="button" class="text-button" :aria-label="e.name+$t(' 빼기')" @click="entries.splice(entries.indexOf(e),1)">{{ $t("빼기") }}</button></div>
           </li></ul></section>
-          <label class="lib-check"><input type="checkbox" v-model="shared" />링크가 있는 사람에게 덱 공개</label>
-          <div class="lib-actions"><button type="button" class="secondary" @click="save('DRAFT')">임시 저장</button><button type="button" class="primary" @click="save('COMPLETE')">구성 완료 저장</button></div>
-          <p v-if="dirty" class="lib-unsaved" role="status">저장되지 않은 변경 사항이 있습니다.</p>
+          <label class="lib-check"><input type="checkbox" v-model="shared" />{{ $t("링크가 있는 사람에게 덱 공개") }}</label>
+          <div class="lib-actions"><button type="button" class="secondary" @click="save('DRAFT')">{{ $t("임시 저장") }}</button><button type="button" class="primary" @click="save('COMPLETE')">{{ $t("구성 완료 저장") }}</button></div>
+          <p v-if="dirty" class="lib-unsaved" role="status">{{ $t("저장되지 않은 변경 사항이 있습니다.") }}</p>
         </template></fieldset>
-        <div v-if="shareUrl"><p><a :href="shareUrl">{{ shareUrl }}</a></p><button class="secondary" @click="copyLink">공유 링크 복사</button></div>
-        <button v-if="rule && ['YUGIOH','POKEMON'].includes(game)" type="button" class="secondary" :disabled="busy || (!saved && !entries.length)" @click="practice">{{ saved?'이 덱으로 연습':'임시 저장 후 연습' }}</button>
+        <div v-if="shareUrl"><p><a :href="shareUrl">{{ shareUrl }}</a></p><button class="secondary" @click="copyLink">{{ $t("공유 링크 복사") }}</button></div>
+        <button v-if="rule && ['YUGIOH','POKEMON','ONEPIECE'].includes(game)" type="button" class="secondary" :disabled="busy || (!saved && !entries.length)" @click="practice">{{ saved?$t("이 덱으로 연습"):$t("임시 저장 후 연습") }}</button>
         <dialog ref="practiceChoice" class="lib-dialog" aria-labelledby="practice-choice-title">
-          <h2 id="practice-choice-title">어떤 구성으로 연습할까요?</h2>
-          <p>저장하지 않은 변경 사항이 있습니다.</p>
+          <h2 id="practice-choice-title">{{ $t("어떤 구성으로 연습할까요?") }}</h2>
+          <p>{{ $t("저장하지 않은 변경 사항이 있습니다.") }}</p>
           <div class="lib-dialog-actions">
-            <button class="primary" @click="save(saved.state,true)">변경 저장 후 연습</button>
-            <button class="secondary" @click="useSaved">변경 버리고 저장본으로 연습</button>
-            <button class="text-button" autofocus @click="practiceChoice.close()">편집 계속</button>
+            <button class="primary" @click="save(saved.state,true)">{{ $t("변경 저장 후 연습") }}</button>
+            <button class="secondary" @click="useSaved">{{ $t("변경 버리고 저장본으로 연습") }}</button>
+            <button class="text-button" autofocus @click="practiceChoice.close()">{{ $t("편집 계속") }}</button>
           </div>
         </dialog>
       </section>
-      <div v-if="rule"><label class="lib-filter">카드를 넣을 구역<select v-model="section"><option v-for="s in rule.sections" :value="s.section" :key="s.section">{{ sectionLabel(s.section) }}</option></select></label>
+      <div v-if="rule"><label class="lib-filter">{{ $t("카드를 넣을 구역") }}<select v-model="section"><option v-for="s in rule.sections" :value="s.section" :key="s.section">{{ sectionLabel(s.section) }}</option></select></label>
         <CatalogPicker :game="game" :disabled="busy" @pick="add" /></div>
     </div>
-    <DeckRecipe v-if="rule" :deck="preview" :game-name="gameName" />
-    <section v-if="saved" class="lib-panel"><div class="lib-heading"><h2>저장 내역</h2><button class="secondary" :disabled="historyBusy" @click="loadHistory()">내역 조회</button></div>
-      <p v-if="historyError" role="alert">{{ historyError }}</p><p v-if="history && !history.items.length">이 덱의 첫 변경부터 내역을 기록합니다.</p>
-      <ul v-if="history" class="lib-list"><li v-for="h in history.items" :key="h.revision"><div>{{ h.name }} <small>{{ h.revision }}번째 · {{ savedDate(h.savedAt) }} · {{ h.cards }}장 · {{ stateLabel(h.state) }}</small></div>
-        <button class="secondary" :disabled="historyBusy||busy" @click="applyRevision(h.revision)">편집기에 불러오기</button></li></ul>
-      <nav v-if="history?.total>24" class="pagination" aria-label="덱 저장 내역 페이지"><button :disabled="!historyPage || historyBusy" @click="loadHistory(historyPage-1)">이전</button><span>{{ historyPage+1 }} / {{ Math.ceil(history.total/24) }}</span><button :disabled="(historyPage+1)*24>=history.total || historyBusy" @click="loadHistory(historyPage+1)">다음</button></nav>
+    <DeckRecipe v-if="rule" :deck="preview" :game-name="selectedGameName" />
+    <section v-if="saved" class="lib-panel"><div class="lib-heading"><h2>{{ $t("저장 내역") }}</h2><button class="secondary" :disabled="historyBusy" @click="loadHistory()">{{ $t("내역 조회") }}</button></div>
+      <p v-if="historyError" role="alert">{{ historyError }}</p><p v-if="history && !history.items.length">{{ $t("이 덱의 첫 변경부터 내역을 기록합니다.") }}</p>
+      <ul v-if="history" class="lib-list"><li v-for="h in history.items" :key="h.revision"><div>{{ h.name }} <small>{{ h.revision }}{{ $t("번째 ·") }} {{ savedDate(h.savedAt) }} · {{ h.cards }}{{ $t("장 ·") }} {{ stateLabel(h.state) }}</small></div>
+        <button class="secondary" :disabled="historyBusy||busy" @click="applyRevision(h.revision)">{{ $t("편집기에 불러오기") }}</button></li></ul>
+      <nav v-if="history?.total>24" class="pagination" :aria-label="$t('덱 저장 내역 페이지')"><button :disabled="!historyPage || historyBusy" @click="loadHistory(historyPage-1)">{{ $t("이전") }}</button><span>{{ historyPage+1 }} / {{ Math.ceil(history.total/24) }}</span><button :disabled="(historyPage+1)*24>=history.total || historyBusy" @click="loadHistory(historyPage+1)">{{ $t("다음") }}</button></nav>
     </section></div>
   </LibraryAccess>
 </template>

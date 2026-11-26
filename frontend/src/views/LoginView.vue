@@ -1,4 +1,6 @@
 <script setup>
+import { t as uiText } from '../i18n'
+
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSession } from '../stores/session'
@@ -16,7 +18,7 @@ const emailInput = ref(null)
 const passwordInput = ref(null)
 const wantsAdmin = computed(() => route.query.to === 'admin' || ['/admin', '/admin/'].includes(route.query.next))
 const registering = computed(() => !wantsAdmin.value && route.query.mode === 'register')
-const title = computed(() => wantsAdmin.value ? '관리자 로그인' : registering.value ? '회원가입' : '로그인')
+const title = computed(() => wantsAdmin.value ? uiText("관리자 로그인") : registering.value ? uiText("회원가입") : uiText("로그인"))
 const destination = computed(() => {
   const next = route.query.next
   if (typeof next !== 'string' || !next.startsWith('/') || next.startsWith('//') || next.includes('\\')) return '/'
@@ -30,7 +32,7 @@ const switchMode = computed(() => ({
 }))
 
 watch(() => route.fullPath, () => {
-  if (route.name === 'login') document.title = title.value + ' · TCG 허브'
+  if (route.name === 'login') document.title = title.value + uiText(" · TCG 허브")
 }, { immediate: true, flush: 'post' })
 
 watch(registering, async () => {
@@ -52,12 +54,12 @@ async function submit() {
   error.value = invalidField.value = ''
   const signup = registering.value
   if (signup) {
-    if (!emailInput.value.validity.valid) return fieldError('email', '이메일 주소를 확인해 주세요.')
+    if (!emailInput.value.validity.valid) return fieldError('email', uiText("이메일 주소를 확인해 주세요."))
     if (!password.value.trim() || [...password.value].length < 12) {
-      return fieldError('password', '비밀번호는 공백만으로 구성할 수 없으며 12자 이상이어야 합니다.')
+      return fieldError('password', uiText("비밀번호는 공백만으로 구성할 수 없으며 12자 이상이어야 합니다."))
     }
     if (new TextEncoder().encode(password.value).length > 72) {
-      return fieldError('password', '비밀번호를 UTF-8 기준 72바이트 이내로 줄여 주세요.')
+      return fieldError('password', uiText("비밀번호를 UTF-8 기준 72바이트 이내로 줄여 주세요."))
     }
   }
   const entry = route.fullPath
@@ -71,9 +73,9 @@ async function submit() {
     if (entry === route.fullPath && !wantsAdmin.value) await router.replace(next)
   } catch (cause) {
     if (entry !== route.fullPath) return
-    if (signup && cause.status === 409) fieldError('email', '이미 가입된 이메일입니다. 로그인하거나 다른 이메일을 입력해 주세요.')
-    else if (signup && cause.status === 400) error.value = '이메일 주소와 비밀번호 조건을 확인해 주세요.'
-    else error.value = cause.status === 401 ? '이메일 또는 비밀번호를 확인해 주세요.' : cause.message
+    if (signup && cause.status === 409) fieldError('email', uiText("이미 가입된 이메일입니다. 로그인하거나 다른 이메일을 입력해 주세요."))
+    else if (signup && cause.status === 400) error.value = uiText("이메일 주소와 비밀번호 조건을 확인해 주세요.")
+    else error.value = cause.status === 401 ? uiText("이메일 또는 비밀번호를 확인해 주세요.") : cause.message
   }
   finally { busy.value = false }
 }
@@ -84,23 +86,23 @@ async function submit() {
     <h1 ref="heading" tabindex="-1">{{ title }}</h1>
     <AdminAccess v-if="wantsAdmin && session.isAdmin" entry />
     <section v-else-if="session.account" class="panel">
-      <p>{{ session.account.email }} 계정으로 로그인했습니다.</p>
-      <p v-if="wantsAdmin">이 계정에는 관리자 권한이 없습니다.</p><RouterLink to="/">도감 열기</RouterLink>
+      <p>{{ session.account.email }} {{ $t("계정으로 로그인했습니다.") }}</p>
+      <p v-if="wantsAdmin">{{ $t("이 계정에는 관리자 권한이 없습니다.") }}</p><RouterLink to="/">{{ $t("도감 열기") }}</RouterLink>
     </section>
     <form v-else class="panel" :novalidate="registering" :aria-busy="busy" @submit.prevent="submit">
-      <label>이메일<input ref="emailInput" v-model="email" type="email" required maxlength="254" autocomplete="username"
+      <label>{{ $t("이메일") }}<input ref="emailInput" v-model="email" type="email" required maxlength="254" autocomplete="username"
         autocapitalize="none" spellcheck="false" :readonly="busy" :aria-invalid="invalidField==='email' || undefined"
         :aria-describedby="invalidField==='email' ? 'auth-error' : undefined" /></label>
-      <label>비밀번호<input ref="passwordInput" v-model="password" type="password" required :readonly="busy"
+      <label>{{ $t("비밀번호") }}<input ref="passwordInput" v-model="password" type="password" required :readonly="busy"
         :autocomplete="registering ? 'new-password' : 'current-password'" :aria-invalid="invalidField==='password' || undefined"
         :aria-describedby="invalidField==='password' ? 'password-rule auth-error' : registering ? 'password-rule' : undefined" /></label>
-      <p v-if="registering" id="password-rule" class="password-rule">12자 이상, UTF-8 기준 72바이트 이내</p>
+      <p v-if="registering" id="password-rule" class="password-rule">{{ $t("12자 이상, UTF-8 기준 72바이트 이내") }}</p>
       <p v-if="error" id="auth-error" role="alert" class="inline-error">{{ error }}</p>
-      <button type="submit" class="primary wide" :disabled="busy || !session.ready">{{ registering ? (busy ? '가입 중…' : '회원가입') : (busy ? '로그인 중…' : '로그인') }}</button>
+      <button type="submit" class="primary wide" :disabled="busy || !session.ready">{{ registering ? (busy ? $t("가입 중…") : $t("회원가입")) : (busy ? $t("로그인 중…") : $t("로그인")) }}</button>
     </form>
     <p v-if="!wantsAdmin && !session.account" class="switch-auth">
-      {{ registering ? '이미 계정이 있으신가요?' : '처음 방문하셨나요?' }}
-      <RouterLink :to="switchMode">{{ registering ? '로그인' : '회원가입' }}</RouterLink>
+      {{ registering ? $t("이미 계정이 있으신가요?") : $t("처음 방문하셨나요?") }}
+      <RouterLink :to="switchMode">{{ registering ? $t("로그인") : $t("회원가입") }}</RouterLink>
     </p>
   </div>
 </template>
