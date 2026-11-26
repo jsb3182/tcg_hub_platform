@@ -12,6 +12,13 @@ const subscriptions=[]
 let fixtureRole='ROLE_ADMIN'
 const codes=['YUGIOH','POKEMON','ONEPIECE','WEISS','NIVEL','RIFTBOUND']
 const titles={ko:'연습용 카드',en:'Practice card',ja:'練習カード'}, writes=[],errors=[]
+const effects={ko:'확인된 한국어 효과',en:'Verified English effect',ja:'確認済みの日本語効果'}
+const atlasTile=(col,language)=>({sheetId:9,col,row:0,url:'/media/fixture.webp',cellWidth:200,cellHeight:290,language})
+const atlasVariants=[{id:71,image:atlasTile(0,'en')},{id:72,image:atlasTile(3,'ja')},{id:73,image:atlasTile(2,null)}]
+function atlasCard(lang){
+ return {id:54,name:titles[lang],language:lang,effect:effects[lang],effectLanguage:lang,gameCode:'YUGIOH',number:'AT-54',
+   imageUrl:null,imageLanguage:null,image:(atlasVariants.find(v=>v.image.language===lang)||atlasVariants[0]).image}
+}
 function artwork(id,lang){
  const productCode='EB01'
  const imageLanguage=lang==='ja'?'ko':lang
@@ -59,8 +66,12 @@ try {
      {id:6,category:'RESTOCK',title:'신상품 입고',gameCode:null,startsAt:'2026-11-25T13:30:00Z',sourceUrl:'https://example.invalid/store-restock'}
    ]}],total:1})
    if(api==='me/favorites/stores')return json([])
+   if(api==='play/cards' && u.searchParams.get('game')==='YUGIOH')return json([atlasCard(lang)])
    if(api==='play/cards')return json([{...card,...artwork(51,lang)}])
+   if(api==='cards' && u.searchParams.get('game')==='YUGIOH')return json({items:[atlasCard(lang)],total:1})
    if(api==='cards')return json({items:[card],total:1})
+   if(api==='cards/54')return json({...atlasCard(lang),specs:{},variants:atlasVariants})
+   if(api==='cards/55')return json({...atlasCard(lang),id:55,imageUrl:'/media/fixture.webp',imageLanguage:'en',specs:{},variants:atlasVariants})
    if(['cards/51','cards/52','cards/53'].includes(api)){
      const id=Number(api.split('/')[1])
      return json({...card,id,...artwork(id,lang),variants:[],specs:{names:titles,sources:{ja:'https://example.invalid/public-card-ja'}}})
@@ -150,6 +161,46 @@ try {
        }
      }
    }
+ }
+ // This synthetic printing has two verified atlas languages and one unverified tile.
+ await go('/?game=YUGIOH&lang=ja')
+ const preview=page.locator('.card-row summary .lib-thumbnail')
+ const position=async (art,expected)=>assert.equal(await art.evaluate(e=>getComputedStyle(e).backgroundPosition),expected)
+ await visible(preview);await position(preview,'100% 0%')
+ await page.locator('.card-row summary').click()
+ const caption=page.locator('.illustration .edition-note')
+ await visible(caption.getByText('日本語版',{exact:true}))
+ await position(page.locator('.illustration button.atlas'),'100% 0%')
+ await page.locator('.variant-nav button').last().click()
+ await visible(caption.getByText('言語未確認',{exact:true}))
+ await page.locator('.illustration button.atlas').click()
+ await position(page.getByRole('dialog').locator('.atlas'),'66.6667% 0%')
+ await page.getByRole('dialog').getByRole('button').click()
+ await go('/cards/54?lang=ko')
+ await visible(caption.getByText('영어판',{exact:true}))
+ assert.match(await caption.innerText(),/대체 이미지/)
+ await position(page.locator('.illustration button.atlas'),'0% 0%')
+ await visible(page.locator('.detail-section p[lang=ko]').getByText(effects.ko))
+ // When a direct image is also available, a matching atlas beats a different-language URL.
+ await go('/cards/55?lang=ja');await visible(caption.getByText('日本語版',{exact:true}))
+ await position(page.locator('.illustration button.atlas'),'100% 0%')
+ await select.selectOption('en');await visible(page.locator('.illustration .localized-card img'))
+ await visible(caption.getByText('English edition',{exact:true}))
+ await go('/?game=YUGIOH&lang=ko')
+ await visible(page.locator('.catalog-edition').filter({hasText:'대체 이미지 · 영어판'}))
+ await go('/play?game=YUGIOH&lang=ja')
+ await btn('追加 練習カード').click();await page.locator('.practice-setup button.primary').click()
+ const hand=page.locator('.practice-zones>section').first()
+ for(const [lang,edition,positionValue] of [['ja','日本語版','100% 0%'],['en','English edition','0% 0%'],['ko','영어판','0% 0%']]){
+   await select.selectOption(lang)
+   await visible(hand.locator('strong[lang='+lang+']').getByText(titles[lang]))
+   await visible(hand.locator('figcaption').getByText(edition,{exact:true}))
+   await position(hand.locator('.lib-thumbnail'),positionValue)
+   assert.equal((await hand.locator('figcaption').innerText()).includes('대체 이미지'),lang==='ko')
+   const detail=hand.locator('details')
+   if(!await detail.evaluate(e=>e.open))await detail.locator('summary').click()
+   await visible(detail.locator('p[lang='+lang+']').getByText(effects[lang]))
+   await fits()
  }
  for(const [game,size] of Object.entries({YUGIOH:5,POKEMON:7,ONEPIECE:5,WEISS:5,NIVEL:5,RIFTBOUND:4})){
    await go('/shared/decks/'+game+'?lang=en')
@@ -265,5 +316,5 @@ try {
  fixtureRole='ROLE_USER';await page.reload();await visible(page.getByRole('alert'))
  assert.equal(await page.locator('.x-source').count(),0)
  assert.deepEqual(errors,[])
- console.log('360px Chrome passed: six opening-hand sizes and copy-weighted curves; trilingual same, alternate and unknown artwork products, fallback image editions and source navigation; six-game catalog; trilingual navigation and original news; One Piece redraw, draw, field and DON!!; differentiated binder writes; deck-code import/export; OSM store/event selection; admin X subscription, store lookup, 400/409, role guard and disabled host actions.')
+ console.log('360px Chrome passed: verified, fallback and unknown Yu-Gi-Oh! atlas editions in catalog and play; six opening-hand sizes and copy-weighted curves; trilingual same, alternate and unknown artwork products and source navigation; six-game catalog; trilingual navigation and original news; One Piece redraw, draw, field and DON!!; differentiated binder writes; deck-code import/export; OSM store/event selection; admin X subscription, store lookup, 400/409, role guard and disabled host actions.')
 }finally{await browser.close()}

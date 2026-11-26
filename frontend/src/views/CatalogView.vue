@@ -1,11 +1,12 @@
 <script setup>
-import { t as uiText, locale, gameName } from '../i18n'
+import { t as uiText, locale, gameName, supportedLanguage } from '../i18n'
 
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { mediaPath, request } from '../api'
 import CardDetails from '../components/CardDetails.vue'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
+import ArtworkCredit from '../components/ArtworkCredit.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -145,11 +146,15 @@ function reset() {
         <details v-for="card in result.items" :key="card.id" class="card-row">
           <summary>
             <span class="card-leading">
-              <LibraryThumbnail :image="card.image" :src="card.imageUrl" />
-              <span class="card-title"><strong :lang="card.language || locale">{{ card.name || card.originalName || $t("이름 미정") }}</strong>
+              <LibraryThumbnail v-slot="{art}" :image="card.image" :src="card.imageUrl" :language="card.imageLanguage">
+                <span class="card-title"><strong :lang="card.language || locale">{{ card.name || card.originalName || $t("이름 미정") }}</strong>
                 <small v-if="card.packName">{{ card.packName }}</small>
                 <small class="card-id-mobile">{{ [card.number,card.rarity].filter(Boolean).join(' · ') }}</small>
-              </span>
+                <small v-if="art && art.language!==locale" class="catalog-edition">
+                  <ArtworkCredit :language="art.language" :label-image="!supportedLanguage(art.language)" automatic/>
+                </small>
+                </span>
+              </LibraryThumbnail>
             </span>
             <span class="card-code">{{ card.number }}</span>
             <span class="card-rarity">{{ card.rarity }}</span><span class="chevron" aria-hidden="true"></span>
