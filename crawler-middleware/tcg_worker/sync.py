@@ -219,11 +219,15 @@ def sync_source(source, stop):
             more, floor = False, 0
             page = None
             schedule = None
+            editions = None
             if source["provider"] == "CATALOG":
                 from .catalog_sources import iter_catalog
                 total = 0
                 releases = {} if source["source_key"] == "YUGIOH" and "news" not in cursor else None
-                records = iter(iter_catalog(source["game_code"]))
+                if source["source_key"] == "YUGIOH" and source["game_code"] == "YUGIOH":
+                    from .legacy_editions import LegacyEditions
+                    editions = LegacyEditions.from_database(db, sid)
+                records = iter(iter_catalog(source["game_code"], legacy_editions=editions))
                 while True:
                     interrupted(db, sid, stop)
                     batch = list(islice(records, 10 if source["game_code"] == "NIVEL" else 200))
@@ -271,6 +275,8 @@ def sync_source(source, stop):
                     seen, added = save(db, sid, schedule)
                     db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s WHERE id=%s", (seen, added, sid))
                 if source["provider"] == "CATALOG" and source["source_key"] == "YUGIOH":
+                    if editions is not None:
+                        editions.reconcile(db)
                     cursor["news"] = finish_yugioh_scan(db, sid, releases)
                 if page is not None:
                     added = save_news(db, source, page.items)

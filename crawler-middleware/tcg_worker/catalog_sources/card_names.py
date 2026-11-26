@@ -31,33 +31,62 @@ def ygo_name_archive(path):
             with bundle.extractfile(entry) as stream:
                 item = json.load(stream)
             if cid := item.get("konami_id"):
+                unofficial = item.get("is_translation_unofficial") or {}
                 localized = {lang: printed_name(value) for lang, value in item["name"].items()
-                             if lang in ("ko", "ja") and isinstance(value, str) and value.strip()}
+                             if lang in ("ko", "en", "ja") and isinstance(value, str) and value.strip()
+                             and not unofficial.get("name", {}).get(lang)}
                 texts = {lang: printed_name(value) for lang, value in item.get("text", {}).items()
-                         if lang in ("ko","en","ja") and isinstance(value,str) and value.strip()}
+                         if lang in ("ko","en","ja") and isinstance(value,str) and value.strip()
+                         and not unofficial.get("text", {}).get(lang)
+                         and not unofficial.get("pendulum_effect", {}).get(lang)}
                 pendulum = {lang: printed_name(value) for lang, value in item.get("pendulum_effect", {}).items()
-                            if lang in ("ko","en","ja") and isinstance(value,str) and value.strip()}
+                            if lang in ("ko","en","ja") and isinstance(value,str) and value.strip()
+                            and not unofficial.get("text", {}).get(lang)
+                            and not unofficial.get("pendulum_effect", {}).get(lang)}
                 for lang, value in pendulum.items():
                     texts[lang] = value + "\n" + texts.get(lang, "")
                 if localized or texts:
-                    names[str(cid)] = {"names": localized, "texts": texts,
-                                       "legality": item.get("limit_regulation", {})}
+                    printings = {lang: sorted({v["set_number"] for v in rows if v.get("set_number")})
+                                 for lang, rows in item.get("sets", {}).items() if lang in localized}
+                    edition = {"names": localized, "texts": texts, "printings": printings,
+                               "file": parts[-1], "legality": item.get("limit_regulation", {})}
+                    # Alternate artwork can have a distinct passcode and printing list but the same CID.
+                    previous = names.get(str(cid))
+                    if previous:
+                        edition["alternates"] = [*previous.pop("alternates", []), previous]
+                    names[str(cid)] = edition
     if not names:
         raise ValueError("Empty localized card index")
     return names
 
 
-def ygo_names(http, revision):
-    repo = "DawnbrandBots/yaml-yugi"
-    cache = http.root / ".ygo-printed-editions-v2.json"
-    previous = {}
-    if cache.is_file():
+def _ygo_snapshot(cache):
+    try:
         with cache.open(encoding="utf-8") as stream:
-            previous = json.load(stream)
+            data = json.load(stream)
+        if (isinstance(data, dict) and isinstance(data.get("revision"), str)
+                and re.fullmatch(r"[0-9a-f]{40}", data["revision"])
+                and isinstance(data.get("names"), dict) and data["names"]
+                and all(isinstance(v, dict) and {"names","texts","file","printings"} <= v.keys()
+                        for v in data["names"].values())):
+            return data
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def ygo_names(http, revision, legacy=None):
+    repo = "DawnbrandBots/yaml-yugi"
+    cache = http.root / ".ygo-printed-editions-v3.json"
+    previous = _ygo_snapshot(cache)
     try:
         sha = revision(http, repo, "data/cards")
-        if previous.get("revision") == sha:
+        if previous and previous["revision"] == sha:
+            if legacy is not None:
+                legacy.observe_yaml(sha, previous["names"])
             return previous["names"]
+        # Release the old complete index before building the new one on a 6 GB phone.
+        previous = None
         path = http.get(f"https://codeload.github.com/{repo}/tar.gz/{sha}", ttl=365 * 86400,
                         size=250_000_000, family="ygo-printed-editions-archive")
         names = ygo_name_archive(path)
@@ -68,10 +97,19 @@ def ygo_names(http, revision):
             os.replace(temp, cache)
         finally:
             Path(temp).unlink(missing_ok=True)
+        if legacy is not None:
+            legacy.observe_yaml(sha, names)
         return names
-    except (OSError, ValueError, tarfile.TarError) as error:
+    except (OSError, ValueError, tarfile.TarError, EOFError) as error:
+        previous = previous or _ygo_snapshot(cache)
+        if not previous:
+            if legacy is not None and legacy.allow_english_bootstrap:
+                logging.getLogger(__name__).warning("Printed-name update deferred; loading the first English catalog")
+                return {}
+            # Only the scheduler can establish that an English-only first import is safe.
+            raise
         logging.getLogger(__name__).warning("Printed-name update deferred (%s)", type(error).__name__)
-        return previous.get("names", {})
+        return previous["names"]
 
 
 def pokemon_effect(card):
