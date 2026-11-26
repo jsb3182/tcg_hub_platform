@@ -62,8 +62,12 @@ set -eu
 echo "$*" >> "$F/ops"
 services="$PREFIX/var/service"
 case "$1" in
- service-controls) ;;
+ service-controls)
+   [[ $0 == "$TCG_RELEASE_DIR/deploy/tcgctl" ]]
+   sha256sum "$TCG_RELEASE_DIR/tcg-hub.jar" | cut -d' ' -f1 > "$F/controls";;
  maintenance)
+   [[ -f $F/controls && $(cat "$F/controls") == "$(sha256sum "$TCG_RELEASE_DIR/tcg-hub.jar" | cut -d' ' -f1)" ]]
+   rm "$F/controls"
    rm -f "$F/running"
    for member in tunnel api worker; do touch "$services/tcg-$member/down"; done;;
  backup-for-update)

@@ -27,7 +27,15 @@ def guest_command(service, argv):
     if service == "worker":
         return name == "python" and argv[1:] == ["-m", "tcg_worker", "run"]
     if service == "api":
-        return name == "java" and argv[-2:] == ["-jar", "tcg-hub.jar"]
+        if name != "java" or "-jar" not in argv:
+            return False
+        jar = argv.index("-jar")
+        if any(opt not in {"-Xms256m", "-Xmx1024m", "-XX:ActiveProcessorCount=2"} for opt in argv[1:jar]):
+            return False
+        return argv[jar:] in (
+            ["-jar", "tcg-hub.jar"],
+            ["-jar", "tcg-hub.jar", "--spring.config.import=optional:configtree:/etc/tcg-hub/web-config/"],
+        )
     return (name == "cloudflared" and argv[1:3] == ["tunnel", "--no-autoupdate"]
             and argv[-2:] == ["--token-file", "/etc/tcg-hub/tunnel.token"])
 
