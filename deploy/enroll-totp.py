@@ -5,6 +5,7 @@ import hmac
 from pathlib import Path
 import re
 import secrets
+import subprocess
 import sys
 import time
 from urllib.parse import quote, urlencode
@@ -98,6 +99,28 @@ def app_password():
     raise EnrollmentError("앱 전용 DB 인증 설정을 읽을 수 없습니다.")
 
 
+def setup(db, tty, read=input, change=subprocess.run):
+    print("TCG 허브 관리자 설정", file=tty, flush=True)
+    email = read("관리자 이메일: ").strip().lower()
+    if not email or len(email) > 254:
+        raise EnrollmentError("등록한 관리자 이메일을 입력하세요.")
+    _, factor = account(db, email)
+    print("1. 비밀번호 변경 후 인증 앱 확인\n2. 인증 앱만 확인", file=tty, flush=True)
+    choice = read("진행할 번호 (1 또는 2): ").strip()
+    if choice not in ("1", "2"):
+        raise EnrollmentError("설정을 취소했습니다.")
+    if choice == "1":
+        print("현재 비밀번호, 새 비밀번호, 새 비밀번호 확인을 차례로 입력하세요. 입력한 글자는 숨겨집니다.", file=tty, flush=True)
+        changed = change(["/bin/bash", "/opt/tcg-hub/current/deploy/ubuntu.sh", "password", email], check=False)
+        if changed.returncode:
+            raise EnrollmentError("비밀번호 변경을 완료하지 못했습니다. 현재 비밀번호를 확인하고 다시 실행하세요.")
+    if factor is not None:
+        print("기존 인증 앱이 등록돼 있습니다. 그 앱의 다음 코드로 로그인하세요.", file=tty, flush=True)
+        return
+    enroll(db, email, False, lambda address, secret: prompt_for_code(tty, address, secret))
+    print("인증 앱 등록을 마쳤습니다. 다음 코드로 관리자 화면에 로그인하세요.", file=tty, flush=True)
+
+
 def main(args):
     if len(args) not in (1, 2) or (len(args) == 2 and args[1] != "--rotate"):
         raise EnrollmentError("사용법: tcgctl totp EMAIL [--rotate]")
@@ -106,6 +129,9 @@ def main(args):
     with open("/dev/tty", "w", encoding="utf-8") as tty:
         with psycopg.connect(host="127.0.0.1", port=5432, dbname="tcg_hub", user="tcg_app",
                              password=app_password(), connect_timeout=5, autocommit=True) as db:
+            if args == ["--setup"]:
+                setup(db, tty)
+                return
             enroll(db, args[0].strip().lower(), len(args) == 2,
                    lambda email, secret: prompt_for_code(tty, email, secret))
         tty.write("인증 앱 등록을 마쳤습니다. 다음 코드로 관리자 화면에 로그인하세요.\n")

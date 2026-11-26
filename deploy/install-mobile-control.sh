@@ -11,6 +11,12 @@ install -d -m 0700 "$base" "$HOME/tcg-control"
 temp=$(mktemp "$base/.mobile-control.XXXXXX")
 install -m 0600 "$src/mobile-control.py" "$temp"
 mv -f "$temp" "$base/mobile-control.py"
+temp=$(mktemp "$base/.admin-setup.XXXXXX")
+install -m 0700 "$src/admin-setup.sh" "$temp"
+mv -f "$temp" "$base/admin-setup"
+if [[ ${TERMUX_APK_RELEASE:-} == GOOGLE_PLAY_STORE || ${TERMUX_VERSION:-} == googleplay.* ]]; then
+  touch "$base/termux-play"
+fi
 if [[ ! -d $service ]]; then
   staging=$(mktemp -d "$svroot/.tcg-mobile.XXXXXX")
   printf '#!%s/bin/sh\nexec "%s/bin/python" -I "%s/mobile-control.py"\n' "$PREFIX" "$PREFIX" "$base" > "$staging/run"

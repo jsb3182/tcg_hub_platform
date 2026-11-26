@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -66,6 +67,42 @@ class MobileControl(unittest.TestCase):
             bridge.drain()
             run.assert_not_called()
             self.assertEqual(json.loads((Path(folder)/f"reply-{ident}.json").read_text()), {"result": "interrupted"})
+
+    def test_admin_setup_is_a_local_only_fixed_action(self):
+        now, ident = int(time.time()*1000), uuid.uuid4().hex
+        self.assertIsNotNone(bridge.REQUEST.fullmatch(f"request-{now}-{ident}-admin-setup"))
+        self.assertIsNone(bridge.REQUEST.fullmatch(f"request-{now}-{ident}-admin-setup--rotate"))
+        for origin in (bridge.LOCAL, "https://cards.example.org", ""):
+            with self.subTest(origin=origin), patch.object(bridge, "profile", return_value=origin), \
+                    patch.object(bridge, "snapshot", return_value={}), patch.object(bridge, "launch_admin_session", return_value="session-open") as launch:
+                self.assertEqual(bridge.execute("admin-setup")["result"], "session-open" if origin == bridge.LOCAL else "profile-changed")
+                self.assertEqual(launch.call_count, int(origin == bridge.LOCAL))
+
+    def test_session_launch_uses_a_tty_acknowledgement_and_only_one_explicit_component(self):
+        for play, ack, timeout in ((True, True, False), (False, True, False), (True, False, False), (True, False, True)):
+            with self.subTest(play=play, ack=ack, timeout=timeout), tempfile.TemporaryDirectory() as work:
+                prefix = Path(work)
+                for rel in ("bin/am", "libexec/tcg-hub/admin-setup"):
+                    target = prefix / rel
+                    target.parent.mkdir(parents=True); target.touch()
+                if play:
+                    (prefix / "libexec/tcg-hub/termux-play").touch()
+                state = prefix / "var/lib/tcg-hub/admin-session"
+                def launch(argv, **kwargs):
+                    component = "com.termux/.app.TermuxActivityInternal" if play else "com.termux/.app.TermuxService"
+                    self.assertIn(component, argv)
+                    self.assertEqual(argv[argv.index("-d") + 1], "com.termux.file:" + str(prefix / "libexec/tcg-hub/admin-setup"))
+                    self.assertIs(kwargs['stdin'], subprocess.DEVNULL)
+                    if timeout:
+                        raise subprocess.TimeoutExpired(argv, 8)
+                    if ack:
+                        (state / "pending").rename(state / "started")
+                with patch.object(bridge, "PREFIX", prefix), patch.dict(sys.modules, {"fcntl": Mock(LOCK_EX=2, LOCK_NB=4)}), \
+                        patch.dict(bridge.os.environ, {"TERMUX_APK_RELEASE": "", "TERMUX_VERSION": ""}), \
+                        patch.object(bridge.time, "sleep"), patch.object(subprocess, "run", side_effect=launch) as send:
+                    self.assertEqual(bridge.launch_admin_session(), "session-open" if ack else "session-unavailable")
+                    send.assert_called_once()
+                    self.assertFalse((state / "pending").exists())
 
     def test_only_fixed_readiness_and_service_paths(self):
         with patch.object(bridge.http.client, "HTTPConnection") as connect, patch.object(bridge.subprocess, "run") as run:

@@ -37,6 +37,10 @@ if [[ $cmd == totp ]]; then
   require_local_settings
   exec /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 "$app/venv/bin/python" -I "$app/deploy/enroll-totp.py" "$@"
 fi
+if [[ $cmd == admin-setup ]]; then
+  require_local_settings
+  exec /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 "$app/venv/bin/python" -I "$app/deploy/enroll-totp.py" --setup
+fi
 source "$config/runtime.env"
 source "$config/access.env"
 if [[ $cmd == worker || $cmd == media ]]; then

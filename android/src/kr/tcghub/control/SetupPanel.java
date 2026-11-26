@@ -83,7 +83,7 @@ final class SetupPanel {
                 8);
     }
 
-    private static void openTermux(Activity activity) {
+    static void openTermux(Activity activity) {
         Intent intent =
                 new Intent(Intent.ACTION_MAIN)
                         .addCategory(Intent.CATEGORY_LAUNCHER)

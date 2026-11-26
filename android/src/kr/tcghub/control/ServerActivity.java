@@ -51,7 +51,8 @@ public final class ServerActivity extends LocalizedActivity {
     private TextView summary, profile, address, message;
     private final TextView[] serviceValues = new TextView[SERVICE_KEYS.length];
     private LinearLayout connect, dashboard, operations, shareActions;
-    private Button start, stop, status, browser, platform, pair, reconnect;
+    private Button start, stop, status, browser, platform, pair, reconnect, adminSetup;
+    private boolean supportsAdminSetup;
 
     @Override
     public void onCreate(Bundle state) {
@@ -121,6 +122,8 @@ public final class ServerActivity extends LocalizedActivity {
         }
         browser = screen.button(getString(R.string.open_admin), HubUi.Action.TONAL, v -> openAdmin());
         screen.add(operations, browser, 16);
+        adminSetup = screen.button(getString(R.string.admin_setup), HubUi.Action.OUTLINED, v -> adminGuide());
+        screen.add(operations, adminSetup, 8);
         platform = screen.button(getString(R.string.open_catalog), HubUi.Action.OUTLINED, v -> {
             String selected = LOCAL.equals(origin) ? PlatformOrigin.LOCAL : PublicSite.root(origin);
             if (ready && tree != null && !selected.isEmpty()) PlatformActivity.open(this, selected);
@@ -153,6 +156,27 @@ public final class ServerActivity extends LocalizedActivity {
     private void note(String text) {
         message.setText(text);
         message.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    private void adminGuide() {
+        if (tree == null || !LOCAL.equals(origin) || !ready || !pending.isEmpty()) return;
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(R.string.admin_setup)
+                .setMessage(supportsAdminSetup ? R.string.admin_setup_detail : R.string.admin_old_detail)
+                .setNegativeButton(R.string.cancel, null);
+        if (supportsAdminSetup) {
+            dialog.setPositiveButton(R.string.open_setup_termux, (d, w) -> request("admin-setup"))
+                    .setNeutralButton(R.string.copy_admin_command, (d, w) -> copyAdminCommand("tcgctl admin-setup"));
+        } else {
+            dialog.setPositiveButton(R.string.copy_password, (d, w) -> copyAdminCommand("tcgctl password "))
+                    .setNeutralButton(R.string.copy_totp, (d, w) -> copyAdminCommand("tcgctl totp "));
+        }
+        dialog.show();
+    }
+
+    private void copyAdminCommand(String command) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.admin_setup), command));
+        SetupPanel.openTermux(this);
     }
 
     private void sharePublicSite(boolean useShareSheet) {
@@ -217,6 +241,8 @@ public final class ServerActivity extends LocalizedActivity {
         start.setEnabled(idle && !origin.isEmpty() && !profileRunning);
         stop.setEnabled(idle && !servicesStopped);
         browser.setEnabled(idle && ready && !origin.isEmpty());
+        adminSetup.setVisibility(LOCAL.equals(origin) ? View.VISIBLE : View.GONE);
+        adminSetup.setEnabled(idle && ready);
         platform.setEnabled(idle && ready && !origin.isEmpty());
         screen.colors(browser, profileRunning ? HubUi.Action.FILLED : HubUi.Action.TONAL);
     }
@@ -296,7 +322,7 @@ public final class ServerActivity extends LocalizedActivity {
         long now = System.currentTimeMillis();
         pending = id;
         started = now;
-        timeout = action.equals("status") ? 60_000 : 12 * 60_000;
+        timeout = action.equals("admin-setup") ? 45_000 : action.equals("status") ? 60_000 : 12 * 60_000;
         prefs.edit()
                 .putString("pending", id)
                 .putLong("started", now)
@@ -316,7 +342,10 @@ public final class ServerActivity extends LocalizedActivity {
                                         "application/octet-stream",
                                         filename);
                         if (created == null) throw new IOException();
-                        runOnUiThread(this::poll);
+                        runOnUiThread(() -> {
+                            if (action.equals("admin-setup") && active && !isDestroyed()) SetupPanel.openTermux(this);
+                            poll();
+                        });
                     } catch (Exception ex) {
                         runOnUiThread(() -> fail(id, getString(R.string.unable_to_write)));
                     }
@@ -326,11 +355,6 @@ public final class ServerActivity extends LocalizedActivity {
     private void poll() {
         if (!active || polling || pending.isEmpty()) return;
         final String id = pending;
-        if (System.currentTimeMillis() - started > timeout
-                || System.currentTimeMillis() + 1000 < started) {
-            fail(id, getString(R.string.request_timeout));
-            return;
-        }
         polling = true;
         Uri response =
                 DocumentsContract.buildDocumentUriUsingTree(
@@ -370,6 +394,11 @@ public final class ServerActivity extends LocalizedActivity {
                                     show(id, answer);
                                     return;
                                 }
+                                long age = System.currentTimeMillis() - started;
+                                if (age > timeout || age < -1000) {
+                                    fail(id, getString(R.string.request_timeout));
+                                    return;
+                                }
                                 if (active) ui.postDelayed(this::poll, 1000);
                             });
                 });
@@ -407,6 +436,7 @@ public final class ServerActivity extends LocalizedActivity {
         String publicRoot = PublicSite.root(origin);
         prefs.edit().putString("publicSuggestion", publicRoot).apply();
         ready = response.optBoolean("ready");
+        supportsAdminSetup = response.optBoolean("adminSetup");
         servicesStopped = true;
         profileRunning = ready && !origin.isEmpty();
         for (int i = 0; i < SERVICE_KEYS.length; i++) {
@@ -425,7 +455,9 @@ public final class ServerActivity extends LocalizedActivity {
         address.setText(origin);
         String result = response.optString("result");
         note(
-                result.equals("ok")
+                result.equals("session-open") ? getString(R.string.session_started)
+                        : result.equals("session-unavailable") ? getString(R.string.session_unavailable)
+                        : result.equals("ok")
                         ? (origin.isEmpty() ? getString(R.string.check_origin) : "")
                         : result.equals("profile-changed")
                                 ? getString(R.string.profile_changed)

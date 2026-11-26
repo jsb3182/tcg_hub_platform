@@ -116,4 +116,13 @@
     <string name="copy_update">"Copy update command"</string>
     <string name="invalid_mac">"Enter the wired MAC address of your PC."</string>
     <string name="language">"Language"</string>
+    <string name="admin_setup">"Password and authenticator setup"</string>
+    <string name="admin_setup_detail">"Enter your administrator email in Termux and choose a password change or authenticator setup. If all sessions are in use, copy the command and paste it at an idle shell prompt."</string>
+    <string name="open_setup_termux">"Start in Termux"</string>
+    <string name="copy_admin_command">"Copy command"</string>
+    <string name="admin_old_detail">"This server uses manual setup. Paste a command into an idle Termux shell, add a space and your administrator email, then press Enter. Set up your authenticator after changing your password."</string>
+    <string name="copy_password">"Copy password command"</string>
+    <string name="copy_totp">"Copy authenticator command"</string>
+    <string name="session_started">"Termux opened the setup session. Check that window for the result."</string>
+    <string name="session_unavailable">"The setup window did not open. In Password and authenticator setup, copy the command and run it at an idle Termux prompt."</string>
 </resources>
