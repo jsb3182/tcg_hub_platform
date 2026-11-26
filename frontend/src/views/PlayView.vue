@@ -177,7 +177,7 @@ function move(from, index, to) {
         <p v-else-if="!hits.length">{{ t.noHits }}</p>
         <ul v-else class="play-hits">
           <li v-for="card in hits" :key="card.id"><div><strong :lang="card.language">{{ card.name }}</strong>
-            <small>{{ card.number }} <span v-if="card.language !== lang">· {{ t.fallback }} ({{ card.language }})</span></small></div>
+            <small>{{ card.number }} <span v-if="card.language !== lang">· {{ t.fallback }} · {{ editionName(card.language) }}</span></small></div>
             <button class="secondary" :disabled="total >= 150" :aria-label="t.add + ' ' + card.name" @click="changeQuantity(card,1)">{{ t.add }}</button>
           </li>
         </ul>
@@ -216,7 +216,7 @@ function move(from, index, to) {
             </figure>
 
             <span><strong :lang="label(id)?.language">{{ label(id)?.name }}</strong>
-              <small v-if="label(id)?.language && label(id).language !== lang"> · {{ t.fallback }} ({{ label(id).language }})</small></span>
+              <small v-if="label(id)?.language && label(id).language !== lang"> · {{ t.fallback }} · {{ editionName(label(id).language) }}</small></span>
             <details v-if="label(id)?.effect"><summary>{{ $t('효과') }}</summary><small v-if="label(id).effectLanguage!==lang">{{ editionName(label(id).effectLanguage) }}</small><p :lang="label(id).effectLanguage || ''">{{ label(id).effect }}</p></details>
             <small v-if="zone==='table' && attached[i]">{{ game==='ONEPIECE'?'DON!!':$t('에너지') }} × {{ attached[i] }}</small>
             <button v-if="zone==='table' && game!=='YUGIOH'" class="secondary" :disabled="!stock" @click="attach(i)">{{ $t('부착') }}</button>

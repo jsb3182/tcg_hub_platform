@@ -529,6 +529,7 @@ export const labels = {
   "손패": ["Hand","手札"],
   "남은 덱": ["Draw pile","山札"],
   "언어 미확인": ["Language unconfirmed","言語未確認"],
+  "대체 이미지": ["Fallback image","代替画像"],
   "수록 제품 미확인": ["Printing unconfirmed","収録商品未確認"],
   "다른 제품의 그림": ["Art from another set","別商品のカード画像"],
   "그림 수록 제품": ["Art from set","画像の収録商品"],

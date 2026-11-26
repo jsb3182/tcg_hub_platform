@@ -1,23 +1,19 @@
 <script setup>
 import { computed, ref } from 'vue'
 import ArtworkCredit from './ArtworkCredit.vue'
-import { mediaPath, artworkUrl } from '../api'
+import { cardArtworks, preferredArtwork } from '../artwork'
+import { locale } from '../i18n'
 const props=defineProps({image:Object,src:String,language:String,showEdition:Boolean,printing:Object})
 const failed=ref('')
-const art=computed(()=>artworkUrl(props.src))
-const style=computed(()=>{
-  const tile=props.image, url=mediaPath(tile?.url)
-  if(!url || !Number.isInteger(tile.col) || !Number.isInteger(tile.row))return null
-  return {backgroundImage:'url("'+url.replace(/"/g,'%22')+'")',backgroundPosition:(tile.col*100/3)+'% '+(tile.row*50)+'%',
-    aspectRatio:tile.cellWidth+' / '+tile.cellHeight}
-})
+const art=computed(()=>preferredArtwork(cardArtworks(props.src,props.language,[{image:props.image}],failed.value),locale.value))
 </script>
 <template>
-  <img v-if="art && failed!==art" :src="art" alt="" loading="lazy" class="lib-thumbnail inline-art" referrerpolicy="no-referrer" @error="failed=art">
-  <span v-else-if="style" class="lib-thumbnail" :style="style" aria-hidden="true"></span>
-  <figcaption v-if="showEdition && ((art && failed!==art) || style)" class="art-language">
-    <ArtworkCredit :language="art && failed!==art ? language : null" :printing="art && failed!==art ? printing : null"/>
+  <img v-if="art?.src" :src="art.src" alt="" loading="lazy" class="lib-thumbnail inline-art" referrerpolicy="no-referrer" @error="failed=$event.target.getAttribute('src')">
+  <span v-else-if="art?.style" class="lib-thumbnail" :style="art.style" aria-hidden="true"></span>
+  <figcaption v-if="showEdition && art" class="art-language">
+    <ArtworkCredit :language="art.language" automatic :printing="art.src ? printing : null"/>
   </figcaption>
+  <slot :art="art"/>
 </template>
 
 <style scoped>.art-language{color:var(--mu);font-size:.78rem}.inline-art{object-fit:contain;aspect-ratio:300 / 438}</style>

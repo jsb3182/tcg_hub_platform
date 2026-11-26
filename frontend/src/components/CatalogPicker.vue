@@ -31,7 +31,7 @@ watch([query, page, () => props.game, retry, locale], (_, __, cleanup) => {
     <p v-else-if="!items.length">{{ $t("검색 결과가 없습니다.") }}</p>
     <ul v-else class="lib-list">
       <li v-for="card in items" :key="card.id">
-        <div class="lib-print"><LibraryThumbnail :image="card.image" :src="card.imageUrl" /><div><strong :lang="card.language || locale">{{ card.name }}</strong><small>{{ [card.number,card.packName,card.rarity].filter(Boolean).join(' · ') }}</small></div></div>
+        <div class="lib-print"><LibraryThumbnail :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" /><div><strong :lang="card.language || locale">{{ card.name }}</strong><small>{{ [card.number,card.packName,card.rarity].filter(Boolean).join(' · ') }}</small></div></div>
         <button type="button" class="secondary" :aria-label="card.name + $t(' 추가')" :disabled="disabled" @click="$emit('pick',card,$event.currentTarget)">{{ $t("추가") }}</button>
       </li>
     </ul>
