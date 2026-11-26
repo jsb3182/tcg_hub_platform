@@ -19,11 +19,17 @@ import org.springframework.web.server.ResponseStatusException;
 class OperationsApi {
     record Enabled(@NotNull Boolean enabled) {}
     enum Verdict { PUBLISHED, REJECTED }
-    record Decision(@NotNull Verdict status, @Pattern(regexp="YUGIOH|POKEMON|WEISS|NIVEL|RIFTBOUND") String gameCode) {}
+    record Decision(@NotNull Verdict status, @Pattern(regexp="YUGIOH|POKEMON|ONEPIECE|WEISS|NIVEL|RIFTBOUND") String gameCode) {}
+    record Interval(@NotNull @Min(60) @Max(2592000) Integer seconds) {}
+    record Visibility(@NotNull Boolean hidden,@NotNull Boolean pinned) {}
+    enum Role { ROLE_USER, ROLE_ADMIN }
+    record RoleUpdate(@NotNull Role role,@NotNull Role expectedRole) {}
+    record Member(long id,String email,String role,boolean enabled) {}
+    record Activity(String action,Long targetId,OffsetDateTime occurredAt) {}
     record Source(long id, String provider, String name, String gameCode, boolean enabled, String state,
                   OffsetDateTime lastStartedAt, OffsetDateTime lastSuccessAt, OffsetDateTime lastErrorAt,
                   String lastError, OffsetDateTime nextFetchAt, OffsetDateTime runRequestedAt, int lastCount, int addedCount,
-                  String policyNote) {}
+                  String policyNote,int intervalSeconds) {}
     record SourceSettings(boolean enabled, String policyNote) {}
     record Heartbeat(OffsetDateTime seenAt, OffsetDateTime startedAt, OffsetDateTime restartRequestedAt, int restartCount) {}
     record Snapshot(long jvmUsedBytes, long jvmMaxBytes, long diskUsableBytes, long diskTotalBytes,
@@ -55,7 +61,7 @@ class OperationsApi {
                         when requested_at is not null then 'QUEUED' else state end as state,
                    last_started_at,last_success_at,last_error_at,last_error,
                    greatest(s.next_fetch_at,s.retry_after_at,p.retry_after_at) as next_fetch_at,requested_at as run_requested_at,
-                   last_seen as last_count,last_added as added_count,s.policy_note
+                   last_seen as last_count,last_added as added_count,s.policy_note,s.interval_seconds
             from feed_source s left join feed_provider_cooldown p using (provider)
             order by provider,game_code nulls last,id
             """).query(Source.class).list();
@@ -121,6 +127,57 @@ class OperationsApi {
     private SourceSettings lockSource(long id) {
         return db.sql("select enabled,policy_note from feed_source where id=? for update").param(id)
                 .query(SourceSettings.class).optional().orElseThrow(OperationsApi::missing);
+    }
+
+    @PostMapping("/sources/{id}/interval") @ResponseStatus(HttpStatus.NO_CONTENT)
+    void interval(@PathVariable @Positive long id,@Valid @RequestBody Interval input,Principal user) {
+        var settings=lockSource(id);
+        if (settings.policyNote()!=null) throw new ResponseStatusException(HttpStatus.CONFLICT);
+        db.sql("""
+            update feed_source set interval_seconds=:seconds,schedule_ready=false,
+                next_fetch_at=case when requested_at is not null then now()
+                   else coalesce(last_finished_at+make_interval(secs=>:seconds),now()) end where id=:id
+            """).param("id",id).param("seconds",input.seconds()).update();
+        audit(user,"CHANGE_INTERVAL",id);
+    }
+
+    @PostMapping("/posts/{id}/visibility") @ResponseStatus(HttpStatus.NO_CONTENT)
+    void visibility(@PathVariable @Positive long id,@Valid @RequestBody Visibility input,Principal user) {
+        if (input.hidden() && input.pinned()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        int count=db.sql("""
+            update feed_item i set hidden=?,pinned=? from feed_source s where i.id=? and i.source_id=s.id
+              and i.status='PUBLISHED' and i.payload->>'kind'='NEWS' and s.policy_note is null
+            """).param(input.hidden()).param(input.pinned()).param(id).update();
+        if (count!=1) throw new ResponseStatusException(HttpStatus.CONFLICT);
+        audit(user,input.hidden() ? "HIDE_POST" : input.pinned() ? "PIN_POST" : "SHOW_POST",id);
+    }
+
+    @GetMapping("/users") @Transactional(readOnly=true)
+    List<Member> members(@RequestParam(defaultValue="") @Size(max=254) String q,
+                         @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page) {
+        return db.sql("select id,email,role,enabled from app_user where strpos(email,lower(?))>0 order by id limit 50 offset ?")
+                .param(q.strip()).param(page*50L).query(Member.class).list();
+    }
+
+    @PutMapping("/users/{id}/role") @ResponseStatus(HttpStatus.NO_CONTENT)
+    void changeRole(@PathVariable @Positive long id,@Valid @RequestBody RoleUpdate input, Principal user) {
+        db.sql("LOCK TABLE app_user IN SHARE ROW EXCLUSIVE MODE").update();
+        long actor=adminId(user);
+        Member target=db.sql("select id,email,role,enabled from app_user where id=?").param(id)
+                .query(Member.class).optional().orElseThrow(OperationsApi::missing);
+        if (!target.role().equals(input.expectedRole().name())) throw new ResponseStatusException(HttpStatus.CONFLICT);
+        if (target.role().equals(input.role().name())) return;
+        if (actor==id) throw new ResponseStatusException(HttpStatus.CONFLICT);
+        db.sql("update app_user set role=? where id=?").param(input.role().name()).param(id).update();
+        db.sql("delete from refresh_session where user_id=?").param(id).update();
+        db.sql("delete from local_admin_session where user_id=?").param(id).update();
+        audit(user,"GRANT_"+input.role().name(),id);
+    }
+
+    @GetMapping("/actions") @Transactional(readOnly=true)
+    List<Activity> actions(@RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page) {
+        return db.sql("select action,target_id,occurred_at from operator_action order by id desc limit 50 offset ?")
+                .param(page*50L).query(Activity.class).list();
     }
 
     private long adminId(Principal principal) {

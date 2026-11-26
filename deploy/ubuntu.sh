@@ -105,7 +105,7 @@ SQL
     ;;
   api)
     until pg_isready -q; do sleep 3; done
-    exec java -Xms256m -Xmx1024m -XX:ActiveProcessorCount=2 -jar tcg-hub.jar
+    exec java -Xms256m -Xmx1024m -XX:ActiveProcessorCount=2 -jar tcg-hub.jar --spring.config.import=optional:configtree:/etc/tcg-hub/web-config/
     ;;
   worker)
     until curl -fsS --max-time 4 http://127.0.0.1:8080/internal/ready >/dev/null 2>&1; do sleep 5; done
@@ -115,6 +115,10 @@ SQL
   account)
     [[ $# == 2 && ( $2 == ROLE_ADMIN || $2 == ROLE_USER ) ]] || { echo 'account EMAIL ROLE_ADMIN|ROLE_USER' >&2; exit 2; }
     exec java -Xms128m -Xmx384m -XX:ActiveProcessorCount=2 -jar tcg-hub.jar "--provision-account=$1" "--account-role=$2"
+    ;;
+  password)
+    [[ $# == 1 ]] || exit 2
+    exec java -Xms128m -Xmx384m -XX:ActiveProcessorCount=2 -jar tcg-hub.jar "--change-password=$1"
     ;;
   media)
     cd crawler-middleware

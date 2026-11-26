@@ -30,6 +30,9 @@ def claim(db, catalog):
             WITH due AS (
               SELECT id FROM feed_source
                WHERE enabled AND state <> 'RUNNING' AND (provider='CATALOG')=%s
+                 AND policy_note IS NULL
+                 AND EXISTS (SELECT FROM collection_control WHERE crawler_enabled
+                     AND (requested_at IS NOT NULL OR (scheduler_enabled AND (schedule_ready OR NOT spring_managed))))
                  AND coalesce(next_fetch_at,'-infinity') <= now()
                  AND coalesce(retry_after_at,'-infinity') <= now()
                  AND NOT EXISTS (SELECT 1 FROM feed_provider_cooldown p
@@ -38,7 +41,7 @@ def claim(db, catalog):
                         CASE WHEN provider='CATALOG' THEN 1 ELSE 0 END,id
                LIMIT 1 FOR UPDATE SKIP LOCKED
             )
-            UPDATE feed_source s SET state='RUNNING',last_started_at=now(),requested_at=NULL,
+            UPDATE feed_source s SET state='RUNNING',last_started_at=now(),requested_at=NULL,schedule_ready=false,
                                      last_seen=0,last_added=0
               FROM due WHERE s.id=due.id RETURNING s.*
         """, (catalog,)).fetchone()

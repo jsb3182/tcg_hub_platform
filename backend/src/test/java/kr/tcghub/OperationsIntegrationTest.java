@@ -88,6 +88,56 @@ class OperationsIntegrationTest {
                 .header("Origin",origin).header("X-TCG-Request","1").contentType("application/json");
     }
 
+    @Test void hostRoutesRequireBothFactorsAndSchedulerStopsClaimingNewSources() throws Exception {
+        String base="/api/admin/server";
+        http.perform(get(base+"/status")).andExpect(status().isUnauthorized());
+        http.perform(get(base+"/status").header("Authorization","Bearer "+admin)).andExpect(status().isForbidden());
+        http.perform(get(base+"/status").header("Authorization","Bearer "+admin).header(ASSERTION,access))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.database").value("UP"));
+        for (String action:java.util.List.of("scheduler/pause","crawler/stop","sync")) {
+            String full=base+"/"+action;
+            http.perform(post(full).servletPath(full).header("Origin",origin).header("X-TCG-Request","1")
+                    .header(ASSERTION,access).header("Authorization","Bearer "+admin))
+                    .andExpect(status().is2xxSuccessful());
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(db.sql("select not scheduler_enabled and not crawler_enabled from collection_control")
+                .query(Boolean.class).single());
+    }
+
+    @Test void hiddenReviewedPostStaysInModerationAndCanBeRepublishedAndPinned() throws Exception {
+        http.perform(command("/review/"+item+"/decision").content("{\"status\":\"PUBLISHED\"}"))
+                .andExpect(status().isNoContent());
+        http.perform(command("/posts/"+item+"/visibility").content("{\"hidden\":true,\"pinned\":false}"))
+                .andExpect(status().isNoContent());
+        http.perform(get("/api/v1/news?game=NIVEL&size=100")).andExpect(jsonPath("$.items[?(@.id=="+item+")]").isEmpty());
+        http.perform(command("/posts/"+item+"/visibility").content("{\"hidden\":false,\"pinned\":true}"))
+                .andExpect(status().isNoContent());
+        http.perform(get("/api/v1/news?game=NIVEL")).andExpect(jsonPath("$.items[0].id").value(item));
+    }
+
+    @Test void approvedStorePublishesOnlyThisWeeksTournament() throws Exception {
+        String name="test-"+UUID.randomUUID();
+        String edit="""
+            {"name":"%s","address":"서울","region":"서울","lat":37.56,"lon":126.98,
+             "gameCodes":["ONEPIECE"],"official":true,"listed":true}
+            """.formatted(name);
+        http.perform(command("/stores").content(edit)).andExpect(status().isCreated());
+        long store=db.sql("select id from store where name=?").param(name).query(Long.class).single();
+        String path="/stores/"+store+"/events";
+        for (int days : new int[]{1,14}) {
+            String start=java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).plusDays(days).withNano(0).toString();
+            http.perform(command(path).content("""
+                {"title":"대회","gameCode":"ONEPIECE","startsAt":"%s"}
+                """.formatted(start))).andExpect(status().isCreated());
+        }
+        http.perform(get("/api/v1/stores").param("q",name).param("game","ONEPIECE"))
+                .andExpect(jsonPath("$.items[0].official").value(true))
+                .andExpect(jsonPath("$.items[0].events.length()").value(1));
+        db.sql("update app_user set role='ROLE_USER' where email=(select email from app_user where id=(select user_id from operator_action where action='CREATE_STORE' and target_id=?))")
+                .param(store).update();
+        http.perform(command(path).content("{}")).andExpect(status().isForbidden());
+    }
+
     @Test void gatewayAndRoleRequiredThenControlsReachDatabase() throws Exception {
         var snapshot = get("/api/v1/admin/operations").header("Authorization","Bearer "+admin);
         http.perform(snapshot).andExpect(status().isForbidden());

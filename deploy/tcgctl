@@ -276,6 +276,10 @@ BOOT
   maintenance) hold_writers;;
   stop) hold_writers; disable db;;
   account) guest tcgapp /bin/bash "$guest_script" account "$@";;
+  password)
+    [[ $# == 1 && -t 0 && -t 1 ]] || { echo 'Run tcgctl password EMAIL in Termux.' >&2; exit 2; }
+    guest tcgapp /bin/bash "$guest_script" password "$@"
+    ;;
   totp)
     [[ ( $# == 1 || ( $# == 2 && $2 == --rotate ) ) && -t 0 && -t 1 && -t 2 ]] || {
       echo 'Run tcgctl totp EMAIL [--rotate] interactively in Termux.' >&2; exit 2
@@ -327,5 +331,5 @@ BOOT
       restore_guest restore "$@"
     fi
     ;;
-  *) echo 'tcgctl install [--local]|service-controls|configure-public|check-public|token|x-token|start-local|start|status|maintenance|stop|account|totp|media|backup|restore'; exit 2;;
+  *) echo 'tcgctl install [--local]|service-controls|configure-public|check-public|token|x-token|start-local|start|status|maintenance|stop|account|password|totp|media|backup|restore'; exit 2;;
 esac
