@@ -35,6 +35,7 @@ const marker = makeMarker('#12635c',7), chosen = makeMarker('#b34715',10)
 let kakaoMap, map, disposed = false, generation = 0
 
 onMounted(async () => {
+  session.initialize()
   try{
     const config=await request('/config')
     if(config.kakaoMapKey){
@@ -55,7 +56,6 @@ onMounted(async () => {
     if (match) choose(match.getId(), false)
   })
   draw()
-  session.initialize()
 })
 onBeforeUnmount(() => { disposed=true;kakaoMap?.dispose(); map?.setTarget(undefined) })
 function draw() {
