@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 
 from tcg_worker import translation
 from tcg_worker.social_brief import summarize, translate_facts
+from tcg_worker.store_notice import scheduled_event
 
 
 class RecordingModel:
@@ -27,6 +28,13 @@ class RecordingModel:
 
 
 class GiveawayTitleTests(unittest.TestCase):
+    def test_store_event_facts_include_korean_local_time_in_three_languages(self):
+        notice="입고 예정 일시: 2026-11-27 오후 3시"
+        _, summary=summarize(notice, scheduled_event(notice))
+        for language, label in (("ko","입고 예정"),("en","Scheduled restock"),("ja","入荷予定")):
+            text=summary if language=="ko" else translate_facts(summary,language)
+            self.assertEqual(text.splitlines()[0],label+" · 2026-11-27 15:00 KST")
+
     def test_unconfirmed_banlist_keeps_its_status_and_literal_card_codes(self):
         topic, facts = summarize("Unconfirmed banlist: OP01-001, OP01-001. 2026年11月26日 #OnePiece")
         self.assertEqual(topic, "미확인 소식")

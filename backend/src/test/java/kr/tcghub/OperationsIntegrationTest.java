@@ -115,6 +115,54 @@ class OperationsIntegrationTest {
         http.perform(get("/api/v1/news?game=NIVEL")).andExpect(jsonPath("$.items[0].id").value(item));
     }
 
+    @Test void xSubscriptionsValidateHandlesAndStartUnderModeration() throws Exception {
+        String path="/sources/x";
+        long shop=db.sql("select min(id) from store").query(Long.class).single();
+        String request="""
+            {"username":"@ShopTest","gameCode":"ONEPIECE","storeId":%d}
+            """.formatted(shop);
+        String full="/api/v1/admin"+path;
+        http.perform(post(full).servletPath(full).header("Origin",origin).header("X-TCG-Request","1")
+                .contentType("application/json").content(request)).andExpect(status().isUnauthorized());
+        http.perform(post(full).servletPath(full).header("Origin",origin).header("X-TCG-Request","1")
+                .header("Authorization","Bearer "+admin).contentType("application/json").content(request))
+                .andExpect(status().isForbidden());
+        http.perform(command(path).content(request)).andExpect(status().isCreated()).andExpect(jsonPath("$.id").isNumber());
+        assertTrue(db.sql("""
+            select not auto_publish and game_code='ONEPIECE' and store_id=? and interval_seconds=3600
+              from feed_source where provider='X' and source_key='ShopTest'
+            """).param(shop).query(Boolean.class).single());
+        http.perform(command(path).content(request.replace("@ShopTest","shoptest"))).andExpect(status().isConflict());
+        http.perform(command(path).content(request.replace("@ShopTest","bad/handle"))).andExpect(status().isBadRequest());
+        http.perform(command(path).content(request.replace("ONEPIECE","UNKNOWN"))).andExpect(status().isBadRequest());
+        http.perform(command(path).content("{\"username\":\"OtherTest\",\"storeId\":9223372036854775807}"))
+                .andExpect(status().isBadRequest());
+        http.perform(command(path).content("{\"username\":\"OtherTest\"}")).andExpect(status().isCreated());
+    }
+
+    @Test void storeNoticeFollowsModerationVisibilityAndSourcePolicy() throws Exception {
+        long shop=db.sql("select min(id) from store where listed").query(Long.class).single();
+        db.sql("update feed_source set provider='X',game_code=null,store_id=? where id=?").param(shop).param(source).update();
+        db.sql("""
+            insert into calendar_event(store_id,feed_item_id,source_event_key,title,category,starts_at,status)
+            values(?,?,'store-notice','검수 확인 대회','TOURNAMENT',now()+interval '1 day','PENDING')
+            """).param(shop).param(item).update();
+        String storeName=db.sql("select name from store where id=?").param(shop).query(String.class).single();
+        var lookup=get("/api/v1/stores").param("q",storeName);
+        String match="$.items[?(@.id=="+shop+")].events[*].title";
+        http.perform(lookup).andExpect(jsonPath(match,org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("검수 확인 대회"))));
+        http.perform(command("/review/"+item+"/decision").content("{\"status\":\"PUBLISHED\",\"gameCode\":\"NIVEL\"}"))
+                .andExpect(status().isNoContent());
+        assertEquals("NIVEL", db.sql("select game_code from calendar_event where feed_item_id=?").param(item).query(String.class).single());
+        http.perform(lookup).andExpect(jsonPath(match,org.hamcrest.Matchers.hasItem("검수 확인 대회")));
+        http.perform(command("/posts/"+item+"/visibility").content("{\"hidden\":true,\"pinned\":false}"))
+                .andExpect(status().isNoContent());
+        http.perform(lookup).andExpect(jsonPath(match,org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("검수 확인 대회"))));
+        db.sql("update feed_item set hidden=false where id=?").param(item).update();
+        db.sql("update feed_source set enabled=false, policy_note='이용 중지' where id=?").param(source).update();
+        http.perform(lookup).andExpect(jsonPath(match,org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("검수 확인 대회"))));
+    }
+
     @Test void approvedStorePublishesOnlyThisWeeksTournament() throws Exception {
         String name="test-"+UUID.randomUUID();
         String edit="""

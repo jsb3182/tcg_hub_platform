@@ -88,6 +88,15 @@ def save_news(db, source, items):
         """, (source["id"], item.external_id, item.url, Jsonb(payload), item.published,
               "PUBLISHED" if source["auto_publish"] else "PENDING")).fetchone()
         added += int(row is not None)
+        if row and item.event and source.get("provider") == "X" and source.get("store_id"):
+            category, starts = item.event
+            db.execute("""
+                INSERT INTO calendar_event(store_id,game_code,feed_item_id,source_event_key,title,category,starts_at,status)
+                SELECT s.store_id,s.game_code,i.id,'store-notice',%s,%s,%s,i.status
+                  FROM feed_item i JOIN feed_source s ON s.id=i.source_id
+                 WHERE i.id=%s AND s.provider='X' AND s.store_id IS NOT NULL
+                ON CONFLICT(feed_item_id,source_event_key) DO NOTHING
+            """, ("매장 대회" if category == "TOURNAMENT" else "신상품 입고", category, starts, row[0]))
         if row is None and source["auto_publish"]:
             # A moderation decision applies to the exact text and link presented for review.
             # Only automatically published official news may take subsequent publisher edits.
