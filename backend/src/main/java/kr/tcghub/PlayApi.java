@@ -26,20 +26,21 @@ class PlayApi {
                 ,coalesce(c.specs->>'type',c.specs->>'card_type',c.specs->>'k') as type,
                 array(select jsonb_array_elements_text(case when jsonb_typeof(c.specs->'colors')='array'
                          then c.specs->'colors' else '[]'::jsonb end)) as colors
-                """ + LibraryImage.COLUMNS + " from card c " + CardEdition.IMAGE_JOIN + LibraryImage.LOCALIZED_JOIN
+                """ + LibraryImage.COLUMNS + " from card c " + CardEdition.JOIN + LibraryImage.LOCALIZED_JOIN
                 + " where c.status='PUBLISHED' and c.game_code=:game";
         org.springframework.jdbc.core.RowMapper<CardLabel> map = (r,n) -> new CardLabel(r.getLong("id"),r.getString("name"),
                 r.getString("language"),r.getString("number"),r.getString("effect"),r.getString("effectLanguage"),
                 r.getString("imageUrl"),r.getString("imageLanguage"),r.getString("productCode"),r.getString("imageProduct"),
                 r.getString("imageSource"),r.getString("type"),List.of((String[])r.getArray("colors").getArray()),LibraryImage.read(r));
         if (ids != null) {
-            return db.sql(select + " and id in (:ids) order by id").param("ids",ids)
+            return db.sql(select + " and c.id in (:ids) order by c.id").param("ids",ids)
                     .param("lang",lang).param("game",game).query(map).list();
         }
         return db.sql(select + """
-                 and (:q='' or strpos(lower(concat_ws(' ',name,number,specs->'names'->>'ko',
-                           specs->'names'->>'en',specs->'names'->>'ja')),lower(:q))>0)
-                 order by (coalesce(jsonb_exists(specs->'names',:lang),false) or coalesce(specs->>'language'=:lang,false)) desc,id
+                 and (:q='' or strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.specs->'names'->>'ko',
+                           c.specs->'names'->>'en',c.specs->'names'->>'ja',
+                           linked.names->>'ko',linked.names->>'en',linked.names->>'ja')),lower(:q))>0)
+                 order by (requested.name is not null or coalesce(c.specs->>'language'=:lang,false)) desc,c.id
                  limit 30
                 """)
                 .param("game",game).param("lang",lang).param("q",q.strip()).query(map).list();

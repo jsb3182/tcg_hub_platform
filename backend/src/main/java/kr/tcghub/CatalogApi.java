@@ -73,7 +73,12 @@ class CatalogApi {
     Details details(@PathVariable @Positive long id,
                     @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) throws java.io.IOException {
         var card = cards.published(id,lang).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        var specs = db.sql("select specs::text from card where id=?").param(id).query(String.class).single();
+        var specs = db.sql("""
+                select cast(case when linked.card_id is null then c.specs else c.specs || jsonb_build_object(
+                    'names', linked.names || case when jsonb_typeof(c.specs->'names')='object' then c.specs->'names' else '{}' end,
+                    'texts', linked.texts || case when jsonb_typeof(c.specs->'texts')='object' then c.specs->'texts' else '{}' end
+                ) end as text) from card c
+                """ + CardEdition.LEGACY_JOIN + " where c.id=?").param(id).query(String.class).single();
         var variants = db.sql("""
             select v.id, v.rarity, v.sheet_id, v.col_idx, v.row_idx, s.storage_key, s.cell_width, s.cell_height,
                    edition.language as tile_language

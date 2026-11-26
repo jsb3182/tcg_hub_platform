@@ -35,9 +35,9 @@ interface CardRepository extends Repository<Card, Long> {
                c.original_name as "originalName", c.number, c.rarity, card_curve_value(c.game_code,c.specs) as "curveValue",
         """ + CardEdition.FIELDS + """
                ,
-               c.release_date as "releaseDate", c.source_url as "sourceUrl", src.label as "sourceName"
+               c.release_date as "releaseDate", coalesce(c.source_url,linked.source_url) as "sourceUrl", src.label as "sourceName"
           from card c left join pack p on p.id=c.pack_id left join feed_source src on src.id=c.source_id
-        """ + CardEdition.IMAGE_JOIN;
+        """ + CardEdition.JOIN;
     String FILTER = """
          where c.status='PUBLISHED' and (:game='' or c.game_code=:game)
            and (cast(:packId as bigint) is null or c.pack_id=:packId)
@@ -47,10 +47,11 @@ interface CardRepository extends Repository<Card, Long> {
                  and (lower(v.rarity)=lower(:rarity)
                       or lower(:rarity)=any(regexp_split_to_array(lower(v.rarity),'[[:space:]]+')))))
            and (:q='' or strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.effect,
-               c.specs->'names'->>'ko',c.specs->'names'->>'en',c.specs->'names'->>'ja')),lower(:q))>0)
+               c.specs->'names'->>'ko',c.specs->'names'->>'en',c.specs->'names'->>'ja',
+               linked.names->>'ko',linked.names->>'en',linked.names->>'ja')),lower(:q))>0)
         """;
 
-    @Query(value=SELECT + FILTER + " order by c.id", countQuery="select count(*) from card c" + FILTER, nativeQuery=true)
+    @Query(value=SELECT + FILTER + " order by c.id", countQuery="select count(*) from card c" + CardEdition.LEGACY_JOIN + FILTER, nativeQuery=true)
     Page<Summary> search(@Param("game") String game, @Param("packId") Long packId, @Param("lang") String lang,
                          @Param("rarity") String rarity, @Param("q") String q, Pageable pageable);
 
