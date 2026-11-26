@@ -47,7 +47,7 @@ class StoreApiIntegrationTest {
         db.sql("update feed_item set hidden=true where id=?").param(item).update();
         http.perform(query).andExpect(jsonPath(target).isEmpty());
         db.sql("update feed_item set hidden=false where id=?").param(item).update();
-        db.sql("update feed_source set policy_note='fixture' where id=?").param(source).update();
+        db.sql("update feed_source set enabled=false,policy_note='fixture' where id=?").param(source).update();
         http.perform(query).andExpect(jsonPath(target).isEmpty());
     }
 
