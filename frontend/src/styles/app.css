@@ -162,3 +162,10 @@ button.atlas { cursor: zoom-in; box-shadow: 0 1px 5px rgba(0,0,0,.28); }
   .search-field > svg { display:none; }
   .filter-toggle { padding-inline:9px; }
 }
+
+.brand-mark { color: var(--ac); flex-shrink: 0; }
+.locale-switch { display:inline-flex; align-items:center; gap:.2rem; }
+.locale-switch select { background:var(--sf); color:var(--tx); border:1px solid var(--bd); border-radius:6px; font-size:.84rem; padding:.3rem; min-height:38px; }
+@media(max-width:1020px) { .locale-switch svg { display:none; } }
+@media(max-width:420px) { .masthead-inner,.account-actions { gap:.3rem; } .locale-switch select { max-width:4.6rem; } }
+@media(max-width:340px) { .brand>span { display:none; } }

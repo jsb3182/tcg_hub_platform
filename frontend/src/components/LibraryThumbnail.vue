@@ -1,7 +1,9 @@
 <script setup>
-import { computed } from 'vue'
-import { mediaPath } from '../api'
-const props=defineProps({image:Object})
+import { computed, ref } from 'vue'
+import { mediaPath, artworkUrl } from '../api'
+const props=defineProps({image:Object,src:String})
+const failed=ref('')
+const art=computed(()=>artworkUrl(props.src))
 const style=computed(()=>{
   const tile=props.image, url=mediaPath(tile?.url)
   if(!url || !Number.isInteger(tile.col) || !Number.isInteger(tile.row))return null
@@ -9,4 +11,6 @@ const style=computed(()=>{
     aspectRatio:tile.cellWidth+' / '+tile.cellHeight}
 })
 </script>
-<template><span v-if="style" class="lib-thumbnail" :style="style" aria-hidden="true"></span></template>
+<template><img v-if="art && failed!==art" :src="art" alt="" loading="lazy" class="lib-thumbnail inline-art" referrerpolicy="no-referrer" @error="failed=art"><span v-else-if="style" class="lib-thumbnail" :style="style" aria-hidden="true"></span></template>
+
+<style scoped>.inline-art{object-fit:contain;aspect-ratio:300 / 438}</style>

@@ -1,4 +1,6 @@
 <script setup>
+import { t as uiText } from '../i18n'
+
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { checkCropSource } from '../cropSource'
 
@@ -35,9 +37,9 @@ async function choose(event) {
     const image = new Image()
     objectUrl = URL.createObjectURL(file)
     image.src = objectUrl
-    try { await image.decode() } catch { throw new Error('이미지를 읽을 수 없습니다. 다른 파일을 선택해 주세요.') }
+    try { await image.decode() } catch { throw new Error(uiText("이미지를 읽을 수 없습니다. 다른 파일을 선택해 주세요.")) }
     if (current !== generation) return
-    if (image.naturalWidth * image.naturalHeight > 12000000) throw new Error('1,200만 픽셀 이하 이미지를 선택해 주세요.')
+    if (image.naturalWidth * image.naturalHeight > 12000000) throw new Error(uiText("1,200만 픽셀 이하 이미지를 선택해 주세요."))
     center()
     source.value = image
     await nextTick()
@@ -75,7 +77,7 @@ async function upload() {
   try {
     draw()
     const blob = await new Promise(resolve => canvas.value.toBlob(resolve,'image/png'))
-    if (!blob) throw new Error('이미지를 저장하지 못했습니다. 다시 시도해 주세요.')
+    if (!blob) throw new Error(uiText("이미지를 저장하지 못했습니다. 다시 시도해 주세요."))
     if (current === generation) emit('upload',blob)
   } catch (cause) { error.value = cause.message }
   finally { if (current === generation) loading.value = false }
@@ -83,17 +85,17 @@ async function upload() {
 </script>
 <template>
   <fieldset class="catalog-cropper" :disabled="disabled || loading">
-    <label>원본 이미지<input type="file" accept=".jpg,.jpeg,.png,.webp" @change="choose" /></label>
-    <small>JPG·PNG·WebP, 최대 8 MiB · 1,200만 픽셀</small>
+    <label>{{ $t("원본 이미지") }}<input type="file" accept=".jpg,.jpeg,.png,.webp" @change="choose" /></label>
+    <small>{{ $t("JPG·PNG·WebP, 최대 8 MiB · 1,200만 픽셀") }}</small>
     <p v-if="error" role="alert" class="inline-error">{{ error }}</p>
     <div v-if="source" class="crop-grid">
-      <canvas ref="canvas" :width="width" :height="height" aria-label="저장될 카드 이미지 미리보기"></canvas>
-      <div><p>저장 영역 300 × 438 px</p>
-        <label>확대 {{ Number(zoom).toFixed(1) }}배<input v-model.number="zoom" type="range" min="1" max="4" step="0.05" /></label>
-        <label>가로 위치 {{ horizontal }}%<input v-model.number="horizontal" type="range" min="0" max="100" :disabled="!crop.moveX" /></label>
-        <label>세로 위치 {{ vertical }}%<input v-model.number="vertical" type="range" min="0" max="100" :disabled="!crop.moveY" /></label>
-        <div class="ops-actions"><button type="button" class="secondary" @click="center">위치 초기화</button>
-          <button type="button" class="primary" @click="upload">자른 이미지 등록</button></div>
+      <canvas ref="canvas" :width="width" :height="height" :aria-label="$t('저장될 카드 이미지 미리보기')"></canvas>
+      <div><p>{{ $t("저장 영역 300 × 438 px") }}</p>
+        <label>{{ $t("확대") }} {{ Number(zoom).toFixed(1) }}{{ $t("배") }}<input v-model.number="zoom" type="range" min="1" max="4" step="0.05" /></label>
+        <label>{{ $t("가로 위치") }} {{ horizontal }}%<input v-model.number="horizontal" type="range" min="0" max="100" :disabled="!crop.moveX" /></label>
+        <label>{{ $t("세로 위치") }} {{ vertical }}%<input v-model.number="vertical" type="range" min="0" max="100" :disabled="!crop.moveY" /></label>
+        <div class="ops-actions"><button type="button" class="secondary" @click="center">{{ $t("위치 초기화") }}</button>
+          <button type="button" class="primary" @click="upload">{{ $t("자른 이미지 등록") }}</button></div>
       </div>
     </div>
   </fieldset>

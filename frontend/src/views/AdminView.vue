@@ -1,22 +1,27 @@
 <script setup>
+import { t as uiText } from '../i18n'
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { request } from '../api'
 import { useSession } from '../stores/session'
 import { bytes, dateTime, providerName } from '../presentation'
 import NewsItem from '../components/NewsItem.vue'
 import AdminAccess from '../components/AdminAccess.vue'
+import AdminTools from '../components/AdminTools.vue'
+import { locale, gameName } from '../i18n'
 import AdminCatalog from '../components/AdminCatalog.vue'
 
 const session = useSession()
 const tab = ref('overview')
-const tabs = {overview: '서버 상태', sources: '수집 출처', review: '검수 대기', catalog:'도감 편집'}
+const tabs = {overview:'서버 상태',sources:'수집 출처',review:'검수 대기',catalog:'도감 편집',posts:'게시물 관리',stores:'매장 관리',users:'회원 권한',server:'서버 제어'}
+const intervals=ref({})
 const catalogPanel=ref(null)
 const catalogBusy=ref(false)
 function selectTab(next) {
   if (tab.value === 'catalog' && next !== 'catalog' && catalogPanel.value && !catalogPanel.value.mayLeave()) return
   tab.value=next
 }
-const states = {IDLE: '대기', RUNNING: '수집 중', OK: '수집 성공', ERROR: '수집 오류', BLOCKED: '수집 차단', QUEUED: '실행 예약', PAUSED: '일시정지'}
+const states = computed(()=>({IDLE: uiText("대기"), RUNNING: uiText("수집 중"), OK: uiText("수집 성공"), ERROR: uiText("수집 오류"), BLOCKED: uiText("수집 차단"), QUEUED: uiText("실행 예약"), PAUSED: uiText("일시정지")}))
 const snapshot = ref(null)
 const games = ref([])
 const snapshotBusy = ref(false)
@@ -34,7 +39,7 @@ const notice = ref('')
 const actionError = ref('')
 const reviewPages = computed(() => Math.ceil(reviewTotal.value / reviewSize))
 const sources = computed(() => snapshot.value?.sources || [])
-const gameName = code => games.value.find(game => game.code === code)?.name || code
+
 const gameCounts = computed(() => Object.entries(snapshot.value?.cardCounts || {}))
 const diskUsed = computed(() => {
   const { diskTotalBytes: total, diskUsableBytes: free } = snapshot.value || {}
@@ -68,7 +73,7 @@ async function loadReview() {
   reviewBusy.value = true
   reviewError.value = ''
   try {
-    const query = new URLSearchParams({page: reviewPage.value, size: reviewSize})
+    const query = new URLSearchParams({page: reviewPage.value, size: reviewSize,lang:locale.value})
     const data = await session.adminRequest('/review?' + query, {signal: controller.signal})
     if (controller.signal.aborted) return
     if (!data.items.length && reviewPage.value > 0) {
@@ -107,14 +112,14 @@ async function act(path, body, message) {
 }
 function sourceAction(source, action) {
   const base = '/sources/' + encodeURIComponent(source.id)
-  if (action === 'run') return act(base + '/run', undefined, source.name + ' 수집을 요청했습니다.')
-  return act(base + '/enabled', {enabled: !source.enabled}, source.name + (source.enabled ? ' 수집을 일시정지했습니다.' : ' 수집을 재개했습니다.'))
+  if (action === 'run') return act(base + '/run', undefined, source.name + uiText(" 수집을 요청했습니다."))
+  return act(base + '/enabled', {enabled: !source.enabled}, source.name + (source.enabled ? uiText(" 수집을 일시정지했습니다.") : uiText(" 수집을 재개했습니다.")))
 }
 async function decide(item, publish) {
   const body = {status: publish ? 'PUBLISHED' : 'REJECTED'}
   if (publish && !item.gameCode && reviewGames.value[item.id]) body.gameCode = reviewGames.value[item.id]
   const done = await act('/review/' + encodeURIComponent(item.id) + '/decision', body,
-    publish ? '소식을 승인해 공개했습니다.' : '소식을 반려했습니다.')
+    publish ? uiText("소식을 승인해 공개했습니다.") : uiText("소식을 반려했습니다."))
   if (done) delete reviewGames.value[item.id]
 }
 function stopReads() { snapshotController?.abort(); reviewController?.abort(); gamesController?.abort() }
@@ -137,6 +142,7 @@ watch([tab, reviewPage], () => {
   actionError.value = ''
   if (tab.value === 'review' && session.isAdmin) loadReview()
 })
+watch(locale,()=>{if(tab.value==='review'&&session.isAdmin)loadReview()})
 onMounted(() => {
   mounted = true
   timer = window.setInterval(refreshWhenVisible, 60000)
@@ -151,93 +157,95 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <div class="admin-page">
-    <header class="page-heading"><h1>서버 관리</h1></header>
-    <section v-if="!session.ready" class="state" role="status">로그인 상태를 확인하는 중입니다.</section>
-    <section v-else-if="!session.account" class="state"><p>관리자 계정으로 로그인해 주세요.</p><RouterLink :to="{name: 'login', query: {to: 'admin'}}">로그인</RouterLink></section>
-    <p v-else-if="!session.isAdmin" role="alert" class="state">관리자 권한이 필요합니다.</p>
+    <header class="page-heading"><h1>{{ $t("서버 관리") }}</h1></header>
+    <section v-if="!session.ready" class="state" role="status">{{ $t("로그인 상태를 확인하는 중입니다.") }}</section>
+    <section v-else-if="!session.account" class="state"><p>{{ $t("관리자 계정으로 로그인해 주세요.") }}</p><RouterLink :to="{name: 'login', query: {to: 'admin'}}">{{ $t("로그인") }}</RouterLink></section>
+    <p v-else-if="!session.isAdmin" role="alert" class="state">{{ $t("관리자 권한이 필요합니다.") }}</p>
     <AdminAccess v-else-if="session.adminAccessBlocked" />
     <template v-else>
-      <nav class="game-tabs admin-tabs" aria-label="관리 메뉴"><button v-for="(title, key) in tabs" :key="key" :aria-pressed="tab === key" :disabled="!!activeAction || catalogBusy" @click="selectTab(key)">{{ title }}</button></nav>
-      <div class="ops-heading"><h2>{{ tabs[tab] }}</h2>
-        <button v-if="tab !== 'catalog'" class="secondary" :disabled="!!activeAction || (tab === 'review' ? reviewBusy : snapshotBusy)" @click="refresh">새로고침</button>
+      <nav class="game-tabs admin-tabs" :aria-label="$t('관리 메뉴')"><button v-for="(title, key) in tabs" :key="key" :aria-pressed="tab === key" :disabled="!!activeAction || catalogBusy" @click="selectTab(key)">{{ $t(title) }}</button></nav>
+      <div class="ops-heading"><h2>{{ $t(tabs[tab]) }}</h2>
+        <button v-if="['overview','sources','review'].includes(tab)" class="secondary" :disabled="!!activeAction || (tab === 'review' ? reviewBusy : snapshotBusy)" @click="refresh">{{ $t("새로고침") }}</button>
       </div>
       <p v-if="notice" class="success-message" role="status">{{ notice }}</p>
       <p v-if="actionError" role="alert" class="inline-error">{{ actionError }}</p>
-      <AdminCatalog v-if="tab === 'catalog'" ref="catalogPanel" :games="games" @editing="catalogBusy=$event.busy" />
+      <AdminTools v-if="['posts','stores','users','server'].includes(tab)" :tab="tab"/>
+      <AdminCatalog v-else-if="tab === 'catalog'" ref="catalogPanel" :games="games" @editing="catalogBusy=$event.busy" />
       <template v-else-if="tab !== 'review'">
         <p v-if="snapshotError" role="alert" class="inline-error">{{ snapshotError }}</p>
-        <p v-if="snapshotBusy && !snapshot" role="status" class="state">운영 상태를 불러오는 중입니다.</p>
+        <p v-if="snapshotBusy && !snapshot" role="status" class="state">{{ $t("운영 상태를 불러오는 중입니다.") }}</p>
         <template v-if="snapshot">
-          <p class="update-time">마지막 정상 응답 <time :datetime="checkedAt">{{ dateTime(checkedAt) }}</time></p>
+          <p class="update-time">{{ $t("마지막 정상 응답") }} <time :datetime="checkedAt">{{ dateTime(checkedAt) }}</time></p>
           <template v-if="tab === 'overview'">
             <div class="ops-grid">
-              <section class="ops-card"><h3>JVM 힙 메모리</h3>
-                <p class="reading">{{ bytes(snapshot.jvmUsedBytes) }} <span>사용</span></p>
-                <meter v-if="snapshot.jvmMaxBytes > 0 && snapshot.jvmUsedBytes != null" :value="snapshot.jvmUsedBytes" min="0" :max="snapshot.jvmMaxBytes" aria-label="JVM 힙 메모리 사용량"></meter>
-                <small>최대 {{ bytes(snapshot.jvmMaxBytes) }}</small>
+              <section class="ops-card"><h3>{{ $t("JVM 힙 메모리") }}</h3>
+                <p class="reading">{{ bytes(snapshot.jvmUsedBytes) }} <span>{{ $t("사용") }}</span></p>
+                <meter v-if="snapshot.jvmMaxBytes > 0 && snapshot.jvmUsedBytes != null" :value="snapshot.jvmUsedBytes" min="0" :max="snapshot.jvmMaxBytes" :aria-label="$t('JVM 힙 메모리 사용량')"></meter>
+                <small>{{ $t("최대") }} {{ bytes(snapshot.jvmMaxBytes) }}</small>
               </section>
-              <section class="ops-card"><h3>데이터 디스크</h3>
-                <p class="reading">{{ bytes(snapshot.diskUsableBytes) }} <span>사용 가능</span></p>
-                <meter v-if="snapshot.diskTotalBytes > 0 && diskUsed != null" :value="diskUsed" min="0" :max="snapshot.diskTotalBytes" aria-label="디스크 사용량"></meter>
-                <small>전체 {{ bytes(snapshot.diskTotalBytes) }}</small>
+              <section class="ops-card"><h3>{{ $t("데이터 디스크") }}</h3>
+                <p class="reading">{{ bytes(snapshot.diskUsableBytes) }} <span>{{ $t("사용 가능") }}</span></p>
+                <meter v-if="snapshot.diskTotalBytes > 0 && diskUsed != null" :value="diskUsed" min="0" :max="snapshot.diskTotalBytes" :aria-label="$t('디스크 사용량')"></meter>
+                <small>{{ $t("전체") }} {{ bytes(snapshot.diskTotalBytes) }}</small>
               </section>
-              <section class="ops-card"><h3>수집 워커</h3>
-                <dl><div><dt>마지막 신호</dt><dd>{{ dateTime(snapshot.workerHeartbeatAt) || '수신 기록 없음' }}</dd></div>
-                  <div v-if="snapshot.workerStartedAt"><dt>워커 시작</dt><dd>{{ dateTime(snapshot.workerStartedAt) }}</dd></div></dl>
-                <p v-if="snapshot.workerRestartRequestedAt" class="update-time">재시작 요청 {{ dateTime(snapshot.workerRestartRequestedAt) }}</p>
-                <button class="secondary" :disabled="!!activeAction || !!snapshot.workerRestartRequestedAt" @click="act('/worker/restart', undefined, '워커에 재시작을 요청했습니다.')">{{ snapshot.workerRestartRequestedAt ? '재시작 요청 대기' : '워커 재시작 요청' }}</button>
+              <section class="ops-card"><h3>{{ $t("수집 워커") }}</h3>
+                <dl><div><dt>{{ $t("마지막 신호") }}</dt><dd>{{ dateTime(snapshot.workerHeartbeatAt) || $t("수신 기록 없음") }}</dd></div>
+                  <div v-if="snapshot.workerStartedAt"><dt>{{ $t("워커 시작") }}</dt><dd>{{ dateTime(snapshot.workerStartedAt) }}</dd></div></dl>
+                <p v-if="snapshot.workerRestartRequestedAt" class="update-time">{{ $t("재시작 요청") }} {{ dateTime(snapshot.workerRestartRequestedAt) }}</p>
+                <button class="secondary" :disabled="!!activeAction || !!snapshot.workerRestartRequestedAt" @click="act('/worker/restart', undefined, $t('워커에 재시작을 요청했습니다.'))">{{ snapshot.workerRestartRequestedAt ? $t("재시작 요청 대기") : $t("워커 재시작 요청") }}</button>
               </section>
             </div>
-            <section class="ops-card card-counts"><h3>게임별 도감 카드</h3>
-              <dl v-if="gameCounts.length"><div v-for="[code, count] in gameCounts" :key="code"><dt>{{ gameName(code) }}</dt><dd>{{ count.toLocaleString('ko-KR') }}장</dd></div></dl>
-              <p v-else class="muted">집계 데이터가 없습니다.</p>
+            <section class="ops-card card-counts"><h3>{{ $t("게임별 도감 카드") }}</h3>
+              <dl v-if="gameCounts.length"><div v-for="[code, count] in gameCounts" :key="code"><dt>{{ gameName(code) }}</dt><dd>{{ count.toLocaleString(locale) }}{{ $t("장") }}</dd></div></dl>
+              <p v-else class="muted">{{ $t("집계 데이터가 없습니다.") }}</p>
             </section>
           </template>
           <div v-else-if="sources.length" class="source-grid">
             <article v-for="source in sources" :key="source.id" class="ops-card source-card">
               <div class="ops-heading"><h3>{{ source.name }}</h3><span class="label-tag">{{ states[source.state] || source.state }}</span></div>
-              <p class="update-time">{{ source.gameCode ? gameName(source.gameCode) : '공통' }} · {{ providerName(source.provider) }}</p>
+              <p class="update-time">{{ source.gameCode ? gameName(source.gameCode) : $t("공통") }} · {{ providerName(source.provider) }}</p>
               <dl>
-                <div><dt>최근 시작</dt><dd>{{ dateTime(source.lastStartedAt) || '기록 없음' }}</dd></div>
-                <div><dt>최근 성공</dt><dd>{{ dateTime(source.lastSuccessAt) || '기록 없음' }}</dd></div>
-                <div v-if="source.lastSuccessAt && source.lastCount != null"><dt>최근 수집</dt><dd>{{ source.lastCount }}건<span v-if="source.addedCount != null"> · 신규 {{ source.addedCount }}건</span></dd></div>
-                <div><dt>다음 수집</dt><dd>{{ source.enabled ? dateTime(source.nextFetchAt) || '일정 미정' : '일시정지' }}</dd></div>
-                <div v-if="source.runRequestedAt"><dt>수동 요청</dt><dd>{{ dateTime(source.runRequestedAt) }}</dd></div>
+                <div><dt>{{ $t("최근 시작") }}</dt><dd>{{ dateTime(source.lastStartedAt) || $t("기록 없음") }}</dd></div>
+                <div><dt>{{ $t("최근 성공") }}</dt><dd>{{ dateTime(source.lastSuccessAt) || $t("기록 없음") }}</dd></div>
+                <div v-if="source.lastSuccessAt && source.lastCount != null"><dt>{{ $t("최근 수집") }}</dt><dd>{{ source.lastCount }}{{ $t("건") }}<span v-if="source.addedCount != null"> {{ $t("· 신규") }} {{ source.addedCount }}{{ $t("건") }}</span></dd></div>
+                <div><dt>{{ $t("다음 수집") }}</dt><dd>{{ source.enabled ? dateTime(source.nextFetchAt) || $t("일정 미정") : $t("일시정지") }}</dd></div>
+                <div v-if="source.runRequestedAt"><dt>{{ $t("수동 요청") }}</dt><dd>{{ dateTime(source.runRequestedAt) }}</dd></div>
               </dl>
               <div v-if="source.lastError || source.lastErrorAt" class="source-error">
-                <strong>마지막 오류</strong> <time v-if="source.lastErrorAt" :datetime="source.lastErrorAt">{{ dateTime(source.lastErrorAt) }}</time>
+                <strong>{{ $t("마지막 오류") }}</strong> <time v-if="source.lastErrorAt" :datetime="source.lastErrorAt">{{ dateTime(source.lastErrorAt) }}</time>
                 <p v-if="source.lastError">{{ source.lastError }}</p>
               </div>
               <p v-if="source.policyNote">{{ source.policyNote }}</p>
               <div v-else class="ops-actions">
-                <button class="secondary" :disabled="!!activeAction" @click="sourceAction(source, 'enabled')">{{ source.enabled ? '일시정지' : '수집 재개' }}</button>
-                <button class="primary" :disabled="!!activeAction || !source.enabled || ['QUEUED','RUNNING'].includes(source.state)" @click="sourceAction(source, 'run')">지금 수집</button>
+                <form @submit.prevent="act('/sources/'+source.id+'/interval',{seconds:Number(intervals[source.id]??source.intervalSeconds)},$t('수집 주기를 저장했습니다.'))"><label>{{ $t('수집 주기(초)') }}<input type="number" min="1" max="2592000" step="1" required :value="intervals[source.id]??source.intervalSeconds" @input="intervals[source.id]=$event.target.value"></label><button class="secondary" :disabled="!!activeAction">{{ $t('저장') }}</button></form>
+                <button class="secondary" :disabled="!!activeAction" @click="sourceAction(source, 'enabled')">{{ source.enabled ? $t("일시정지") : $t("수집 재개") }}</button>
+                <button class="primary" :disabled="!!activeAction || !source.enabled || ['QUEUED','RUNNING'].includes(source.state)" @click="sourceAction(source, 'run')">{{ $t("지금 수집") }}</button>
               </div>
             </article>
           </div>
-          <p v-else class="state">등록된 수집 출처가 없습니다.</p>
+          <p v-else class="state">{{ $t("등록된 수집 출처가 없습니다.") }}</p>
         </template>
       </template>
       <template v-else>
         <p v-if="reviewError" class="inline-error" role="alert">{{ reviewError }}</p>
-        <p v-else-if="reviewBusy" class="state" role="status">검수 대기열을 불러오는 중입니다.</p>
-        <p v-else-if="!reviewItems.length" class="state">검수 대기 중인 소식이 없습니다.</p>
+        <p v-else-if="reviewBusy" class="state" role="status">{{ $t("검수 대기열을 불러오는 중입니다.") }}</p>
+        <p v-else-if="!reviewItems.length" class="state">{{ $t("검수 대기 중인 소식이 없습니다.") }}</p>
         <template v-else>
-          <p class="update-time">대기 중 {{ reviewTotal }}건</p>
+          <p class="update-time">{{ $t("대기 중") }} {{ reviewTotal }}{{ $t("건") }}</p>
           <div class="news-list"><NewsItem v-for="item in reviewItems" :key="item.id" :item="item" :games="games" review>
-            <label v-if="!item.gameCode" class="review-game">게시 게임
+            <label v-if="!item.gameCode" class="review-game">{{ $t("게시 게임") }}
               <select :value="reviewGames[item.id] || ''" :disabled="!!activeAction" @change="reviewGames[item.id] = $event.target.value">
-                <option value="">공통 · 게임 미지정</option>
-                <option v-for="game in games" :key="game.code" :value="game.code">{{ game.name }}</option>
+                <option value="">{{ $t("공통 · 게임 미지정") }}</option>
+                <option v-for="game in games" :key="game.code" :value="game.code">{{ gameName(game.code,game.name) }}</option>
               </select>
             </label>
-            <div class="ops-actions"><button class="primary" :disabled="!!activeAction" @click="decide(item, true)">승인·공개</button>
-              <button class="secondary" :disabled="!!activeAction" @click="decide(item, false)">반려</button></div>
+            <div class="ops-actions"><button class="primary" :disabled="!!activeAction" @click="decide(item, true)">{{ $t("승인·공개") }}</button>
+              <button class="secondary" :disabled="!!activeAction" @click="decide(item, false)">{{ $t("반려") }}</button></div>
           </NewsItem></div>
         </template>
-        <nav v-if="reviewPages > 1" class="pagination" aria-label="검수 대기 페이지">
-          <button class="secondary" :disabled="!!activeAction || reviewBusy || reviewPage === 0" @click="reviewPage--">이전</button><span>{{ reviewPage + 1 }} / {{ reviewPages }}</span>
-          <button class="secondary" :disabled="!!activeAction || reviewBusy || reviewPage + 1 >= reviewPages" @click="reviewPage++">다음</button>
+        <nav v-if="reviewPages > 1" class="pagination" :aria-label="$t('검수 대기 페이지')">
+          <button class="secondary" :disabled="!!activeAction || reviewBusy || reviewPage === 0" @click="reviewPage--">{{ $t("이전") }}</button><span>{{ reviewPage + 1 }} / {{ reviewPages }}</span>
+          <button class="secondary" :disabled="!!activeAction || reviewBusy || reviewPage + 1 >= reviewPages" @click="reviewPage++">{{ $t("다음") }}</button>
         </nav>
       </template>
     </template>

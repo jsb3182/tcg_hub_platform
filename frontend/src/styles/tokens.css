@@ -1,13 +1,13 @@
 :root {
   --bg: #fafaf7; --sf: #fff; --tx: #1d1d1b; --mu: #6b6b66; --bd: #e2e1da;
-  --ac: #5b3fd0; --ok: #2f7d4f; --wa: #b4651a;
+  --ac: #13625e; --ok: #2f7d4f; --wa: #b4651a;
   color-scheme: light; font-family: -apple-system, "Noto Sans KR", "Malgun Gothic", sans-serif;
   color: var(--tx); background: var(--bg); font-size: 16px; line-height: 1.55;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #17171a; --sf: #222226; --tx: #ececea; --mu: #9a9a94; --bd: #37373d;
-    --ac: #a493ff; --ok: #6cc790; --wa: #e8a15e; color-scheme: dark;
+    --ac: #7bd0be; --ok: #6cc790; --wa: #e8a15e; color-scheme: dark;
   }
 }
 * { box-sizing: border-box; }

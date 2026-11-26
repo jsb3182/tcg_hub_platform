@@ -1,15 +1,16 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { request } from '../api'
+import LibraryThumbnail from '../components/LibraryThumbnail.vue'
+import { request, artworkUrl } from '../api'
 import { useSession } from '../stores/session'
-import { newRound, playGames, playLanguages, playText, practiceLanguage, practiceOpening,
+import { newRound, playGames, playText, practiceLanguage, practiceOpening,
   rememberPracticeLanguage, rememberPracticeOpening, validOpeningSize } from '../play'
 
 const route = useRoute()
 const router = useRouter()
 const session = useSession()
-const game = computed(() => typeof route.query.game === 'string' && Object.hasOwn(playGames, route.query.game) ? route.query.game : 'YUGIOH')
+const game = computed(() => typeof route.query.game === 'string' && Object.prototype.hasOwnProperty.call(playGames, route.query.game) ? route.query.game : 'YUGIOH')
 const lang = computed(() => practiceLanguage(route.query.lang))
 const t = computed(() => playText[lang.value])
 const deckId = computed(() => typeof route.query.deck === 'string' && /^[1-9]\d*$/.test(route.query.deck) ? route.query.deck : '')
@@ -34,15 +35,37 @@ const ids = computed(() => cards.value.map(card => card.id).join(','))
 const identity = computed(() => session.account?.email || '')
 const validOpening = computed(() => validOpeningSize(opening.value))
 const zones = ['hand', 'table', 'discard']
+const stock=ref(0), spent=ref(0), amount=ref(1), attached=ref([]), exchange=ref([])
+const remainingDon=computed(()=>10-stock.value-spent.value-attached.value.reduce((sum,n)=>sum+n,0))
+function resetResources(){
+  stock.value=game.value==='YUGIOH'?8000:0
+  spent.value=0;amount.value=1;attached.value=[];exchange.value=[]
+}
+function allowed(delta){
+  const n=amount.value
+  return Number.isInteger(n)&&n>=1&&n<=99999&&(delta<0?n<=stock.value:game.value!=='ONEPIECE'||n<=remainingDon.value)
+}
+function pay(delta){
+  if(!allowed(delta))return
+  stock.value+=delta*amount.value
+  if(delta<0&&game.value==='ONEPIECE')spent.value+=amount.value
+}
+function attach(i){if(stock.value){stock.value--;attached.value[i]++}}
+function redraw(){
+  const {hand,pile}=round.value
+  if(!exchange.value.length||exchange.value.length>pile.length)return
+  const old=exchange.value.map(i=>hand[i])
+  for(const i of exchange.value)hand[i]=pile.shift()
+  pile.push(...old)
+  for(let i=pile.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pile[i],pile[j]]=[pile[j],pile[i]]}
+  exchange.value=[]
+}
 watch(() => route.query.lang, rememberPracticeLanguage, {immediate:true})
 watch(game, code => { opening.value = practiceOpening(code) }, {flush:'sync'})
 watch(opening, size => rememberPracticeOpening(game.value, size), {flush:'sync'})
 
 function selectGame(code) {
   if (game.value !== code) router.push({ name: 'play', query: { game: code, lang: lang.value } })
-}
-function selectLanguage(code) {
-  router.replace({ name: 'play', query: { ...route.query, game: game.value, lang: code } })
 }
 function params() { return new URLSearchParams({ game: game.value, lang: lang.value }) }
 watch([game, lang, search, retry], async (_, __, cleanup) => {
@@ -110,10 +133,14 @@ function changeQuantity(card, amount) {
   } else if (amount > 0) cards.value.push({ ...card, quantity: amount })
 }
 function start() {
-  if (total.value && validOpening.value) round.value = newRound(cards.value, opening.value)
+  if (total.value && validOpening.value) { round.value = newRound(cards.value, opening.value); resetResources() }
 }
 function move(from, index, to) {
-  if (index >= 0 && index < round.value[from].length) round.value[to].push(...round.value[from].splice(index, 1))
+  if(index<0||index>=round.value[from].length)return
+  if(from==='table'){const [n]=attached.value.splice(index,1);if(game.value==='ONEPIECE')spent.value+=n||0}
+  if(to==='table')attached.value.push(0)
+  exchange.value=[]
+  round.value[to].push(...round.value[from].splice(index,1))
 }
 </script>
 
@@ -121,15 +148,13 @@ function move(from, index, to) {
   <section class="play-page" :lang="lang">
     <header class="page-heading play-heading">
       <h1>{{ t.title }}</h1>
-      <select :value="lang" aria-label="한국어 · English · 日本語" @change="selectLanguage($event.target.value)">
-        <option v-for="(name, code) in playLanguages" :key="code" :value="code" :lang="code">{{ name }}</option>
-      </select>
+
     </header>
     <nav class="game-tabs" :aria-label="t.game">
       <button v-for="(info, code) in playGames" :key="code" :aria-pressed="game === code"
         :disabled="!!round && game !== code" @click="selectGame(code)">{{ info.name[lang] }}</button>
     </nav>
-    <section class="panel official">
+    <section v-if="playGames[game].app" class="panel official">
       <div><h2>{{ playGames[game].app }}</h2><p>{{ t.about }}</p></div>
       <a :href="playGames[game].urls[lang]" target="_blank" rel="noopener noreferrer">{{ t.official }} ↗</a>
       <a :href="'https://play.google.com/store/apps/details?id='+playGames[game].androidPackage+'&hl='+lang" target="_blank" rel="noopener noreferrer">Google Play ↗</a>
@@ -174,16 +199,28 @@ function move(from, index, to) {
         <button class="secondary" @click="start">{{ t.reset }}</button>
         <button class="secondary" @click="round=null">{{ t.end }}</button>
       </div>
+      <section class="panel resource-controls"><h3>{{ game==='ONEPIECE'?'DON!!':game==='POKEMON'?$t('에너지'):$t('라이프 포인트') }} · {{ stock }}</h3>
+        <span v-if="game==='ONEPIECE'">{{ $t('남은 DON!!') }} {{ remainingDon }} · {{ $t('레스트') }} {{ spent }}</span>
+        <label>{{ $t('수량') }}<input v-model.number="amount" min="1" max="99999" type="number"></label>
+        <button class="secondary" :disabled="!allowed(1)" @click="pay(1)">{{ $t('추가') }}</button><button class="secondary" :disabled="!allowed(-1)" @click="pay(-1)">{{ $t('코스트 지불') }}</button>
+        <button v-if="game==='ONEPIECE'" class="secondary" :disabled="!spent" @click="stock+=spent;spent=0">{{ $t('액티브로 전환') }}</button></section>
       <div class="practice-zones">
         <section v-for="zone in zones" :key="zone" class="panel"><h3>{{ t[zone] }} · {{ round[zone].length }}</h3>
           <p v-if="!round[zone].length">{{ t.empty }}</p>
           <ul class="play-list"><li v-for="(id, i) in round[zone]" :key="id+'-'+i">
+            <label v-if="zone==='hand'" class="exchange-card"><input type="checkbox" v-model="exchange" :value="i" :aria-label="$t('교환할 카드')+' '+label(id)?.name"></label>
+            <img v-if="artworkUrl(label(id)?.imageUrl)" class="play-art" :src="artworkUrl(label(id).imageUrl)" alt="" loading="lazy" referrerpolicy="no-referrer">
+            <LibraryThumbnail v-else-if="label(id)?.image" :image="label(id).image"/>
             <span><strong :lang="label(id)?.language">{{ label(id)?.name }}</strong>
               <small v-if="label(id)?.language && label(id).language !== lang"> · {{ t.fallback }} ({{ label(id).language }})</small></span>
+            <details v-if="label(id)?.effect"><summary>{{ $t('효과') }}</summary><p :lang="label(id).effectLanguage">{{ label(id).effect }}</p></details>
+            <small v-if="zone==='table' && attached[i]">{{ game==='ONEPIECE'?'DON!!':$t('에너지') }} × {{ attached[i] }}</small>
+            <button v-if="zone==='table' && game!=='YUGIOH'" class="secondary" :disabled="!stock" @click="attach(i)">{{ $t('부착') }}</button>
             <div><button v-if="zone === 'hand'" class="secondary" @click="move(zone,i,'table')">{{ t.place }}</button>
               <button v-if="zone !== 'discard'" class="secondary" @click="move(zone,i,'discard')">{{ t.drop }}</button>
               <button v-if="zone !== 'hand'" class="secondary" @click="move(zone,i,'hand')">{{ t.back }}</button></div>
           </li></ul>
+          <button v-if="zone==='hand'" class="secondary" :disabled="!exchange.length||exchange.length>round.pile.length" @click="redraw">{{ $t('선택한 패 교환') }} ({{ exchange.length }})</button>
         </section>
       </div>
     </template>
@@ -209,4 +246,7 @@ function move(from, index, to) {
 .play-list li div { display:flex; gap:.3rem; flex-wrap:wrap; }
 .play-search { align-items:end; }
 .play-search label { flex:1; }
+.resource-controls {display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;margin:1rem 0}
+.resource-controls input {width:5rem}.play-art {width:40px;height:56px;object-fit:contain}
+.practice-zones li {flex-wrap:wrap}.play-page .exchange-card input {width:20px;height:20px}.practice-zones details p {white-space:pre-line}
 </style>

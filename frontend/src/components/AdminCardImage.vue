@@ -1,4 +1,6 @@
 <script setup>
+import { t as uiText } from '../i18n'
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { mediaPath } from '../api'
 import { useSession } from '../stores/session'
@@ -11,7 +13,7 @@ const variants = ref([]), selected = ref(null), error = ref(''), loading = ref(f
 const statusError = ref(''), checking = ref(false)
 const current = computed(() => variants.value.find(v => v.id === selected.value))
 const job = computed(() => props.jobs[selected.value])
-const statusLabels = { PENDING:'시트 생성 대기', DONE:'시트 반영 완료', FAILED:'시트 생성 실패' }
+const statusLabels = { PENDING:uiText("시트 생성 대기"), DONE:uiText("시트 반영 완료"), FAILED:uiText("시트 생성 실패") }
 let artController, statusController, timer, delay = 2000
 let mounted = true
 
@@ -87,7 +89,7 @@ async function upload(blob) {
     emit('job',result)
     if (result.status === 'DONE') await loadImages()
   } catch (cause) {
-    if (mounted) error.value = cause.status === 409 ? '카드가 공개 상태인지 확인한 뒤 다시 시도해 주세요.' : cause.message
+    if (mounted) error.value = cause.status === 409 ? uiText("카드가 공개 상태인지 확인한 뒤 다시 시도해 주세요.") : cause.message
   } finally { if (mounted) { sending.value = false; emit('busy',false) } }
 }
 onMounted(() => { loadImages(); document.addEventListener('visibilitychange',visibility) })
@@ -98,24 +100,24 @@ onBeforeUnmount(() => {
 })
 </script>
 <template>
-  <section class="ops-card catalog-image"><h3>카드 이미지</h3>
-    <p v-if="loading" role="status">일러스트를 불러오는 중입니다.</p>
-    <p v-if="error" role="alert" class="inline-error">{{ error }} <button class="text-button" @click="loadImages">다시 확인</button></p>
-    <label v-if="variants.length">일러스트 선택
-      <select v-model="selected" :disabled="sending"><option v-for="(v,i) in variants" :key="v.id" :value="v.id">{{ i+1 }}번{{ v.rarity?' · '+v.rarity:'' }}</option></select>
+  <section class="ops-card catalog-image"><h3>{{ $t("카드 이미지") }}</h3>
+    <p v-if="loading" role="status">{{ $t("일러스트를 불러오는 중입니다.") }}</p>
+    <p v-if="error" role="alert" class="inline-error">{{ error }} <button class="text-button" @click="loadImages">{{ $t("다시 확인") }}</button></p>
+    <label v-if="variants.length">{{ $t("일러스트 선택") }}
+      <select v-model="selected" :disabled="sending"><option v-for="(v,i) in variants" :key="v.id" :value="v.id">{{ i+1 }}{{ $t("번") }}{{ v.rarity?' · '+v.rarity:'' }}</option></select>
     </label>
     <template v-if="current">
-      <div v-if="tileStyle" class="current-art"><div class="catalog-tile" :style="tileStyle" role="img" :aria-label="card.name+' 등록 이미지'"></div>
-        <p>현재 등록 이미지<br /><small>시트 {{ current.image.sheetId }} · {{ current.image.col+1 }}열 {{ current.image.row+1 }}행</small></p></div>
-      <p v-else class="muted">등록된 이미지가 없습니다.</p>
+      <div v-if="tileStyle" class="current-art"><div class="catalog-tile" :style="tileStyle" role="img" :aria-label="card.name+$t(' 등록 이미지')"></div>
+        <p>{{ $t("현재 등록 이미지") }}<br /><small>{{ $t("시트") }} {{ current.image.sheetId }} · {{ current.image.col+1 }}{{ $t("열") }} {{ current.image.row+1 }}{{ $t("행") }}</small></p></div>
+      <p v-else class="muted">{{ $t("등록된 이미지가 없습니다.") }}</p>
       <CardCropper :key="selected" :disabled="disabled || sending || job?.status==='PENDING'" @upload="upload" />
-      <p v-if="sending" role="status">자른 이미지를 전송하고 있습니다.</p>
-      <div v-if="job" class="catalog-job"><p role="status">작업 #{{ job.id }} · {{ statusLabels[job.status] || job.status }}</p>
+      <p v-if="sending" role="status">{{ $t("자른 이미지를 전송하고 있습니다.") }}</p>
+      <div v-if="job" class="catalog-job"><p role="status">{{ $t("작업 #") }}{{ job.id }} · {{ statusLabels[job.status] || job.status }}</p>
         <p v-if="job.error" class="inline-error">{{ job.error }}</p>
-        <button v-if="job.status==='PENDING'" class="secondary" :disabled="checking" @click="poll">처리 상태 확인</button>
+        <button v-if="job.status==='PENDING'" class="secondary" :disabled="checking" @click="poll">{{ $t("처리 상태 확인") }}</button>
       </div>
       <p v-if="statusError" role="alert" class="inline-error">{{ statusError }}</p>
     </template>
-    <p v-else-if="!loading && !error">이미지를 연결할 일러스트가 없습니다.</p>
+    <p v-else-if="!loading && !error">{{ $t("이미지를 연결할 일러스트가 없습니다.") }}</p>
   </section>
 </template>

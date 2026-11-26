@@ -31,3 +31,6 @@
 .lib-dialog button { min-height:44px; }
 @media(max-width:720px){.lib-heading{margin:1.3rem 0 .75rem}.lib-panel,.lib-recipe{padding:14px}.lib-list li{padding-block:.7rem}}
 @media(min-width:800px){.library-grid{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}}
+
+.deck-code textarea {display:block;width:100%;margin:.4rem 0 .7rem;padding:.6rem;color:var(--tx);background:var(--sf);border:1px solid var(--bd);border-radius:5px;font:inherit;resize:vertical}
+.deck-code summary {font-weight:600}.deck-code[open] summary{margin-bottom:.7rem}
