@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
@@ -34,6 +35,15 @@ public final class PlatformActivity extends LocalizedActivity {
 
     static void open(Context context, String root) {
         context.startActivity(new Intent(context, PlatformActivity.class).putExtra("origin", root));
+    }
+
+    static void openSelected(Context context, String root) {
+        boolean local = PlatformOrigin.LOCAL.equals(root);
+        SharedPreferences.Editor choice = context.getSharedPreferences("control", MODE_PRIVATE).edit();
+        choice.putBoolean("lastWasLocal", local);
+        if (!local) choice.putString("publicSite", root);
+        choice.apply();
+        open(context, root);
     }
 
     static void browser(Context context, String url) {

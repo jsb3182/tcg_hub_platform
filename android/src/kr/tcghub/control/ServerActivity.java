@@ -30,13 +30,9 @@ import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
 public final class ServerActivity extends LocalizedActivity {
-    private static final String AUTH = "com.termux.documents";
-    private static final String FOLDER = "/data/data/com.termux/files/home/tcg-control";
     private static final String LOCAL = "http://127.0.0.1:8080";
     private static final Pattern PUBLIC =
             Pattern.compile("https://[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)+");
-    private static final int FLAGS =
-            Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
     private static final String[] SERVICE_KEYS = {"db", "api", "worker", "tunnel"};
     private static final int[] SERVICE_NAMES = {R.string.database, R.string.web_server, R.string.worker, R.string.tunnel};
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -58,9 +54,8 @@ public final class ServerActivity extends LocalizedActivity {
     public void onCreate(Bundle state) {
         super.onCreate(state);
         prefs = getSharedPreferences("control", MODE_PRIVATE);
-        String saved = prefs.getString("tree", "");
-        if (!saved.isEmpty()) tree = Uri.parse(saved);
-        pending = prefs.getString("pending", "");
+        tree = ControlFolder.paired(getContentResolver(), prefs.getString("tree", ""));
+        if (tree != null) pending = prefs.getString("pending", "");
         started = prefs.getLong("started", 0);
         timeout = prefs.getLong("timeout", 60_000);
         screen = new HubUi(this, getString(R.string.local_server), true);
@@ -124,10 +119,7 @@ public final class ServerActivity extends LocalizedActivity {
         screen.add(operations, browser, 16);
         adminSetup = screen.button(getString(R.string.admin_setup), HubUi.Action.OUTLINED, v -> adminGuide());
         screen.add(operations, adminSetup, 8);
-        platform = screen.button(getString(R.string.open_catalog), HubUi.Action.OUTLINED, v -> {
-            String selected = LOCAL.equals(origin) ? PlatformOrigin.LOCAL : PublicSite.root(origin);
-            if (ready && tree != null && !selected.isEmpty()) PlatformActivity.open(this, selected);
-        });
+        platform = screen.button(getString(R.string.open_catalog), HubUi.Action.OUTLINED, v -> openCatalog());
         screen.add(operations, platform, 8);
         shareActions = screen.column();
         screen.add(operations, shareActions, 0);
@@ -156,6 +148,21 @@ public final class ServerActivity extends LocalizedActivity {
     private void note(String text) {
         message.setText(text);
         message.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    private String catalogRoot() {
+        return PlatformOrigin.pairedRoot(origin, prefs.getString("publicSuggestion", ""));
+    }
+
+    private void openCatalog() {
+        tree = ControlFolder.paired(getContentResolver(), prefs.getString("tree", ""));
+        if (tree == null) {
+            pending = "";
+            updateButtons();
+            return;
+        }
+        String selected = catalogRoot();
+        if (!selected.isEmpty()) PlatformActivity.openSelected(this, selected);
     }
 
     private void adminGuide() {
@@ -243,19 +250,19 @@ public final class ServerActivity extends LocalizedActivity {
         browser.setEnabled(idle && ready && !origin.isEmpty());
         adminSetup.setVisibility(LOCAL.equals(origin) ? View.VISIBLE : View.GONE);
         adminSetup.setEnabled(idle && ready);
-        platform.setEnabled(idle && ready && !origin.isEmpty());
+        platform.setEnabled(tree != null && !catalogRoot().isEmpty());
         screen.colors(browser, profileRunning ? HubUi.Action.FILLED : HubUi.Action.TONAL);
     }
 
     private void chooseFolder() {
         Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         pick.addFlags(
-                FLAGS
+                ControlFolder.FLAGS
                         | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
                         | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
         pick.putExtra(
                 DocumentsContract.EXTRA_INITIAL_URI,
-                DocumentsContract.buildDocumentUri(AUTH, FOLDER));
+                DocumentsContract.buildDocumentUri(ControlFolder.AUTHORITY, ControlFolder.ID));
         try {
             startActivityForResult(pick, 41);
         } catch (ActivityNotFoundException ex) {
@@ -268,18 +275,14 @@ public final class ServerActivity extends LocalizedActivity {
         super.onActivityResult(code, result, data);
         if (code != 41 || result != RESULT_OK || data == null || data.getData() == null) return;
         Uri selected = data.getData();
-        int flags = data.getFlags() & FLAGS;
-        if (!"content".equals(selected.getScheme())
-                || !AUTH.equals(selected.getAuthority())
-                || !DocumentsContract.isTreeUri(selected)
-                || !FOLDER.equals(DocumentsContract.getTreeDocumentId(selected))
-                || flags != FLAGS) {
+        int flags = data.getFlags() & ControlFolder.FLAGS;
+        if (!ControlFolder.matches(selected) || flags != ControlFolder.FLAGS) {
             folderError = true;
             note(getString(R.string.choose_folder));
             return;
         }
         try {
-            getContentResolver().takePersistableUriPermission(selected, FLAGS);
+            getContentResolver().takePersistableUriPermission(selected, ControlFolder.FLAGS);
             tree = selected;
             prefs.edit().putString("tree", tree.toString()).apply();
             updateButtons();
@@ -330,7 +333,7 @@ public final class ServerActivity extends LocalizedActivity {
                 .apply();
         updateButtons();
         note(action.equals("status") ? getString(R.string.checking_services) : getString(R.string.processing));
-        Uri parent = DocumentsContract.buildDocumentUriUsingTree(tree, FOLDER);
+        Uri parent = DocumentsContract.buildDocumentUriUsingTree(tree, ControlFolder.ID);
         io.execute(
                 () -> {
                     try {
@@ -358,7 +361,7 @@ public final class ServerActivity extends LocalizedActivity {
         polling = true;
         Uri response =
                 DocumentsContract.buildDocumentUriUsingTree(
-                        tree, FOLDER + "/reply-" + id + ".json");
+                        tree, ControlFolder.ID + "/reply-" + id + ".json");
         io.execute(
                 () -> {
                     JSONObject parsed = null;
@@ -434,7 +437,7 @@ public final class ServerActivity extends LocalizedActivity {
         String candidate = response.optString("origin", "");
         origin = LOCAL.equals(candidate) || PUBLIC.matcher(candidate).matches() ? candidate : "";
         String publicRoot = PublicSite.root(origin);
-        prefs.edit().putString("publicSuggestion", publicRoot).apply();
+        if (LOCAL.equals(origin) || !publicRoot.isEmpty()) prefs.edit().putString("publicSuggestion", publicRoot).apply();
         ready = response.optBoolean("ready");
         supportsAdminSetup = response.optBoolean("adminSetup");
         servicesStopped = true;

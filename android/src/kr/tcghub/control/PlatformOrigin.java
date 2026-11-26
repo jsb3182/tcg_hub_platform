@@ -13,6 +13,21 @@ final class PlatformOrigin {
         if (root.isEmpty()) throw new IllegalArgumentException("Missing platform origin");
     }
 
+    static String launchRoot(boolean lastWasLocal, String publicSite, String publicSuggestion, boolean paired) {
+        if (lastWasLocal) return paired ? LOCAL : "";
+        String saved = PublicSite.root(publicSite);
+        if (!saved.isEmpty() || !paired) return saved;
+        // Earlier versions recorded the paired public profile as a suggestion, and the local one as empty.
+        return pairedRoot("", publicSuggestion);
+    }
+
+    static String pairedRoot(String reported, String lastPublicProfile) {
+        if (LOCAL.equals(reported + "/")) return LOCAL;
+        String current = PublicSite.root(reported);
+        if (!current.isEmpty()) return current;
+        return lastPublicProfile.isEmpty() ? LOCAL : PublicSite.root(lastPublicProfile);
+    }
+
     boolean owns(String address) {
         try {
             URI uri = new URI(address);

@@ -2,6 +2,8 @@
 
 Windows에서는 준비된 PostgreSQL·PostGIS에 연결해 압축 해제한 릴리스의 Spring API와 수집 워커를 한 PowerShell 창에서 실행할 수 있다. Galaxy A90에서 실행하려면 [Termux·Ubuntu 배포 가이드](../docs/DEPLOYMENT.md)를 따른다.
 
+이미 A90에서 구동 중인 도감을 PC 브라우저로 조회하려면 [Windows PC에서 USB로 A90 도감 열기](../docs/ANDROID.md#windows-pc에서-usb로-a90-도감-열기)를 따른다.
+
 ## 준비
 
 PowerShell 5.1 이상, JDK 17 이상, Python 3.10 이상을 준비한다. 릴리스를 매번 새 디렉터리에 풀고 배포본의 `crawler-middleware/requirements.txt`를 해당 Python 환경에 설치한다. Windows에서 시스템 libpq를 별도로 설치하지 않은 경우 바이너리 패키지를 함께 설치할 수 있다.
