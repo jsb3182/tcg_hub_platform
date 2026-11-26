@@ -32,6 +32,7 @@
 | 포켓몬 TCG | 5 | [포켓몬코리아 점포 안내](https://pokemonkorea.co.kr/pokemon_cardshop/menu202) 및 포켓몬카드가 명시된 공공 상호 1곳 |
 | 바이스 슈발츠, 니벨아레나 | 각각 1 | 부천 하비게임몰의 점포 사업장 주소와 종목별 판매 이력. [하비게임몰 상품 목록](https://www.hobbygamemall.com/goods/goods_list.php?cateCd=001003&page=4) |
 | 리프트바운드 | 2 | [인천 티씨지아레나 공식 대회 장소](https://playriftbound.com/ko-KR/events/117545207299594342), [서울 카드숲 공식 대회 장소](https://playriftbound.com/ko-KR/events/117586446689253331) |
+| 원피스 카드게임 | 6 | 2026년 11월 26일 공식 명단 54개와 상호·도로명·건물번호가 유일하게 일치한 카드숲, 카드킹덤, 원주카드스페이스, 티씨지스타디움, 듀얼스파크, 티씨지드로우. [반다이남코코리아 공인 점포](https://onepiece-cardgame.kr/officialshoplist.do) |
 
 원주·목동·천안·강릉 4곳은 포켓몬코리아 점포별 안내 포스터의 요일별 운영시간을 기록했다. 다른 30곳은 ‘영업시간 미확인’으로 표시한다. 점포 이름·시간·종목 같은 사실과 확인 날짜·출처 링크만 사용한다. [원주](https://pokemonkorea.co.kr/pokemon_cardshop/menu202), [목동](https://pokemonkorea.co.kr/pokemon_cardshop/menu758), [천안](https://pokemonkorea.co.kr/pokemon_cardshop/menu776), [강릉](https://pokemonkorea.co.kr/pokemon_cardshop/menu809)
 
@@ -45,6 +46,12 @@
 가져오기는 분기명과 지역 파일의 완전성을 검증한다. DB는 트랜잭션 하나로 결과를 적용하며 더 오래된 분기의 반영을 거부한다. 동일 상가업소번호의 내부 ID를 유지하고 목록에서 사라진 매장은 비공개 처리해 기존 즐겨찾기와 행사 외래키를 보존한다. 소상공인시장진흥공단 원본과의 연결이 없는 기존 운영자 매장은 그대로 검색된다.
 
 ## 지도와 API
+
+반다이남코코리아의 공식 지도에 표시되는 공인 점포를 매주 갱신한다. 동일 건물 내 동명이인이나 지번 주소처럼 도로명으로 확인할 수 없는 경우는 건너뛴다. 운영자가 수정한 점포의 종목은 유지한다. 소스의 실제 공인점과 일치하면 원피스 종목 옆에 원문 링크가 표시된다.
+
+공식 이벤트 목록은 하루 한 번 확인하고, 목록에 공개된 점포별 표에서 주소·상호·연월일·시간이 확인된 회차를 한국 표준시로 저장한다. 공지에 표가 없으면 이미 검증한 회차를 유지한다. 완전한 표에서 사라진 회차나 명시적으로 취소된 회차는 공개 일정에서 내리고, 운영자가 수정한 일정과 다른 출처의 일정은 유지한다. 2026년 9월 스탠다드 배틀 공지에는 점포별 표가 게시됐다. 11월과 12월 공지는 PLAYGO 앱에서 매장별 일정을 확인하도록 안내한다. 월 단위 공지나 참가 신청 마감일로 매장 대회 시간을 추정하지 않는다. [9월 공식 공지](https://onepiece-cardgame.kr/products/view.do?brdno=6440) · [11월 공식 공지](https://www.onepiece-cardgame.kr/events/view.do?brdno=6593) · [12월 공식 공지](https://www.onepiece-cardgame.kr/events/view.do?brdno=6709)
+
+매장의 `events` 배열은 향후 7일간 승인된 대회와 입고 일정을 반환한다. 각 항목은 `category`와 출처가 있는 경우 `sourceUrl`을 포함한다. 숨김·검수 대기·반려된 게시물에서 파생된 일정은 공개하지 않는다.
 
 OpenLayers가 OpenStreetMap 표준 배경 지도를 표시한다. 화면에 보이는 범위만 HTTPS 타일을 요청하고 출처를 항상 표시한다. 서비스 워커에서 OSM 타일을 사전 다운로드하지 않는다. 타일 서버 장애 시에도 매장 목록과 카카오맵 길찾기를 쓸 수 있다. [OSM 타일 사용 정책](https://operations.osmfoundation.org/policies/tiles/)
 

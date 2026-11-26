@@ -53,6 +53,7 @@ class StoreNoticeParserTests(unittest.TestCase):
             "대회 일시: 2026-12-05 09:60", "대회 일시: 2026-12-05 12:30 PST",
             TOURNAMENT + "\n" + RESTOCK, TOURNAMENT + "\n행사 취소", "기상으로 연기\n" + TOURNAMENT,
             "루머\n" + RESTOCK, "미확인 소식\n" + TOURNAMENT, RESTOCK + "\n입고일 미정",
+            "미확정\n" + RESTOCK, "잠정 일정\n" + TOURNAMENT, "Unconfirmed\n" + RESTOCK,
         ):
             with self.subTest(text=text):
                 self.assertIsNone(scheduled_event(text))
@@ -78,8 +79,8 @@ class StoreNoticeDatabaseTests(unittest.TestCase):
         cls.db.execute(sql.SQL("CREATE SCHEMA {}").format(schema))
         cls.addClassCleanup(cls.db.execute, sql.SQL("DROP SCHEMA {} CASCADE").format(schema))
         cls.db.execute(sql.SQL("SET search_path TO {}, public").format(schema))
-        mutations = Path(__file__).resolve().parents[2] / "backend/src/main/resources/db/migration"
-        for path in sorted(mutations.glob("V*.sql"), key=lambda f: int(f.name[1:].split("__")[0])):
+        migrations = Path(__file__).resolve().parents[2] / "backend/src/main/resources/db/migration"
+        for path in sorted(migrations.glob("V*.sql"), key=lambda f: int(f.name[1:].split("__")[0])):
             cls.db.execute(path.read_text(encoding="utf-8"))
 
     def setUp(self):

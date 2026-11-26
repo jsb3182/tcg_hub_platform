@@ -218,6 +218,7 @@ def sync_source(source, stop):
             cursor = json.loads(source["cursor_value"] or "{}")
             more, floor = False, 0
             page = None
+            schedule = None
             if source["provider"] == "CATALOG":
                 from .catalog_sources import iter_catalog
                 total = 0
@@ -243,6 +244,10 @@ def sync_source(source, stop):
                 if source["source_key"]=="YUGIOH":
                     from .catalog_art import queue_yugioh_art
                     cursor["artAfter"]=queue_yugioh_art(db,sid,previous.get("artAfter",0),stop)
+            elif source["provider"] == "STORE_SCHEDULE":
+                from .store_schedules import fetch
+                schedule = fetch(source["source_key"], cursor)
+                cursor, more = schedule.cursor, schedule.more
             else:
                 if source["provider"] == "X":
                     page = fetch_x_with_limits(db, source["source_key"], cursor)
@@ -251,6 +256,20 @@ def sync_source(source, stop):
                 cursor, more, floor = page.cursor, page.more, page.retry_after
             with db.transaction():
                 interrupted(db, sid, stop)
+                if schedule is not None:
+                    if schedule.deferred:
+                        db.execute("""
+                            UPDATE feed_source SET state='ERROR',last_finished_at=now(),last_error_at=now(),
+                                last_error=%s,failure_count=failure_count+1,cursor_value=%s,
+                                next_fetch_at=now()+make_interval(secs=>CASE WHEN requested_at IS NOT NULL
+                                    THEN 0 WHEN %s THEN 60 ELSE interval_seconds END)
+                                WHERE id=%s
+                            """, (f"공식 행사 {schedule.notice}: {schedule.deferred}"[:300],
+                                  json.dumps(cursor),more,sid))
+                        return
+                    from .store_schedules import save
+                    seen, added = save(db, sid, schedule)
+                    db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s WHERE id=%s", (seen, added, sid))
                 if source["provider"] == "CATALOG" and source["source_key"] == "YUGIOH":
                     cursor["news"] = finish_yugioh_scan(db, sid, releases)
                 if page is not None:

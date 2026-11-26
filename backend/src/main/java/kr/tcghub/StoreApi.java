@@ -68,8 +68,12 @@ class StoreApi {
         String select = """
             SELECT s.id,s.name,s.address,s.region,s.semas_id,s.source_date,s.hours::text,public_store_official(s.id,s.official) official,
                    coalesce((select jsonb_agg(jsonb_build_object('id',e.id,'title',e.title,'gameCode',e.game_code,
-                       'startsAt',e.starts_at,'endsAt',e.ends_at) order by e.starts_at,e.id)
-                       from calendar_event e where e.store_id=s.id and e.owner_id is null and e.category='TOURNAMENT'
+                       'startsAt',e.starts_at,'endsAt',e.ends_at,'category',e.category,
+                       'sourceUrl',coalesce(fi.source_url,e.schedule_url)) order by e.starts_at,e.id)
+                       from calendar_event e left join feed_item fi on fi.id=e.feed_item_id
+                       left join feed_source fs on fs.id=fi.source_id
+                       where e.store_id=s.id and e.owner_id is null and e.category in ('TOURNAMENT','RESTOCK')
+                       and (e.feed_item_id is null or (fi.status='PUBLISHED' and not fi.hidden and fs.policy_note is null))
                        and e.status='PUBLISHED' and coalesce(e.ends_at,e.starts_at)>=now()
                        and e.starts_at<now()+interval '7 days'),'[]')::text as events,
                    ST_X(s.location::geometry) AS lon,ST_Y(s.location::geometry) AS lat,
