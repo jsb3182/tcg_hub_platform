@@ -12,6 +12,13 @@ const subscriptions=[]
 let fixtureRole='ROLE_ADMIN'
 const codes=['YUGIOH','POKEMON','ONEPIECE','WEISS','NIVEL','RIFTBOUND']
 const titles={ko:'연습용 카드',en:'Practice card',ja:'練習カード'}, writes=[],errors=[]
+function artwork(id,lang){
+ const productCode='EB01'
+ const imageLanguage=lang==='ja'?'ko':lang
+ const imageProduct=id===51?'OP-14':id===52?productCode:null
+ const imageSource=imageProduct?'https://example.invalid/prints/'+imageLanguage+'/'+imageProduct:null
+ return {productCode,imageUrl:'/media/fixture.webp',imageLanguage,imageProduct,imageSource}
+}
 const deck={id:70,name:'Fixture deck',gameCode:'ONEPIECE',revision:1,state:'DRAFT',updatedAt:'2026-11-01T00:00:00Z',entries:[],rule:{version:1,sections:[{section:'MAIN',minCards:50,maxCards:50}]}}
 try {
  const context=await browser.newContext({viewport:{width:360,height:800},isMobile:true,hasTouch:true,serviceWorkers:'block'})
@@ -30,6 +37,8 @@ try {
  page.on('pageerror',e=>errors.push(e.message))
  await context.route('**/*',async route=>{
   const req=route.request(),u=new URL(req.url()),path=u.pathname
+  if(u.origin==='https://example.invalid' && path.startsWith('/prints/') && req.isNavigationRequest())
+    return route.fulfill({contentType:'text/plain',body:'Fixture card printing'})
   if(u.origin!==origin)return route.abort()
   const json=(data,status=200)=>route.fulfill({json:data,status})
   if(path.startsWith('/api/')){
@@ -50,9 +59,12 @@ try {
      {id:6,category:'RESTOCK',title:'신상품 입고',gameCode:null,startsAt:'2026-11-25T13:30:00Z',sourceUrl:'https://example.invalid/store-restock'}
    ]}],total:1})
    if(api==='me/favorites/stores')return json([])
-   if(api==='play/cards')return json([card])
+   if(api==='play/cards')return json([{...card,...artwork(51,lang)}])
    if(api==='cards')return json({items:[card],total:1})
-   if(api==='cards/51')return json({...card,variants:[],specs:{names:titles,sources:{ja:"https://example.invalid/public-card-ja"}},effectLanguage:'en',imageUrl:'/media/fixture.webp',imageLanguage:'en'})
+   if(['cards/51','cards/52','cards/53'].includes(api)){
+     const id=Number(api.split('/')[1])
+     return json({...card,id,...artwork(id,lang),variants:[],specs:{names:titles,sources:{ja:'https://example.invalid/public-card-ja'}}})
+   }
    if(api.startsWith('shared/decks/')){
      const gameCode=api.split('/').pop()
      assert.ok(codes.includes(gameCode))
@@ -97,8 +109,48 @@ try {
  assert.equal(await page.locator('html').getAttribute('lang'),'ja')
  assert.equal(await select.inputValue(),'ja')
  assert.equal(await page.locator('.card-facts [lang=ja] a').getAttribute('href'),'https://example.invalid/public-card-ja')
- await visible(page.locator('.illustration .edition-note').filter({hasText:'英語版'}))
  await visible(page.locator('.detail-section .edition-note').filter({hasText:'英語版'}))
+ const translations={
+   ko:{different:'다른 제품의 그림',same:'그림 수록 제품',unknown:'수록 제품 미확인',edition:'한국어판'},
+   en:{different:'Art from another set',same:'Art from set',unknown:'Printing unconfirmed',edition:'English edition'},
+   ja:{different:'別商品のカード画像',same:'画像の収録商品',unknown:'収録商品未確認',edition:'韓国語版'},
+ }
+ async function checkCredit(credit,lang,kind){
+   const copy=translations[lang],code=kind==='different'?'OP-14':'EB01'
+   await visible(credit.getByText(copy.edition,{exact:true}))
+   const link=credit.getByRole('link')
+   if(kind==='unknown'){
+     await visible(credit.getByText(copy.unknown,{exact:true}))
+     assert.equal(await link.count(),0)
+   }else{
+     await visible(credit.getByRole('link',{name:copy[kind]+' · '+code,exact:true}))
+     assert.equal(await link.getAttribute('href'),'https://example.invalid/prints/'+(lang==='ja'?'ko':lang)+'/'+code)
+     assert.equal(await link.getAttribute('target'),'_blank')
+     assert.ok((await link.getAttribute('rel')).split(/\s+/).includes('noopener'))
+   }
+ }
+ async function openCredit(credit,expected){
+   const [tab]=await Promise.all([page.waitForEvent('popup'),credit.getByRole('link').click()])
+   try{
+     await tab.waitForURL(expected)
+     await visible(tab.getByText('Fixture card printing',{exact:true}))
+   }finally{await tab.close()}
+ }
+ for(const [id,kind] of [[51,'different'],[52,'same'],[53,'unknown']]){
+   await go('/cards/'+id+'?lang=ko')
+   for(const lang of ['ko','en','ja']){
+     await select.selectOption(lang)
+     await checkCredit(page.locator('.illustration .edition-note'),lang,kind)
+     await fits()
+     if(id===51 && lang==='ja'){
+       await openCredit(page.locator('.illustration .edition-note'),'https://example.invalid/prints/ko/OP-14')
+       if(process.env.QA_SCREENSHOTS){
+         await mkdir(process.env.QA_SCREENSHOTS,{recursive:true})
+         await page.locator('.detail-grid').screenshot({path:join(process.env.QA_SCREENSHOTS,'artwork-credit-detail-360.png')})
+       }
+     }
+   }
+ }
  for(const [game,size] of Object.entries({YUGIOH:5,POKEMON:7,ONEPIECE:5,WEISS:5,NIVEL:5,RIFTBOUND:4})){
    await go('/shared/decks/'+game+'?lang=en')
    await visible(page.getByRole('heading',{name:'Deck curve',exact:true}))
@@ -127,6 +179,9 @@ try {
  for(let i=0;i<8;i++)await btn('Add Practice card').click()
  await btn('Shuffle and start').click();const zones=page.locator('.practice-zones>section')
  await visible(zones.nth(0).getByRole('heading',{name:'Hand · 5'}))
+ await visible(zones.nth(0).locator('figcaption').first())
+ for(const caption of await zones.nth(0).locator('figcaption').all())await checkCredit(caption,'en','different')
+ assert.equal(await zones.nth(0).locator('figcaption a').count(),5)
  await zones.nth(0).getByRole('checkbox').first().check()
  await btn('Redraw selected cards (1)').click();await btn('Draw one').click()
  await zones.nth(0).getByRole('button',{name:'Place on table'}).first().click()
@@ -135,7 +190,20 @@ try {
  await zones.nth(1).getByRole('button',{name:'Attach'}).click()
  await resources.getByRole('spinbutton').fill('1');await resources.getByRole('button',{name:'Pay cost'}).click()
  await visible(resources.getByRole('heading',{name:'DON!! · 0'}))
- await select.selectOption('ja');await visible(zones.nth(1).getByRole('heading',{name:'テーブル · 1'}));await fits()
+ for(const lang of ['ko','ja']){
+   await select.selectOption(lang)
+   await checkCredit(zones.nth(1).locator('figcaption'),lang,'different')
+   assert.equal(await zones.nth(0).locator('figcaption a').count(),5)
+   await fits()
+ }
+ await visible(zones.nth(1).getByRole('heading',{name:'テーブル · 1'}))
+ await openCredit(zones.nth(1).locator('figcaption'),'https://example.invalid/prints/ko/OP-14')
+ if(process.env.QA_SCREENSHOTS){
+   await mkdir(process.env.QA_SCREENSHOTS,{recursive:true})
+   await zones.nth(1).screenshot({path:join(process.env.QA_SCREENSHOTS,'artwork-credit-practice-360.png')})
+ }
+ await zones.nth(1).getByRole('button',{name:'手札に戻す'}).click()
+ await visible(zones.nth(0).getByRole('heading',{name:'手札 · 6'}))
  await go('/binder');await select.selectOption('en');await visible(page.locator('.binder-pockets li'))
  await page.locator('.binder-pockets button').click()
  const dialog=page.getByRole('dialog')
@@ -197,5 +265,5 @@ try {
  fixtureRole='ROLE_USER';await page.reload();await visible(page.getByRole('alert'))
  assert.equal(await page.locator('.x-source').count(),0)
  assert.deepEqual(errors,[])
- console.log('360px Chrome passed: six opening-hand sizes and copy-weighted curves; original-edition labels; six-game catalog; trilingual navigation and original news; One Piece redraw, draw, field and DON!!; differentiated binder writes; deck-code import/export; OSM store/event selection; admin X subscription, store lookup, 400/409, role guard and disabled host actions.')
+ console.log('360px Chrome passed: six opening-hand sizes and copy-weighted curves; trilingual same, alternate and unknown artwork products, fallback image editions and source navigation; six-game catalog; trilingual navigation and original news; One Piece redraw, draw, field and DON!!; differentiated binder writes; deck-code import/export; OSM store/event selection; admin X subscription, store lookup, 400/409, role guard and disabled host actions.')
 }finally{await browser.close()}
