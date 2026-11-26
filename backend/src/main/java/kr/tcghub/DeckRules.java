@@ -114,6 +114,8 @@ class DeckRules {
             String kind=card.kind();
             switch (rule.gameCode()) {
                 case "YUGIOH" -> {
+                    if (kind.equals("token") || kind.equals("토큰"))
+                        throw new Invalid("토큰은 덱에 넣을 수 없습니다.");
                     boolean extra=kind.matches(".*(fusion|synchro|xyz|link|융합|싱크로|엑시즈|링크).*");
                     if (extra && section.equals("MAIN") || !kind.isEmpty() && !extra && section.equals("EXTRA"))
                         throw new Invalid(card.name()+" 카드의 메인·엑스트라 구역을 확인해 주세요.");

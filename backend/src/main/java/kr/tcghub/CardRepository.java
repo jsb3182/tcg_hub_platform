@@ -22,6 +22,9 @@ interface CardRepository extends Repository<Card, Long> {
         String getEffectLanguage();
         String getImageUrl();
         String getImageLanguage();
+        String getProductCode();
+        String getImageProduct();
+        String getImageSource();
         Integer getCurveValue();
         java.time.LocalDate getReleaseDate();
         String getSourceUrl();
@@ -34,7 +37,7 @@ interface CardRepository extends Repository<Card, Long> {
                ,
                c.release_date as "releaseDate", c.source_url as "sourceUrl", src.label as "sourceName"
           from card c left join pack p on p.id=c.pack_id left join feed_source src on src.id=c.source_id
-        """;
+        """ + CardEdition.IMAGE_JOIN;
     String FILTER = """
          where c.status='PUBLISHED' and (:game='' or c.game_code=:game)
            and (cast(:packId as bigint) is null or c.pack_id=:packId)
