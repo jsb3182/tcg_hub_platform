@@ -76,7 +76,7 @@ final class HubUi {
         pad(bar, canGoBack ? 8 : 24, 5, 16, 5);
         bar.setMinimumHeight(dp(60));
         if (canGoBack) {
-            Button back = iconButton(R.drawable.ic_back, "뒤로", v -> activity.finish());
+            Button back = iconButton(R.drawable.ic_back, activity.getString(R.string.back), v -> activity.finish());
             bar.addView(back, size(48, 48));
         } else {
             ImageView logo = image(R.drawable.ic_cards, primary, 25);
@@ -86,7 +86,15 @@ final class HubUi {
         }
         TextView appName = label(title, 20, ink, true);
         pad(appName, canGoBack ? 4 : 12, 0, 0, 0);
-        bar.addView(appName);
+        bar.addView(appName, new LinearLayout.LayoutParams(0, WRAP, 1));
+        if (!canGoBack && activity instanceof LocalizedActivity) {
+            String code = activity.getSharedPreferences("control", Activity.MODE_PRIVATE).getString("language", "ko");
+            int i = java.util.Arrays.asList(LocalizedActivity.CODES).indexOf(code);
+            String name = LocalizedActivity.NAMES[Math.max(0, i)];
+            Button language = button(name, Action.OUTLINED, v -> ((LocalizedActivity) activity).chooseLanguage());
+            language.setContentDescription(activity.getString(R.string.language) + ", " + name);
+            bar.addView(language);
+        }
         page.addView(bar);
         rule(page);
         ScrollView scroll = new ScrollView(activity);

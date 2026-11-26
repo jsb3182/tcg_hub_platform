@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
-public final class ServerActivity extends Activity {
+public final class ServerActivity extends LocalizedActivity {
     private static final String AUTH = "com.termux.documents";
     private static final String FOLDER = "/data/data/com.termux/files/home/tcg-control";
     private static final String LOCAL = "http://127.0.0.1:8080";
@@ -38,7 +38,7 @@ public final class ServerActivity extends Activity {
     private static final int FLAGS =
             Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
     private static final String[] SERVICE_KEYS = {"db", "api", "worker", "tunnel"};
-    private static final String[] SERVICE_NAMES = {"데이터베이스", "웹 서버", "수집 워커", "공개 터널"};
+    private static final int[] SERVICE_NAMES = {R.string.database, R.string.web_server, R.string.worker, R.string.tunnel};
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
     private SharedPreferences prefs;
@@ -51,7 +51,7 @@ public final class ServerActivity extends Activity {
     private TextView summary, profile, address, message;
     private final TextView[] serviceValues = new TextView[SERVICE_KEYS.length];
     private LinearLayout connect, dashboard, operations, shareActions;
-    private Button start, stop, status, browser, pair, reconnect;
+    private Button start, stop, status, browser, platform, pair, reconnect;
 
     @Override
     public void onCreate(Bundle state) {
@@ -62,27 +62,27 @@ public final class ServerActivity extends Activity {
         pending = prefs.getString("pending", "");
         started = prefs.getLong("started", 0);
         timeout = prefs.getLong("timeout", 60_000);
-        screen = new HubUi(this, "A90 서버 관리", true);
+        screen = new HubUi(this, getString(R.string.local_server), true);
         connect = screen.column();
         screen.add(screen.body, connect, 0);
         SetupPanel.add(screen, connect, false);
-        TextView section = screen.label("설치한 서버 연결", 20, screen.ink, true);
+        TextView section = screen.label(getString(R.string.connect_installed), 20, screen.ink, true);
         section.setAccessibilityHeading(true);
         screen.add(connect, section, 32);
         TextView hint =
                 screen.label(
-                        "설치가 끝나면 Termux 저장소의 tcg-control 폴더를 선택해 접근을 허용하세요.",
+                        getString(R.string.setup_folder_hint),
                         16,
                         screen.muted,
                         false);
         hint.setLineSpacing(screen.dp(2), 1);
         screen.add(connect, hint, 8);
-        pair = screen.button("Termux 제어 폴더 연결", HubUi.Action.OUTLINED, v -> chooseFolder());
+        pair = screen.button(getString(R.string.pair_folder), HubUi.Action.OUTLINED, v -> chooseFolder());
         screen.add(connect, pair, 20);
 
         dashboard = screen.column();
         screen.add(screen.body, dashboard, 0);
-        summary = screen.heading(dashboard, "상태 확인 중", 24);
+        summary = screen.heading(dashboard, getString(R.string.checking_status), 24);
         profile = screen.label("", 16, screen.color(R.color.on_tonal), true);
         address = screen.label("", 15, screen.muted, false);
         address.setTextIsSelectable(true);
@@ -95,15 +95,15 @@ public final class ServerActivity extends Activity {
         note("");
         operations = screen.column();
         screen.add(screen.body, operations, 0);
-        start = screen.button("서버 켜기", HubUi.Action.FILLED, v -> confirm(true));
-        stop = screen.button("서버 끄기", HubUi.Action.OUTLINED, v -> confirm(false));
+        start = screen.button(getString(R.string.start_server), HubUi.Action.FILLED, v -> confirm(true));
+        stop = screen.button(getString(R.string.stop_server), HubUi.Action.OUTLINED, v -> confirm(false));
         screen.sideBySide(operations, start, stop, 16);
 
         LinearLayout top = screen.row();
-        TextView title = screen.label("서비스 상태", 19, screen.ink, true);
+        TextView title = screen.label(getString(R.string.service_status), 19, screen.ink, true);
         title.setAccessibilityHeading(true);
         top.addView(title, new LinearLayout.LayoutParams(0, HubUi.WRAP, 1));
-        status = screen.iconButton(R.drawable.ic_refresh, "상태 새로고침", v -> request("status"));
+        status = screen.iconButton(R.drawable.ic_refresh, getString(R.string.refresh_status), v -> request("status"));
         top.addView(status, screen.size(48, 48));
         screen.add(operations, top, 18);
         screen.rule(operations);
@@ -112,27 +112,32 @@ public final class ServerActivity extends Activity {
             row.setMinimumHeight(screen.dp(42));
             row.setScreenReaderFocusable(true);
             row.addView(
-                    screen.label(SERVICE_NAMES[i], 16, screen.ink, false),
+                    screen.label(getString(SERVICE_NAMES[i]), 16, screen.ink, false),
                     new LinearLayout.LayoutParams(0, HubUi.WRAP, 1));
-            serviceValues[i] = screen.label("확인 전", 15, screen.muted, true);
+            serviceValues[i] = screen.label(getString(R.string.unchecked), 15, screen.muted, true);
             row.addView(serviceValues[i]);
             screen.add(operations, row, 0);
             screen.rule(operations);
         }
-        browser = screen.button("관리자 화면 열기", HubUi.Action.TONAL, v -> openAdmin());
+        browser = screen.button(getString(R.string.open_admin), HubUi.Action.TONAL, v -> openAdmin());
         screen.add(operations, browser, 16);
+        platform = screen.button(getString(R.string.open_catalog), HubUi.Action.OUTLINED, v -> {
+            String selected = LOCAL.equals(origin) ? PlatformOrigin.LOCAL : PublicSite.root(origin);
+            if (ready && tree != null && !selected.isEmpty()) PlatformActivity.open(this, selected);
+        });
+        screen.add(operations, platform, 8);
         shareActions = screen.column();
         screen.add(operations, shareActions, 0);
         screen.sideBySide(
                 shareActions,
-                screen.button("공개 주소 복사", HubUi.Action.OUTLINED, v -> sharePublicSite(false)),
-                screen.button("공개 주소 공유", HubUi.Action.OUTLINED, v -> sharePublicSite(true)),
+                screen.button(getString(R.string.copy_url), HubUi.Action.OUTLINED, v -> sharePublicSite(false)),
+                screen.button(getString(R.string.share_url), HubUi.Action.OUTLINED, v -> sharePublicSite(true)),
                 8);
-        reconnect = screen.button("제어 폴더 다시 연결", HubUi.Action.OUTLINED, v -> chooseFolder());
+        reconnect = screen.button(getString(R.string.pair_again), HubUi.Action.OUTLINED, v -> chooseFolder());
         screen.add(operations, reconnect, 8);
         Button guide =
                 screen.button(
-                        "서버 업데이트 안내",
+                        getString(R.string.update_info),
                         HubUi.Action.OUTLINED,
                         v ->
                                 startActivity(
@@ -158,11 +163,11 @@ public final class ServerActivity extends Activity {
                     new Intent(Intent.ACTION_SEND)
                             .setType("text/plain")
                             .putExtra(Intent.EXTRA_TEXT, root);
-            startActivity(Intent.createChooser(shareUrl, "공개 주소 공유"));
+            startActivity(Intent.createChooser(shareUrl, getString(R.string.share_url)));
         } else {
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            clipboard.setPrimaryClip(ClipData.newPlainText("TCG 허브", root));
-            Toast.makeText(this, "공개 주소를 복사했습니다.", Toast.LENGTH_SHORT).show();
+            clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), root));
+            Toast.makeText(this, getString(R.string.copied_url), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -176,7 +181,7 @@ public final class ServerActivity extends Activity {
         }
         if (tree == null) return;
         if (!pending.isEmpty()) {
-            note("기기에서 요청 결과를 확인하고 있습니다.");
+            note(getString(R.string.waiting_request));
             poll();
         } else {
             request("status");
@@ -212,6 +217,7 @@ public final class ServerActivity extends Activity {
         start.setEnabled(idle && !origin.isEmpty() && !profileRunning);
         stop.setEnabled(idle && !servicesStopped);
         browser.setEnabled(idle && ready && !origin.isEmpty());
+        platform.setEnabled(idle && ready && !origin.isEmpty());
         screen.colors(browser, profileRunning ? HubUi.Action.FILLED : HubUi.Action.TONAL);
     }
 
@@ -227,7 +233,7 @@ public final class ServerActivity extends Activity {
         try {
             startActivityForResult(pick, 41);
         } catch (ActivityNotFoundException ex) {
-            note("시스템 파일 선택기를 열 수 없습니다.");
+            note(getString(R.string.no_picker));
         }
     }
 
@@ -243,7 +249,7 @@ public final class ServerActivity extends Activity {
                 || !FOLDER.equals(DocumentsContract.getTreeDocumentId(selected))
                 || flags != FLAGS) {
             folderError = true;
-            note("Termux 저장소 안의 tcg-control 폴더만 선택하세요.");
+            note(getString(R.string.choose_folder));
             return;
         }
         try {
@@ -253,7 +259,7 @@ public final class ServerActivity extends Activity {
             updateButtons();
         } catch (SecurityException ex) {
             folderError = true;
-            note("폴더 읽기·쓰기 권한을 다시 허용하세요.");
+            note(getString(R.string.folder_permission));
         }
     }
 
@@ -261,15 +267,15 @@ public final class ServerActivity extends Activity {
         final String action =
                 poweringOn ? (LOCAL.equals(origin) ? "start-local" : "start-public") : "stop";
         new AlertDialog.Builder(this)
-                .setTitle(poweringOn ? "서버를 켤까요?" : "서버를 끌까요?")
+                .setTitle(poweringOn ? getString(R.string.confirm_start) : getString(R.string.confirm_stop))
                 .setMessage(
                         !poweringOn
-                                ? "수집 워커와 웹 서버, 데이터베이스를 차례로 종료합니다."
+                                ? getString(R.string.stop_order)
                                 : LOCAL.equals(origin)
-                                        ? "A90 내부에서만 웹 서버를 시작합니다."
-                                        : origin + "에서 접속할 수 있도록 Cloudflare 터널과 서버를 시작합니다.")
-                .setNegativeButton("취소", null)
-                .setPositiveButton(poweringOn ? "켜기" : "끄기", (d, w) -> request(action))
+                                        ? getString(R.string.local_start_detail)
+                                        : origin + getString(R.string.public_start_detail))
+                .setNegativeButton(getString(R.string.cancel), null)
+                .setPositiveButton(poweringOn ? getString(R.string.start) : getString(R.string.stop), (d, w) -> request(action))
                 .show();
     }
 
@@ -280,7 +286,7 @@ public final class ServerActivity extends Activity {
                     new Intent(Intent.ACTION_VIEW, Uri.parse(origin + "/login?to=admin"))
                             .addCategory(Intent.CATEGORY_BROWSABLE));
         } catch (ActivityNotFoundException ex) {
-            note("관리자 화면을 열 브라우저를 설치하세요.");
+            note(getString(R.string.admin_browser_needed));
         }
     }
 
@@ -297,7 +303,7 @@ public final class ServerActivity extends Activity {
                 .putLong("timeout", timeout)
                 .apply();
         updateButtons();
-        note(action.equals("status") ? "상태를 확인하고 있습니다." : "Termux에서 요청을 처리하고 있습니다.");
+        note(action.equals("status") ? getString(R.string.checking_services) : getString(R.string.processing));
         Uri parent = DocumentsContract.buildDocumentUriUsingTree(tree, FOLDER);
         io.execute(
                 () -> {
@@ -312,7 +318,7 @@ public final class ServerActivity extends Activity {
                         if (created == null) throw new IOException();
                         runOnUiThread(this::poll);
                     } catch (Exception ex) {
-                        runOnUiThread(() -> fail(id, "제어 폴더에 요청을 기록할 수 없습니다. 폴더 연결을 확인하세요."));
+                        runOnUiThread(() -> fail(id, getString(R.string.unable_to_write)));
                     }
                 });
     }
@@ -322,7 +328,7 @@ public final class ServerActivity extends Activity {
         final String id = pending;
         if (System.currentTimeMillis() - started > timeout
                 || System.currentTimeMillis() + 1000 < started) {
-            fail(id, "결과 대기가 끝났습니다. Termux를 열고 상태를 새로고침하세요.");
+            fail(id, getString(R.string.request_timeout));
             return;
         }
         polling = true;
@@ -357,7 +363,7 @@ public final class ServerActivity extends Activity {
                                 polling = false;
                                 if (isDestroyed() || !id.equals(pending)) return;
                                 if (permissionLost) {
-                                    fail(id, "Termux 제어 폴더 접근 권한을 다시 허용하세요.");
+                                    fail(id, getString(R.string.regrant_folder));
                                     return;
                                 }
                                 if (answer != null) {
@@ -381,9 +387,9 @@ public final class ServerActivity extends Activity {
         ready = false;
         servicesStopped = false;
         profileRunning = false;
-        summary.setText("상태 확인 필요");
+        summary.setText(getString(R.string.status_needed));
         for (TextView value : serviceValues) {
-            value.setText("확인 전");
+            value.setText(getString(R.string.unchecked));
             value.setTextColor(screen.muted);
         }
         note(why);
@@ -393,7 +399,7 @@ public final class ServerActivity extends Activity {
     private void show(String id, JSONObject response) {
         JSONObject services = response.optJSONObject("services");
         if (services == null) {
-            fail(id, "요청을 완료하지 못했습니다. Termux와 제어 서비스 상태를 확인하세요.");
+            fail(id, getString(R.string.control_error));
             return;
         }
         String candidate = response.optString("origin", "");
@@ -409,21 +415,21 @@ public final class ServerActivity extends Activity {
             boolean localTunnel = SERVICE_KEYS[i].equals("tunnel") && LOCAL.equals(origin);
             if (!state.equals(localTunnel ? "down" : "up")) profileRunning = false;
             if (!state.equals("down")) servicesStopped = false;
-            serviceValues[i].setText(up ? "실행 중" : state.equals("down") ? "중지" : "확인 필요");
+            serviceValues[i].setText(up ? getString(R.string.up) : state.equals("down") ? getString(R.string.down) : getString(R.string.unknown));
             serviceValues[i].setTextColor(up ? screen.color(R.color.success) : screen.muted);
         }
-        if (profileRunning) summary.setText("서버 실행 중");
-        else if (servicesStopped) summary.setText("서버 중지됨");
-        else summary.setText(ready ? "서비스 확인 필요" : "웹 서버 응답 없음");
-        profile.setText(LOCAL.equals(origin) ? "이 기기에서만 접속" : "공개 주소로 접속");
+        if (profileRunning) summary.setText(getString(R.string.running_server));
+        else if (servicesStopped) summary.setText(getString(R.string.stopped_server));
+        else summary.setText(ready ? getString(R.string.check_service) : getString(R.string.web_down));
+        profile.setText(LOCAL.equals(origin) ? getString(R.string.local_access) : getString(R.string.public_access));
         address.setText(origin);
         String result = response.optString("result");
         note(
                 result.equals("ok")
-                        ? (origin.isEmpty() ? "배포 설정에서 접속 주소를 확인하세요." : "")
+                        ? (origin.isEmpty() ? getString(R.string.check_origin) : "")
                         : result.equals("profile-changed")
-                                ? "접속 설정이 바뀌었습니다. 현재 주소를 확인하고 다시 시도하세요."
-                                : "명령을 완료하지 못했습니다. Termux에서 tcgctl status를 확인하세요.");
+                                ? getString(R.string.profile_changed)
+                                : getString(R.string.manage_command_error));
         finishRequest();
     }
 }
