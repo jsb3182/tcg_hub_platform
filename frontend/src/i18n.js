@@ -33,6 +33,10 @@ export const gameCodes=Object.keys(games)
 export function gameName(code,fallback=code) {
   return games[code]?.[locale.value==='en'?1:locale.value==='ja'?2:0] ?? fallback
 }
+const editionLabels = {ko:'한국어판',en:'영어판',ja:'일본어판'}
+export function editionName(language) {
+  return t(supportedLanguage(language) ? editionLabels[language] : '언어 미확인')
+}
 export function localizedCard(card) {
   const names=card?.specs?.names
   return names?.[locale.value] || card?.name || card?.originalName || t('이름 미정')

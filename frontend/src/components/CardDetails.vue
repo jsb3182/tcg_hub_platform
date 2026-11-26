@@ -1,5 +1,5 @@
 <script setup>
-import { t as uiText, locale, localizedCard } from '../i18n'
+import { t as uiText, locale, localizedCard, editionName } from '../i18n'
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { artworkUrl, mediaPath, request, sourceLink } from '../api'
@@ -15,6 +15,10 @@ const current = computed(() => card.value?.variants?.[index.value])
 const failedImage=ref('')
 const localizedImage=computed(()=>artworkUrl(card.value?.specs?.images?.[locale.value]||card.value?.imageUrl))
 const effect=computed(()=>card.value?.specs?.texts?.[locale.value]||card.value?.effect)
+const titleLanguage = computed(()=>card.value?.specs?.names?.[locale.value] ? locale.value : card.value?.language)
+const effectLanguage = computed(()=>card.value?.specs?.texts?.[locale.value] ? locale.value : card.value?.effectLanguage)
+const directImage = computed(()=>!index.value && localizedImage.value && failedImage.value!==localizedImage.value)
+const imageLanguage = computed(()=>directImage.value ? (card.value?.specs?.images?.[locale.value] ? locale.value : card.value?.imageLanguage) : null)
 const image = computed(() => current.value?.image)
 const tileStyle = computed(() => {
   const tile = image.value
@@ -70,26 +74,29 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
     <p v-if="loading" class="muted" role="status">{{ $t("카드 상세를 불러오는 중입니다.") }}</p>
     <div v-else-if="error" role="alert"><p>{{ error }}</p><button class="secondary" @click="load">{{ $t("다시 시도") }}</button></div>
     <article v-else-if="card">
-      <h1 v-if="!lazy" :lang="card.language || locale">{{ title }}</h1>
+      <h1 v-if="!lazy" :lang="titleLanguage || ''">{{ title }}</h1>
       <div class="detail-grid">
         <div class="illustration">
-          <button v-if="localizedImage && failedImage!==localizedImage && !index" class="localized-card" @click="dialog.showModal()"><img :src="localizedImage" :alt="title" @error="failedImage=localizedImage" loading="lazy" referrerpolicy="no-referrer"></button><button v-else-if="tileStyle" class="atlas" :style="tileStyle" type="button" :aria-label="title + $t(' 이미지 확대')" @click="dialog.showModal()"></button>
+          <button v-if="directImage" class="localized-card" @click="dialog.showModal()"><img :src="localizedImage" :alt="title" @error="failedImage=localizedImage" loading="lazy" referrerpolicy="no-referrer"></button><button v-else-if="tileStyle" class="atlas" :style="tileStyle" type="button" :aria-label="title + $t(' 이미지 확대')" @click="dialog.showModal()"></button>
           <span v-else class="atlas missing">{{ $t("이미지 미등록") }}</span>
+          <small v-if="directImage || tileStyle" class="edition-note">{{ $t('카드 이미지') }} · {{ editionName(imageLanguage) }}</small>
           <div v-if="card.variants.length > 1" class="variant-nav">
             <button type="button" :disabled="index === 0" @click="index--" :aria-label="$t('이전 일러스트')">‹</button>
             <span>{{ index + 1 }} / {{ card.variants.length }}</span>
             <button type="button" :disabled="index + 1 === card.variants.length" @click="index++" :aria-label="$t('다음 일러스트')">›</button>
           </div>
           <dialog ref="dialog" class="zoom" :aria-label="$t('카드 이미지 확대')" @click="e => { if (e.target === dialog) dialog.close() }">
-            <img v-if="localizedImage && failedImage!==localizedImage && !index" :src="localizedImage" :alt="title" @error="failedImage=localizedImage" class="localized-large" referrerpolicy="no-referrer"><div v-else class="atlas large" :style="tileStyle" role="img" :aria-label="title"></div>
+            <img v-if="directImage" :src="localizedImage" :alt="title" @error="failedImage=localizedImage" class="localized-large" referrerpolicy="no-referrer"><div v-else class="atlas large" :style="tileStyle" role="img" :aria-label="title"></div>
             <button class="secondary" type="button" @click="dialog.close()">{{ $t("닫기") }}</button>
           </dialog>
         </div>
         <div class="card-facts">
+          <div v-if="titleLanguage!==locale"><small>{{ $t('표시된 카드명') }}</small><p>{{ editionName(titleLanguage) }}</p></div>
           <div v-if="card.originalName && card.originalName !== title"><small>{{ $t("원문명") }}</small><p>{{ card.originalName }}</p></div>
           <div v-if="card.number"><small>{{ $t("카드 번호") }}</small><p>{{ card.number }}</p></div>
           <div v-for="[code, name] in editions" :key="code">
-            <small>{{ $t(editionLabels[code]) }}</small><p :lang="code">{{ name }}</p>
+            <small>{{ $t(editionLabels[code]) }}</small>
+            <p :lang="code"><a v-if="sourceLink(card.specs?.sources?.[code])" :href="sourceLink(card.specs.sources[code])" target="_blank" rel="noopener noreferrer">{{ name }}</a><template v-else>{{ name }}</template></p>
           </div>
           <div v-if="card.packName"><small>{{ $t("수록 팩") }}</small><p>{{ card.packName }}</p></div>
           <div v-if="card.releaseDate"><small>{{ $t("발매일") }}</small><p>{{ card.releaseDate }}</p></div>
@@ -105,10 +112,10 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
           </div>
         </div>
       </div>
-      <section v-if="effect" class="detail-section"><h3>{{ $t("카드 효과") }}</h3><p :lang="card.effectLanguage || ''">{{ effect }}</p></section>
+      <section v-if="effect" class="detail-section"><h3>{{ $t("카드 효과") }}</h3><small v-if="effectLanguage!==locale" class="edition-note">{{ editionName(effectLanguage) }}</small><p :lang="effectLanguage || ''">{{ effect }}</p></section>
       <dl v-if="specs.length" class="specs"><div v-for="[key, value] in specs" :key="key"><dt>{{ $t(names[key]) || key }}</dt><dd>{{ display(value) }}</dd></div></dl>
     </article>
   </div>
 </template>
 
-<style scoped>.localized-card{background:transparent;border:0;padding:0}.localized-card img,.localized-large{max-width:100%;max-height:70vh;object-fit:contain}</style>
+<style scoped>.edition-note{display:block;color:var(--mu);margin:.35rem 0;font-size:.85rem}.localized-card{background:transparent;border:0;padding:0}.localized-card img,.localized-large{max-width:100%;max-height:70vh;object-fit:contain}</style>

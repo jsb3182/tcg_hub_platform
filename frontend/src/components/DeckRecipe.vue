@@ -4,6 +4,7 @@ import { t as uiText } from '../i18n'
 import { computed, ref } from 'vue'
 import { sectionLabel, stateLabel } from '../library'
 import LibraryThumbnail from './LibraryThumbnail.vue'
+import DeckAnalysis from './DeckAnalysis.vue'
 const props = defineProps({ deck:{type:Object,required:true}, gameName:String })
 const imageArea=ref(null), busy=ref(false), error=ref('')
 const groups=computed(()=>props.deck.rule.sections.map(s=>({key:s.section,entries:props.deck.entries.filter(e=>e.section===s.section)})))
@@ -35,4 +36,5 @@ async function download() {
       </section>
     </article>
   </section>
+  <DeckAnalysis :deck="deck"/>
 </template>

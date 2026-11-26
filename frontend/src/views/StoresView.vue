@@ -29,6 +29,12 @@ const favorites = ref(new Set()), favoritesOnly = ref(false), saving = ref(new S
 const refresh = ref(0), size = 75
 const active = computed(() => shops.value.find(s => s.id === selected.value))
 const pages = computed(() => Math.ceil(total.value / size))
+const eventLabels = {TOURNAMENT:'대회', RESTOCK:'입고'}
+function eventTitle(event) {
+  if ((event.category === 'TOURNAMENT' && event.title === '매장 대회') ||
+      (event.category === 'RESTOCK' && event.title === '신상품 입고')) return uiText(event.title)
+  return event.title
+}
 const vector = new VectorSource()
 const makeMarker = (fill, radius) => new Style({ image: new CircleStyle({radius, fill:new Fill({color:fill}), stroke:new Stroke({color:'#fff',width:2})}) })
 const marker = makeMarker('#12635c',7), chosen = makeMarker('#b34715',10)
@@ -166,7 +172,20 @@ async function toggle(id) {
       <p v-if="tileError" class="inline-error">{{ $t("배경 지도를 불러오지 못했습니다. 아래 주소 또는 길찾기를 이용해 주세요.") }}</p>
       <section v-if="active" class="store-detail" :aria-label="$t('선택한 매장')" aria-live="polite">
         <h2>{{ active.name }}</h2><p>{{ active.address }}</p><p>{{ $t('공인 매장') }} · {{ $t(active.official==null?'미확인':active.official?'예':'아니요') }}</p>
-        <h3>{{ $t('이번 주 대회') }}</h3><ul v-if="active.events?.length"><li v-for="event in active.events" :key="event.id"><time :datetime="event.startsAt">{{dateTime(event.startsAt)}}</time> · {{event.title}} <small>{{gameName(event.gameCode,'')}}</small></li></ul><p v-else>{{ $t('등록된 대회가 없습니다.') }}</p>
+        <h3>{{ $t('향후 7일 대회·입고') }}</h3>
+        <ul v-if="active.events?.length" class="store-events">
+          <li v-for="event in active.events" :key="event.id">
+            <div class="event-meta">
+              <span v-if="eventLabels[event.category]">{{ $t(eventLabels[event.category]) }}</span>
+              <time :datetime="event.startsAt">{{ dateTime(event.startsAt) }}</time>
+              <span v-if="event.gameCode">{{ gameName(event.gameCode) }}</span>
+            </div>
+            <span>{{ eventTitle(event) }}</span>
+            <a v-if="sourceLink(event.sourceUrl)" :href="sourceLink(event.sourceUrl)" target="_blank" rel="noopener noreferrer"
+               :aria-label="eventTitle(event)+$t(' 원문 보기')">{{ $t('원문 보기') }}</a>
+          </li>
+        </ul>
+        <p v-else>{{ $t('예정된 대회·입고가 없습니다.') }}</p>
         <p>{{ $t("영업시간 ·") }} {{ active.hours?.text || $t("미확인") }}
           <a v-if="sourceLink(active.hours?.url)" :href="sourceLink(active.hours.url)" target="_blank" rel="noopener noreferrer">{{ $t("운영시간 출처") }} {{ active.hours.checked }}</a></p>
         <p>{{ $t("취급 근거 ·") }} <template v-if="active.games.length"><template v-for="g in active.games" :key="g.code">

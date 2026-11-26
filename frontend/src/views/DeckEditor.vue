@@ -91,7 +91,7 @@ function add(card) {
   const item=entries.value.find(e=>e.cardId===card.id && e.section===section.value)
   if(item)item.quantity=Math.min(999,item.quantity+1)
   else entries.value.push({cardId:card.id,name:card.name,number:card.number,packName:card.packName,section:section.value,quantity:1,
-    imageUrl:card.imageUrl,image:card.image ?? card.variants?.find(v=>v.image)?.image ?? null})
+    curveValue:card.curveValue ?? null,imageUrl:card.imageUrl,image:card.image ?? card.variants?.find(v=>v.image)?.image ?? null})
   notice.value=sectionLabel(section.value)+uiText("에 ")+card.name+uiText(" 추가")
 }
 async function showError(message) {
