@@ -50,6 +50,24 @@ class LibraryIntegrationTest {
     }
     String binder(long id){return "/api/v1/me/binder/"+id;}
 
+    @Test void printedCurveValuesDistinguishAbsentCostsFromZero() throws Exception {
+        record Sample(String game, String specs, Integer expected) {}
+        for (Sample sample : List.of(
+                new Sample("YUGIOH","{\"k\":\"몬스터\",\"lv\":4}",4),
+                new Sample("YUGIOH","{\"type\":\"XYZ Monster\",\"level\":4}",null),
+                new Sample("POKEMON","{\"attacks\":[{\"cost\":[\"Water\",\"Water\"]},{\"cost\":[\"Colorless\",\"플러스\"]}]}",1),
+                new Sample("POKEMON","{\"attacks\":[{\"cost\":[\"No Energy Cost\"]}]}",0),
+                new Sample("POKEMON","{\"attacks\":[{}, {\"cost\":[\"Grass\"]}]}",null),
+                new Sample("ONEPIECE","{\"cost\":0}",0),new Sample("WEISS","{\"cost\":\"-\"}",null),
+                new Sample("NIVEL","{\"코스트\":\"3\"}",3), new Sample("RIFTBOUND","{\"energy\":5}",5))) {
+            long id = card(sample.game(),"곡선 검증","PUBLISHED");
+            db.sql("update card set specs=cast(? as jsonb) where id=?").param(sample.specs()).param(id).update();
+            var view = api.perform(get("/api/v1/cards/"+id)).andExpect(status().isOk());
+            if (sample.expected() == null) view.andExpect(jsonPath("$.curveValue").isEmpty());
+            else view.andExpect(jsonPath("$.curveValue").value(sample.expected()));
+        }
+    }
+
     @Test void threeEditionFieldsAndPortableOnePieceDeckUsePublishedPrintings() throws Exception {
         String game="ONEPIECE", path="/api/v1/me/decks";
         long leader=card(game,"시험 리더","PUBLISHED"), unit=card(game,"시험 캐릭터","PUBLISHED"), don=card(game,"두웅!!","PUBLISHED");

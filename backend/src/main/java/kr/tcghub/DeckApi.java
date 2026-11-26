@@ -26,7 +26,8 @@ class DeckApi {
     record Summary(long id, String name, String gameCode, String format, int ruleVersion, String state,
                    int revision, OffsetDateTime updatedAt, UUID shareToken, long cards) {}
     record Page(List<Summary> items, long total) {}
-    record Entry(long cardId, String section, int quantity, String name, String number, String packName,CatalogApi.Image image) {}
+    record Entry(long cardId, String section, int quantity, String name, String number, String packName,
+                 Integer curveValue, CatalogApi.Image image) {}
     record Details(@com.fasterxml.jackson.annotation.JsonUnwrapped Header deck, DeckRules.Rule rule,List<Entry> entries) {}
     record History(int revision, OffsetDateTime savedAt, String name, String state, int cards) {}
     record HistoryPage(List<History> items,long total) {}
@@ -68,11 +69,12 @@ class DeckApi {
         return db.sql(sql+(lock?" for update of d":"")).param(id).param(user.getName()).query(Header.class).optional().orElseThrow(DeckApi::missing);
     }
     private Details details(Header header) {
-        var entries=db.sql("select e.card_id,e.section,e.quantity,c.name,c.number,p.name as pack_name"+LibraryImage.COLUMNS+
+        var entries=db.sql("select e.card_id,e.section,e.quantity,c.name,c.number,p.name as pack_name,"+
+                "card_curve_value(c.game_code,c.specs) as curve_value"+LibraryImage.COLUMNS+
                 "from deck_entry e join card c on c.id=e.card_id left join pack p on p.id=c.pack_id "+LibraryImage.JOIN+
                 "where e.deck_id=? order by e.section,c.name,e.card_id").param(header.id()).query((r,n)->new Entry(
                         r.getLong("card_id"),r.getString("section"),r.getInt("quantity"),r.getString("name"),
-                        r.getString("number"),r.getString("pack_name"),LibraryImage.read(r))).list();
+                        r.getString("number"),r.getString("pack_name"),r.getObject("curve_value",Integer.class),LibraryImage.read(r))).list();
         return new Details(header,rules.rule(header.gameCode(),header.format(),header.ruleVersion()),entries);
     }
     @GetMapping("/me/decks/{id}")
