@@ -10,9 +10,12 @@ _ADAPTERS = {"YUGIOH": yugioh, "POKEMON": pokemon, "WEISS": weiss, "NIVEL": nive
 CATALOG_GAMES = frozenset(_ADAPTERS)
 
 
-def iter_catalog(game_code):
+def iter_catalog(game_code, *, legacy_editions=None):
     if game_code not in _ADAPTERS:
         raise ValueError(f"Unknown catalog game {game_code!r}")
     http = CatalogHTTP()
     with http.scan(game_code):
-        yield from _ADAPTERS[game_code](http)
+        if game_code == "YUGIOH" and legacy_editions is not None:
+            yield from yugioh(http, legacy_editions)
+        else:
+            yield from _ADAPTERS[game_code](http)

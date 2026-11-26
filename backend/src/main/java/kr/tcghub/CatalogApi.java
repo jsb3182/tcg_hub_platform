@@ -1,7 +1,5 @@
 package kr.tcghub;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.HashMap;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
@@ -23,7 +21,7 @@ class CatalogApi {
     record Pack(long id, String gameCode, String code, String name, String releaseLabel, String bannerUrl) {}
     record ListedCard(@JsonUnwrapped CardRepository.Summary card, Image image) {}
     record PageResult(List<ListedCard> items, int page, int size, long total) {}
-    record Image(long sheetId, int col, int row, String url, int cellWidth, int cellHeight) {}
+    record Image(long sheetId, int col, int row, String url, int cellWidth, int cellHeight, String language) {}
     record Variant(long id, String rarity, Image image) {}
     record Details(@JsonUnwrapped CardRepository.Summary card, JsonNode specs, List<Variant> variants) {}
 
@@ -62,11 +60,9 @@ class CatalogApi {
         var images = new HashMap<Long,Image>();
         if (!result.isEmpty()) {
             var ids = result.getContent().stream().map(CardRepository.Summary::getId).toList();
-            db.sql("""
-                select distinct on(v.card_id) v.card_id,v.sheet_id,v.col_idx,v.row_idx,s.storage_key,s.cell_width,s.cell_height
-                from card_variant v join card c on c.id=v.card_id join image_sheet s on s.id=v.sheet_id
-                where c.status='PUBLISHED' and not s.retired and v.card_id in (:ids) order by v.card_id,v.position
-                """).param("ids",ids).query((r,n) -> java.util.Map.entry(r.getLong("card_id"),LibraryImage.read(r)))
+            db.sql("select c.id" + LibraryImage.COLUMNS + " from card c " + LibraryImage.LOCALIZED_JOIN
+                    + " where c.id in (:ids) and tile.sheet_id is not null")
+                    .param("ids",ids).param("lang",lang).query((r,n) -> java.util.Map.entry(r.getLong("id"),LibraryImage.read(r)))
                     .list().forEach(entry -> images.put(entry.getKey(),entry.getValue()));
         }
         var items = result.getContent().stream().map(card -> new ListedCard(card,images.get(card.getId()))).toList();
@@ -77,19 +73,19 @@ class CatalogApi {
     Details details(@PathVariable @Positive long id,
                     @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) throws java.io.IOException {
         var card = cards.published(id,lang).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        var specs = db.sql("select specs::text from card where id=?").param(id).query(String.class).single();
+        var specs = db.sql("""
+                select cast(case when linked.card_id is null then c.specs else c.specs || jsonb_build_object(
+                    'names', linked.names || case when jsonb_typeof(c.specs->'names')='object' then c.specs->'names' else '{}' end,
+                    'texts', linked.texts || case when jsonb_typeof(c.specs->'texts')='object' then c.specs->'texts' else '{}' end
+                ) end as text) from card c
+                """ + CardEdition.LEGACY_JOIN + " where c.id=?").param(id).query(String.class).single();
         var variants = db.sql("""
-            select v.id, v.rarity, v.sheet_id, v.col_idx, v.row_idx, s.storage_key, s.cell_width, s.cell_height
+            select v.id, v.rarity, v.sheet_id, v.col_idx, v.row_idx, s.storage_key, s.cell_width, s.cell_height,
+                   edition.language as tile_language
               from card_variant v left join image_sheet s on s.id=v.sheet_id and not s.retired
-             where v.card_id=? order by v.position
-            """).param(id).query((row, n) -> variant(row)).list();
+            """ + LibraryImage.EDITION_JOIN + " where v.card_id=? order by v.position")
+                .param(id).query((row, n) -> new Variant(row.getLong("id"),row.getString("rarity"),LibraryImage.read(row))).list();
         return new Details(card, json.readTree(specs), variants);
     }
 
-    private static Variant variant(ResultSet row) throws SQLException {
-        String key = row.getString("storage_key");
-        Image image = key == null ? null : new Image(row.getLong("sheet_id"), row.getInt("col_idx"),
-                row.getInt("row_idx"), "/media/" + key, row.getInt("cell_width"), row.getInt("cell_height"));
-        return new Variant(row.getLong("id"), row.getString("rarity"), image);
-    }
 }

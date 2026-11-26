@@ -170,9 +170,9 @@ def riftbound(http):
                "source_url": "https://api.rifthunt.com/cards/" + quote(card["printing_id"], safe="")}
 
 
-def yugioh(http):
+def yugioh(http, legacy=None):
     base = "https://db.ygoprodeck.com/api/v7/"
-    translations = ygo_names(http, revision)
+    translations = ygo_names(http, revision, legacy)
     version = str(document(http.get(base + "checkDBVer.php", ttl=1800))[0]["database_version"])
     sets = {r["set_name"]: r for r in document(http.get(base + "cardsets.php", revision=version))}
     offset, total, seen = 0, None, set()
@@ -186,6 +186,8 @@ def yugioh(http):
         for card in rows:
             misc = (card.get("misc_info") or [{}])[0]
             printings = card.get("card_sets") or []
+            if legacy is not None:
+                legacy.observe_ygopro(card)
             art = next((v.get("image_url_small") for v in card.get("card_images",[])
                         if v.get("id")==card["id"] and v.get("image_url_small")==f"https://images.ygoprodeck.com/images/cards_small/{card['id']}.jpg"),None)
             if not printings and not any(key in misc for key in ("ocg_date", "tcg_date")):
@@ -209,7 +211,7 @@ def yugioh(http):
                        "effect": card.get("desc"), "release_date": pack.get("tcg_date") if printing else misc.get("ocg_date") or misc.get("tcg_date"),
                        "specs": {"language": "en", "passcode": card["id"],
                                  **({"representativeArt":art} if art and misc.get("tcg_date") else {}),
-                                 "names": {"en": name, **local.get("names", {})},
+                                 "names": {**local.get("names", {}), "en": name},
                                  "texts": {"en": card.get("desc") or "", **local.get("texts", {})},
                                  "legality": local.get("legality", {}),
                                  "sources": {k: "https://www.db.yugioh-card.com/yugiohdb/card_search.action?" +

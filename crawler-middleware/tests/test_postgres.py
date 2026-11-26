@@ -581,12 +581,15 @@ class DatabaseTests(unittest.TestCase):
             """, ("legacy:incremental:xid:" + name,)).fetchone()
 
         with self.db.transaction(force_rollback=True):
+            self.db.execute("INSERT INTO verified_atlas_edition VALUES (%s,0,0,'ja'),(%s,1,0,'en')", (key,key))
             load()
             self.assertEqual(current("a")[:3], (key, True, True))
             self.assertTrue((self.media / key).is_file())
             self.assertEqual([run(),run(),run()], [1,1,0])
             first = current("a")
             self.assertFalse(first[1])
+            labels = "SELECT col_idx,language FROM verified_atlas_edition WHERE storage_key=%s ORDER BY col_idx"
+            self.assertEqual(self.db.execute(labels, (first[0],)).fetchall(), [(0, "ja")])
             with Image.open(self.media / first[0]) as clean:
                 self.assertGreater(clean.getpixel((20,20))[2], 220)
                 self.assertLess(max(clean.getpixel((60,20))[:3]), 40)
@@ -603,6 +606,7 @@ class DatabaseTests(unittest.TestCase):
             self.assertEqual(current("a"), first)
             second = current("b")
             self.assertFalse(second[1])
+            self.assertEqual(self.db.execute(labels, (second[0],)).fetchall(), [(1, "en")])
             with Image.open(self.media / second[0]) as clean:
                 self.assertLess(max(clean.getpixel((20,20))[:3]), 40)
                 self.assertGreater(clean.getpixel((60,20))[0], 220)
@@ -644,6 +648,14 @@ class DatabaseTests(unittest.TestCase):
                 WHERE c.game_code='YUGIOH'
             """).fetchone()
             self.assertEqual(variants, (1044, 954))
+            editions = self.db.execute("""
+                SELECT e.language,count(DISTINCT c.id),count(DISTINCT (s.storage_key,v.col_idx,v.row_idx))
+                FROM card c JOIN card_variant v ON v.card_id=c.id JOIN image_sheet s ON s.id=v.sheet_id
+                LEFT JOIN verified_atlas_edition e USING (storage_key,col_idx,row_idx)
+                WHERE c.status='PUBLISHED' AND c.legacy_key LIKE 'legacy:%' AND NOT s.retired
+                GROUP BY e.language ORDER BY e.language NULLS LAST
+            """).fetchall()
+            self.assertEqual(editions, [("en",57,57), ("ja",846,892), (None,1,1)])
             self.assertEqual(self.db.execute("SELECT count(*) FROM pack WHERE game_code='YUGIOH'").fetchone()[0], 23)
             keys = self.db.execute("""
                 SELECT DISTINCT s.storage_key,s.retired FROM image_sheet s JOIN card_variant v ON v.sheet_id=s.id
