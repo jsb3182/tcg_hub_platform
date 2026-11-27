@@ -80,9 +80,9 @@ def main():
         return
 
     if args.command == "import-wiki-cards":
-        from .wiki_cards import SEED, import_wiki_cards
+        from .wiki_cards import import_wiki_cards
         with connect() as db:
-            print(json.dumps(import_wiki_cards(db, args.file or SEED)))
+            print(json.dumps(import_wiki_cards(db, args.file)))
         return
 
     if args.command == "seed-release-calendar":

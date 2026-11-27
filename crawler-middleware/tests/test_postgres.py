@@ -144,6 +144,64 @@ class DatabaseTests(unittest.TestCase):
                 import_wiki_cards(self.db, file)
             self.assertEqual(self.db.execute("select count(*) from wiki_card_document where snapshot_row is not null").fetchone()[0], 2)
 
+    def test_same_date_operator_wiki_survives_worker_start_and_unchanged_weekly_digest(self):
+        from contextlib import nullcontext, redirect_stdout
+        import io
+        import json
+        import threading
+        import psycopg
+        from psycopg import sql
+        from tcg_worker import sync
+        from tcg_worker.__main__ import main
+        from tcg_worker.wiki_cards import SEED, refresh_index
+
+        original = json.loads(SEED.read_text("utf-8"))[0]
+        reviewed = {**original, "textKo": "운영자 검수판에서 확인된 규칙입니다."}
+        selected = self.spool.parent / "operator.json"
+        selected.write_text(json.dumps([reviewed], ensure_ascii=False), encoding="utf-8")
+        stop = threading.Event()
+        stop.set()  # Exercise real startup; no network or background jobs.
+
+        with psycopg.connect(os.environ["TCG_TEST_DSN"], autocommit=True) as db:
+            db.execute(sql.SQL("SET search_path TO {},public").format(self.schema))
+            for table in ("wiki_card_document", "feed_source", "worker_heartbeat"):
+                db.execute(sql.SQL("CREATE TEMP TABLE {} (LIKE {} INCLUDING ALL)").format(
+                    sql.Identifier(table), sql.Identifier(table)))
+            lock = -db.info.backend_pid
+
+            def cli(*args):
+                with patch("tcg_worker.jobs.connect", return_value=nullcontext(db)), \
+                     patch("sys.argv", ["tcg_worker", "import-wiki-cards", *args]), \
+                     redirect_stdout(io.StringIO()) as output:
+                    main()
+                return json.loads(output.getvalue())
+
+            def startup():
+                with patch.object(sync, "LOCK", lock), patch("tcg_worker.release_calendar.seed_calendar"), \
+                     patch("tcg_worker.card_readings.seed_curated_readings"), patch.object(sync.supplements, "configure"):
+                    sync.run(db, self.media, self.spool, stop, 1)
+
+            def current():
+                return db.execute("select snapshot_date::text,korean_text from wiki_card_document where lookup_key=%s",
+                                  ("cid:"+str(original["match"]["cid"]),)).fetchone()
+
+            with patch.dict(os.environ, {"TCG_WIKI_INDEX_FILE": str(selected)}):
+                self.assertGreater(cli(str(SEED))["changed"], 0)  # Explicit manual file takes precedence.
+                self.assertEqual(current(), (original["snapshotDate"], original.get("textKo")))
+                self.assertEqual(cli(), {"documents": 1, "changed": 1})
+                cursor = refresh_index(db, {})
+                self.assertEqual(cursor["changed"], 0)
+                startup()
+                self.assertEqual(refresh_index(db, cursor), {**cursor, "changed": 0})
+                self.assertEqual(current(), (original["snapshotDate"], reviewed["textKo"]))
+                # An absent operator volume must not reset verified material or block other workers.
+                selected.unlink()
+                with self.assertLogs("tcg_worker.sync", level="WARNING"):
+                    startup()
+                with self.assertRaises(FileNotFoundError):
+                    refresh_index(db, cursor)
+                self.assertEqual(current(), (original["snapshotDate"], reviewed["textKo"]))
+
     def test_regional_product_updates_keep_links_separate_and_seed_does_not_revert_live_dates(self):
         from tcg_worker.release_calendar import checked, save
 

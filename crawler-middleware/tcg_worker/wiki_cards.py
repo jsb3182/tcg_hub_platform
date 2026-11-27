@@ -12,16 +12,27 @@ from psycopg.types.json import Jsonb
 SEED = Path(__file__).parent / "catalog_sources" / "wiki_data" / "namuwiki.json"
 
 
+def _index_bytes(path=None):
+    selected = Path(path or os.environ.get("TCG_WIKI_INDEX_FILE") or SEED)
+    with selected.open("rb") as handle:
+        size = os.fstat(handle.fileno()).st_size
+        if size > 48 * 1024 * 1024:
+            raise ValueError("Reviewed index exceeds its import size limit")
+        data = handle.read(size + 1)
+    if len(data) != size:
+        raise ValueError("Reviewed index changed during import")
+    return data
+
+
 def refresh_index(db, cursor):
     """Reconcile a locally supplied, reviewed snapshot index only when its content changes."""
-    path = Path(os.environ.get("TCG_WIKI_INDEX_FILE") or SEED)
-    if path.stat().st_size > 48 * 1024 * 1024:
-        raise ValueError("Reviewed index exceeds its import size limit")
-    with path.open("rb") as handle:
-        digest = hashlib.file_digest(handle, "sha256").hexdigest()
+    data = _index_bytes()
+    digest = hashlib.sha256(data).hexdigest()
     if cursor.get("sha256") == digest:
         return {**cursor, "changed": 0}
-    return {**import_wiki_cards(db,path), "sha256": digest}
+    return {**_apply_index(db, data), "sha256": digest}
+
+
 GAMES = {"YUGIOH", "POKEMON", "WEISS", "ONEPIECE", "RIFTBOUND", "NIVEL"}
 NUMERIC = {"atk", "def", "level", "rank", "link", "hp", "cost", "power", "life", "soul", "hit", "energy", "might"}
 CATEGORICAL = {"attribute", "race", "type", "color"}
@@ -122,9 +133,12 @@ def checked(row):
             "korean_text": content,"article_details": details}
 
 
-def import_wiki_cards(db, path=SEED):
-    # Only the small, reviewed identity index is installed on the phone.
-    rows = json.loads(Path(path).read_text(encoding="utf-8"))
+def import_wiki_cards(db, path=None):
+    return _apply_index(db, _index_bytes(path))
+
+
+def _apply_index(db, data):
+    rows = json.loads(data.decode("utf-8"))
     if not isinstance(rows, list) or not rows:
         raise ValueError("Expected a nonempty list of verified wiki cards")
     records = [checked(row) for row in rows]
