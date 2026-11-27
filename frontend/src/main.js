@@ -15,6 +15,8 @@ const router = createRouter({
   routes: [
     { path: '/', alias: '/cards', name: 'catalog', component: CatalogView, meta: { title: '카드 도감' } },
     { path: '/cards/:id(\\d+)', name: 'card', component: () => import('./views/CardView.vue'), meta: { title: '카드 상세' } },
+    { path: '/releases', name: 'releases', component: () => import('./views/ReleasesView.vue'), meta: { title: '발매 일정' } },
+    { path: '/releases/:id(\\d+)', name: 'pack', component: () => import('./views/PackView.vue'), meta: { title: '수록 카드' } },
     { path: '/login', name: 'login', component: () => import('./views/LoginView.vue'), meta: { title: '로그인' } },
     { path: '/news', name: 'news', component: () => import('./views/NewsView.vue'), meta: { title: '새 소식' } },
     { path: '/stores', name: 'stores', component: () => import('./views/StoresView.vue'), meta: { title: '매장 지도' } },
