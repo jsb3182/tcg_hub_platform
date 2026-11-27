@@ -89,6 +89,14 @@ try {
      effectBasis:'NAMUWIKI_KO',effectReferenceUrl:wiki.url,specs:{wikiReferences:[wiki]},variants:[],prices:[{variantId:1,provider:'QA Source',market:'QA Market',currency:'KRW',amount:3500,sourceUrl:'https://example.invalid/snapshot',observedAt:'2026-11-01T00:00:00Z'}]})
    if(api==='cards/55')return json({...atlasCard(lang),id:55,imageUrl:'/media/fixture.webp',imageLanguage:'en',specs:{},variants:atlasVariants})
    if(api==='cards/56')return json({...atlasCard(lang),id:56,imageUrl:'/media/fixture.webp',imageLanguage:lang,imageBasis:'CARD_REFERENCE',imageSource:'https://example.invalid/prints/'+lang+'/art',effectBasis:lang==='ko'?'REVIEWED_TRANSLATION':'REVIEWED_PRINTING',specs:{names:{[lang]:'Obsolete unreviewed name'}},variants:atlasVariants})
+   if(/^cards\/(58|59|60|61)$/.test(api)){
+     const id=Number(api.slice(6)),images={ko:'/media/print-ko.webp',en:'/media/print-en.webp'}
+     const source='https://example.invalid/prints/'+lang
+     return json({...card,id,productCode:'OP-01',imageProduct:'OP-01',imageSource:source,
+       imageUrl:origin+(id===61?'/media/fixture.webp':images[lang]),imageLanguage:id===60?'en':lang,
+       specs:{images,productCode:'OP-01',imageProducts:{[lang]:'OP-01'},
+         imageSources:{[lang]:id===59?source+'/alternate':source}},variants:id===61?[{id:75,image:atlasTile(0,lang)}]:[]})
+   }
    if(['cards/51','cards/52','cards/53'].includes(api)){
      const id=Number(api.split('/')[1])
      return json({...card,id,...artwork(id,lang),effectBasis:'RELATED_PRINTING',variants:[],specs:{names:titles,sources:{ja:'https://example.invalid/public-card-ja'}}})
@@ -152,7 +160,7 @@ try {
    if(api==='news')return json({items:[{id:3,title:titles[lang],originalTitle:'Practice card',originalLanguage:'en',originalSummary:'Original summary',summary:'Original summary',contentLanguage:lang,summaryLanguage:'en',translationStatus:lang==='en'?'ORIGINAL':'TRANSLATED',gameCode:'ONEPIECE',sourceUrl:'https://example.invalid/news/3'}],total:1})
    errors.push('Unknown route '+api);return json({},404)
   }
-  if(path==='/media/fixture.webp')return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2ZkAAAAASUVORK5CYII=','base64')})
+  if(['/media/fixture.webp','/media/print-ko.webp','/media/print-en.webp'].includes(path))return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2ZkAAAAASUVORK5CYII=','base64')})
   const file=(path.startsWith('/assets/')||extname(path))?path.slice(1):'index.html'
   try{return await route.fulfill({contentType:mime[extname(file)],body:await readFile(join(dist,file))})}catch{return route.fulfill({status:404,body:''})}
  })
@@ -160,6 +168,30 @@ try {
  const select=page.locator('.locale-switch select')
  const visible=e=>e.waitFor({state:'visible'})
  const fits=async()=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),360)
+ const picker=page.locator('.card-reader .illustration')
+ for(const lang of ['ko','en']){
+   await go('/cards/58?lang='+lang)
+   const picture=picker.locator('.localized-card img')
+   await visible(picture);await picture.evaluate(img=>img.decode())
+   assert.equal(await picture.getAttribute('src'),origin+'/media/print-'+lang+'.webp')
+   assert.equal(await picker.locator('.variant-nav').count(),0,'The relative edition URL and absolute direct URL identify one image')
+ }
+ await go('/cards/59?lang=ko')
+ await visible(picker.locator('.variant-nav'))
+ assert.equal(await picker.locator('.edition-note a').getAttribute('href'),'https://example.invalid/prints/ko')
+ await picker.locator('.variant-nav button').last().click()
+ assert.equal(await picker.locator('.edition-note a').getAttribute('href'),'https://example.invalid/prints/ko/alternate')
+ await go('/cards/60?lang=ko')
+ await visible(picker.locator('.edition-note').getByText('한국어판',{exact:true}))
+ await page.locator('.reader-source summary').click()
+ await visible(page.locator('.reader-source .edition-note').getByText('영어판',{exact:true}))
+ await go('/cards/61?lang=ko')
+ await visible(picker.locator('.variant-nav'))
+ assert.equal(await picker.locator('.localized-card img').getAttribute('src'),origin+'/media/fixture.webp')
+ await picker.locator('.variant-nav button').last().click();await visible(picker.locator('button.atlas'))
+ await picker.locator('.variant-nav button').last().click()
+ assert.equal(await picker.locator('.localized-card img').getAttribute('src'),origin+'/media/print-ko.webp')
+ assert.ok(await picker.locator('.variant-nav button').last().isDisabled())
  await go('/cards/51?lang=ja')
  await visible(page.getByRole('heading',{name:'練習カード'}))
  const sources=page.locator('.reader-source'), openSources=async()=>{await sources.locator('summary').click();await visible(sources.locator('.source-content'))}

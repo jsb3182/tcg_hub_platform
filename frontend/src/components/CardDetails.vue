@@ -26,12 +26,22 @@ const failedImages=ref([])
 function imageFailed(url){if(url && !failedImages.value.includes(url))failedImages.value.push(url)}
 const choices = computed(() => {
   const data = card.value
-  const legacyUrl = data?.specs?.images?.[locale.value]
   const all=cardArtworks(data?.imageUrl,data?.imageLanguage,data?.variants || [],null,data?.imageBasis)
-  if(legacyUrl && !all.some(art=>art.src===legacyUrl)){
-    const [legacy]=cardArtworks(legacyUrl,locale.value,[],null)
-    if(legacy)all.push({...legacy,key:'edition-'+locale.value,printing:{gameCode:data.gameCode,
-      productCode:data.specs.productCode,imageProduct:data.specs.imageProducts?.[locale.value],imageSource:data.specs.imageSources?.[locale.value]}})
+  const lang=locale.value
+  const [edition]=cardArtworks(data?.specs?.images?.[lang],lang,[],null)
+  if(edition){
+    const product=data.specs.imageProducts?.[lang], source=data.specs.imageSources?.[lang]
+    const direct=all.find(art=>art.src===edition.src && !art.reference && (!art.language || art.language===lang))
+    const samePrinting=direct && !(product && data.imageProduct && product!==data.imageProduct)
+      && !(source && data.imageSource && source!==data.imageSource)
+    if(samePrinting){
+      direct.language=lang
+      direct.printing={...data,productCode:data.productCode || data.specs.productCode,
+        imageProduct:data.imageProduct || product,imageSource:data.imageSource || source}
+    }else{
+      all.push({...edition,key:'edition-'+lang,printing:{gameCode:data.gameCode,
+        productCode:data.specs.productCode,imageProduct:product,imageSource:source}})
+    }
   }
   return all.filter(art=>!art.src || !failedImages.value.includes(art.src))
 })
