@@ -7,6 +7,9 @@ import {fileURLToPath} from 'node:url'
 const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE||'playwright')
 const dist=process.env.QA_DIST||fileURLToPath(new URL('../dist/',import.meta.url))
 const actual=process.env.PACK_QA_ORIGIN
+const announced={id:8,code:'MZMC',name:'메이즈 오브 머신즈',gameCode:'YUGIOH',metadata:{},group:'PREMIERE',
+  total:0,newCount:0,reprintCount:0,newArtCount:0,cards:[],officialProduct:{englishName:'Maze of Machines',otsDate:'2027-03-17',
+    launchDate:'2027-03-19',setSize:153,sourceUrl:'https://www.yugioh-card.com/en/products/mzmc/'}}
 const origin=actual||'http://127.0.0.1:19892'
 assert.equal(new URL(origin).hostname,'127.0.0.1')
 const mime={'.html':'text/html;charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'}
@@ -45,7 +48,8 @@ try{
       if(path==='/api/v1/auth/admin-mode')return json({mode:'DISABLED'})
       if(path==='/api/v1/auth/refresh')return json({},401)
       if(path==='/api/v1/packs/7')return json(pack)
-      if(path==='/api/v1/releases')return json([pack])
+      if(path==='/api/v1/packs/8')return json(announced)
+      if(path==='/api/v1/releases')return json([pack,announced])
       if(path.match(/^\/api\/v1\/cards\/\d+$/)){const c=fakeCards.find(x=>x.id===Number(path.split('/').pop()));return json({...c,
         nameBasis:'RELATED_PRINTING',nameReferenceUrl:'https://example.invalid/references/name',
         specs:{k:c.type,atk:1000},variants:[{id:c.id,rarity:c.rarity,image:c.image}]})}
@@ -109,6 +113,19 @@ try{
     await page.getByRole('button',{name:'카드 배열',exact:true}).click()
     await page.keyboard.press('Escape');assert.equal(await gallery.count(),0);await noOverflow()
     await page.locator('.pack-back').click();await page.waitForURL(u=>u.pathname==='/releases')
+    await page.locator('.release-filters input').fill('Maze of Machines')
+    const upcoming=page.locator('#release-PREMIERE li a').filter({hasText:'MZMC'})
+    await visible(upcoming.getByText('도감 등록 전',{exact:true}))
+    await upcoming.click()
+    await visible(page.getByRole('heading',{name:'메이즈 오브 머신즈',exact:true}))
+    assert.equal(await page.getByRole('link',{name:'공식 상품 안내'}).getAttribute('href'),announced.officialProduct.sourceUrl)
+    assert.match(await page.locator('.pack-dates').innerText(),/2027-03-17/)
+    assert.match(await page.locator('.pack-dates').innerText(),/153/)
+    assert.equal(await page.locator('.pack-controls').count(),0)
+    await noOverflow();await shot('announced-product')
+    await page.locator('.locale-switch select').selectOption('en')
+    await visible(page.getByRole('heading',{name:'Maze of Machines'}))
+    await page.locator('.locale-switch select').selectOption('ko')
     await page.goto(origin+'/shared/decks/fixture')
     const recipe=page.locator('.recipe-panel');await visible(recipe.locator('.lib-recipe'))
     assert.equal(await recipe.locator('.lib-recipe .lib-thumbnail').count(),4)

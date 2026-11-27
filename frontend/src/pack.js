@@ -40,6 +40,11 @@ const labels = {
   '이미지 저장 불가':['Image unavailable for export','画像を保存できません'],
   '수록 카드가 아직 없습니다.':['No cards have been listed yet.','収録カードはまだ登録されていません。'],
   '일본 발매':['Japan release','日本発売'], '한국 발매':['Korea release','韓国発売'],
+  '북미 일반 발매':['North America release','北米一般発売'],
+  '북미 공인점 선행 발매':['North America OTS release','北米公認店先行発売'],
+  '공식 상품 구성':['Publisher set size','公式商品収録枚数'],
+  '공식 상품 안내':['Official product page','公式商品ページ'],
+  '도감 등록 전':['No catalog entries yet','図鑑未登録'],
   '수록 상품':['Product','収録商品'], '종류':['Type','種類'], '몬스터':['Monster','モンスター'], '마법':['Spell','魔法'], '함정':['Trap','罠'],
   '남은 카드 불러오기':['Load remaining cards','残りのカードを読み込む'], '카드 불러오는 중…':['Loading cards…','カードを読み込み中…'],
   '페이지':['Page','ページ'], '카드 목록':['Card list','カードリスト'], '이미지 저장':['Save image','画像を保存'],
@@ -53,6 +58,9 @@ export function pt(key) {
 }
 export const inclusions = {NEW:'신규',REPRINT:'재록',NEW_ART:'신규 일러스트'}
 export const unknown = '__unknown__'
+export function packTitle(pack) {
+  return locale.value !== 'ko' && pack.officialProduct ? pack.officialProduct.englishName : pt(pack.name)
+}
 export function facetValues(card, key) {
   if (key === 'rarity') return card.rarities?.length ? card.rarities : [card.rarity || unknown]
   return [card[key] || unknown]

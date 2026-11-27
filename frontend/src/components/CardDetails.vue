@@ -6,6 +6,7 @@ import { request, sourceLink } from '../api'
 import { cardArtworks, preferredArtwork } from '../artwork'
 import ArtworkCredit from './ArtworkCredit.vue'
 import CardTextCredit from './CardTextCredit.vue'
+import KoreanPrinting from './KoreanPrinting.vue'
 import { pt } from '../pack'
 
 const props = defineProps({ cardId: { type: [Number, String], required: true }, lazy: Boolean })
@@ -50,7 +51,7 @@ const wikiSearch=computed(()=>{
   return query ? 'https://namu.wiki/Search?q='+encodeURIComponent(query) : ''
 })
 const specs = computed(() => Object.entries(card.value?.specs || {}).filter(([key, value]) =>
-    !['xid','pk','ej','names','texts','images','sources','nameBasis','referenceNames','referenceNameUrls','editionEvidence'].includes(key) && value != null && value !== '' &&
+    !['xid','pk','ej','names','texts','images','sources','nameBasis','referenceNames','referenceNameUrls','editionEvidence','koreanPrinting'].includes(key) && value != null && value !== '' &&
     !(card.value?.gameCode==='ONEPIECE' && ['productCode','imageProducts','imageSources'].includes(key))))
 const names = { k: "종류", at: "속성", lv: "레벨", mk: "링크 마커", rc: "종족", sub: "유형", ps: "펜듈럼 스케일", pe: "펜듈럼 효과", atk: "공격력", def: "수비력", or: "읽기", nw: "수록 구분", pr: "출처", pd: "발매 정보", type: "유형", attribute: "속성", level: "레벨", race: "종족" }
 function display(value) {
@@ -121,6 +122,7 @@ watch([() => props.cardId,locale], () => {
           <CardTextCredit :card="card" detailed link/>
           <div v-if="originalName"><small>{{ $t("원문명") }}</small><p>{{ originalName }}</p></div>
           <div v-if="card.number"><small>{{ $t("카드 번호") }}</small><p>{{ card.number }}</p></div>
+          <KoreanPrinting v-if="card.gameCode==='YUGIOH' && card.specs?.koreanPrinting" :printing="card.specs.koreanPrinting"/>
           <div v-for="[code, name] in editions" :key="code">
             <small>{{ pt(editionLabels[code]) }}</small>
             <p :lang="code"><a v-if="sourceLink(card.specs?.sources?.[code])" :href="sourceLink(card.specs.sources[code])" target="_blank" rel="noopener noreferrer">{{ name }}</a><template v-else>{{ name }}</template></p>
