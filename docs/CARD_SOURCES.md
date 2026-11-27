@@ -70,4 +70,22 @@
 
 ## 리프트바운드 공개 배포
 
-앱 전용 키로 운영하려면 Riot 개발자 포털에 앱을 등록하고 공식 `riftbound-content-v1`의 `GET /riftbound/content/v1/contents`에서 카드 자료를 받아야 한다. 공식 명세는 기본 언어를 영어로 안내한다. 2026년 11월 25일 아시아 엔드포인트에 키 없이 요청했을 때 HTTP 401이 반환됐다. 현재 설치의 카드 본문과 판본 ID는 RiftHunt에서 왔으므로, 키 발급 후 실제 공식 응답으로 판본을 대조할 때까지 기존 바인더와 덱의 카드 ID를 보존한다. [공식 API 명세](https://developer.riotgames.com/apis#riftbound-content-v1/GET_getContent) · [Riot의 카드 자료·앱 등록 요건](https://developer.riotgames.com/policies/riftbound)
+Riot에 앱을 등록하고 발급받은 앱 전용 키를 서버의 `RIOT_API_KEY`에 설정한다. 보조 수집기는 아시아 경로의 `GET /riftbound/content/v1/contents`에 인증 헤더를 보내고, 기본 영문 응답에서 공식 번호·세트·이름·효과·수치를 읽는다. 아시아 경로는 API 접속 지역이며 한국어판이나 특정 매장의 발행 근거는 아니다. 공개 서비스는 Riot의 승인 범위와 카드 표시 지침을 따라야 한다. [공식 API 명세](https://developer.riotgames.com/apis#riftbound-content-v1/GET_getContent) · [Riot의 카드 자료·앱 등록 요건](https://developer.riotgames.com/policies/riftbound)
+
+Riftcodex 보조 수집기는 인증 없는 `/cards`를 한 번에 100개씩 읽으며, 수록 세트와 인쇄번호, 출처의 고유 ID, TCGplayer 상품 ID가 있으면 이를 기록한다. 가격·그림·효과 본문은 이 보조 출처에서 가져오지 않는다. 제공자가 403을 반환하거나 페이지가 불완전하면 수집기가 오류를 보고하고 해당 페이지를 유지한다. 기존 RiftHunt 판본과 바인더·덱은 원래 ID를 사용한다. [Riftcodex 카드 API](https://riftcodex.com/docs/endpoints/cards/)
+
+## 나무위키 수록표와 카드 데이터
+
+워커가 시작되면 배포본의 검증 색인을 PostgreSQL의 `wiki_card_document`에 반영한다. 유희왕은 코나미 CID, 포켓몬은 한국판 고유 ID와 카드 번호가 일치할 때 도감에 연결한다. 카드 상세의 원문·출처에서 문서, 자료 배포일, 확인된 수치, 발행사 페이지를 볼 수 있다. 2021년 3월 1일 나무위키 배포본의 문서 행 번호와 SHA-256을 함께 기록했다. 나무위키 기여자가 작성한 문서와 Bingsu의 자료 배포본은 CC BY-NC-SA 2.0 KR로 표시돼 있다. 번들에는 교차 확인한 식별자·카드명·수치·출처를 담았다. [자료 배포본](https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f) · [푸른 눈의 백룡 공식 정보](https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4007&request_locale=ko) · [뿔충이 한국판](https://pokemoncard.co.kr/cards/detail/BS2014501001)
+
+2026년 11월 28일에 공개 인쇄본 92,899건을 PC에서 대조했다. 유희왕 67개 카드가 재수록을 포함해 891건에 연결됐다. 포켓몬 X·Y컬렉션은 24개 인쇄본이 연결됐다. 이 날짜의 위키 자료에 없는 게임과 카드는 각 종목의 기존 도감 공급처에서 갱신된다.
+
+`tcgctl media import-wiki-cards`는 같은 색인을 다시 적용할 수 있다. PC에서는 `crawler-middleware/tools/build_namuwiki_yugioh.py --help`에 따라 공개 스냅샷과 공급자 데이터를 준비해 검증 범위를 넓힐 수 있다. `verify_namuwiki_yugioh.py`는 색인의 CID·인쇄 번호·수치를 원 출처에 다시 대조한다.
+
+## 한국어 검색과 해외 인쇄본 읽기
+
+발매 연도는 해당 인쇄본의 카드 발매일을 사용한다. 이 값이 비어 있으면 도감의 같은 상품에 연결된 발매일을 사용한다. 한 상품의 여러 지역 공지가 확인되면 가장 이른 공지 날짜를 사용하며 화면에는 수록 상품 날짜로 표시한다. 발매일을 확인할 수 없는 인쇄본은 연도 선택을 해제하면 조회할 수 있다.
+
+도감에서 종목을 고른 뒤 상세 필터를 열면 실제 공개 카드에 있는 값으로 검색할 수 있다. 포켓몬은 진화 단계·타입·HP, 원피스는 색·코스트·특징, 바이스는 레벨·소울, 니벨은 히트·속성, 리프트바운드는 영역·에너지·위력, 유희왕은 속성·종족·랭크 등을 제공한다. 특성과 연도는 검색어·레어도·수록 팩과 함께 적용된다.
+
+검수한 바이스 번역은 영어판 카드 번호·출처·원문 해시를 대조한다. 로컬 모델은 발매 예정일이나 선공개 표시가 있는 인쇄본 중 한국어 문구가 비어 있는 자료를 한 주기에 최대 6장 처리한다. 종목별 용어와 숫자·부호가 유지된 결과에 자동 번역 표지를 붙인다. 카드명과 효과는 각각 공식 등록 문구·검수본과 출처가 확인된 나무위키 자료를 우선한다.

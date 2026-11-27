@@ -14,13 +14,8 @@ class MapConfiguration {
     String contentPolicy() {
         String script = key.isEmpty() ? "" : " https://dapi.kakao.com https://t1.daumcdn.net https://t1.kakaocdn.net";
         String maps = key.isEmpty() ? "" : " https://*.daumcdn.net https://*.kakaocdn.net https://*.daum.net";
-        String printings = " https://www.onepiece-cardgame.kr https://en.onepiece-cardgame.com https://www.onepiece-cardgame.com"
-                + " https://optcgapi.com https://www.optcgapi.com https://assets.tcgdex.net https://images.pokemontcg.io"
-                + " https://cards.image.pokemonkorea.co.kr https://www.pokemon-card.com"
-                + " https://cmsassets.rgpub.io"
-                + " https://artworks-jp-n.ygoresources.com https://artworks-en-n.ygoresources.com https://artworks-ko-db.ygoresources.com";
         return "default-src 'self'; script-src 'self'" + script + "; connect-src 'self'" + script
-                + "; img-src 'self' data: blob: https://tile.openstreetmap.org" + maps + printings
+                + "; img-src 'self' data: blob: https://tile.openstreetmap.org" + maps
                 + "; style-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'"
                 + (key.isEmpty() ? "" : "; upgrade-insecure-requests");
     }

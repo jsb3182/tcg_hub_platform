@@ -207,3 +207,8 @@ A90에서 첫 수집이 끝났는지 보려면 Termux에서 `tcgctl media check-
 **디시인사이드 TCG 갤러리**는 디시인사이드의 사전 서면 동의가 있을 때 운영한다. 동의 범위에 `tcggame` 목록의 자동 수집이 포함된 경우 Ubuntu의 `/etc/tcg-hub/feeds.env`에 `export DCINSIDE_WRITTEN_PERMISSION=tcggame`을 설정하고 파일 소유자를 `tcgapp`, 모드를 0600으로 지정한다. 워커를 재시작한 뒤 소스를 재시도한다. 수집기는 매회 robots 정책을 확인하고 공개 목록의 게시번호·제목·일시·원문 링크를 저장한다. 기본 검수 상태는 `PENDING`이다. [서비스 이용약관 제16조](https://nstatic.dcinside.com/dc/w/policy/policy_index.html) · [갤러리 robots 정책](https://gall.dcinside.com/robots.txt)
 
 현장에서 소스 하나를 점검할 때는 `tcgctl media check-feed OFFICIAL_NEWS nivel-notice-kr`처럼 실행한다. 이 명령은 실제 한 번의 조회 결과와 첫 원문 링크를 출력한다. 정상적인 예약 수집은 DB 체크포인트·중복 제거·백오프를 적용한다. 이미지 권리가 확인된 운영자 파일은 5단계 `enqueue`로 처리하고, 외부 도감은 출처와 메타데이터를 저장한다.
+## 카드 데이터 공급자 설정
+
+배포 환경변수 예시는 [설정 템플릿](../.env.example)에 있다. A90에서는 Ubuntu의 기존 `/etc/tcg-hub/runtime.env`에 필요한 변수만 `export`로 추가한 뒤 워커를 재시작한다. 기존 DB 비밀번호·JWT 키와 파일 권한을 유지한다. `APITCG_API_KEY`, `TRADINGCARDSTUDIO_API_KEY`, `RIOT_API_KEY`, `POKEWALLET_API_KEY`는 해당 공급자의 읽기 권한이 있는 서버 키다. 키가 준비되면 워커가 연결 상태를 갱신하며 관리자 화면의 수집 출처에서 해당 작업을 요청할 수 있다. 등록 여부와 실제 요청 결과는 각각 공급자 상태와 소스의 마지막 성공 시각에서 확인한다.
+
+기본 자동 동기화는 API 응답을 비공개 카탈로그 캐시에 저장하고 HTTP 호출 사이의 지연 및 서버의 재시도 시간을 적용한다. 나무위키는 배포된 출처 색인을 사용하며, 운영자가 검증한 갱신 색인이 있으면 `TCG_WIKI_INDEX_FILE`에 워커가 읽을 수 있는 절대 경로를 설정한다. 주간 작업이 SHA-256이 바뀐 파일을 읽어 같은 인쇄본의 변경 행을 갱신한다.

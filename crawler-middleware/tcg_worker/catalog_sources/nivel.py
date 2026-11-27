@@ -3,6 +3,7 @@ from html.parser import HTMLParser
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.robotparser import RobotFileParser
+from bs4 import BeautifulSoup
 
 
 # This is the HTTP origin explicitly published by the official card list.
@@ -80,6 +81,7 @@ def nivel(http):
     if not total or not last or not 0 < int(last[1]) <= 500:
         raise ValueError("Invalid Nivel board page count")
     ids = []
+    artwork = {}
     for page in range(1, int(last[1]) + 1):
         url = BOARD + f"&page={page}"
         if not robots.can_fetch(agent, url):
@@ -89,10 +91,21 @@ def nivel(http):
         if not listed:
             raise ValueError(f"Empty Nivel list page {page}")
         ids.extend(listed)
+        for node in BeautifulSoup(body, "html.parser").select("li[data-info]"):
+            ident = node["data-info"].rpartition("♬")[2]
+            picture = node.select_one(".gall_img img[src]")
+            if picture and ident.isdecimal():
+                thumb = picture["src"]
+                if re.fullmatch(r"http://nivelarena\.co\.kr/data/file/cardlists/[\w.-]+\.(?:jpg|jpeg|png)", thumb, re.I):
+                    artwork[ident] = thumb
     if len(set(ids)) != int(total[1].replace(",", "")) or len(ids) != len(set(ids)):
         raise ValueError("Nivel listing changed during pagination, retry after the cache expires")
     for index, ident in enumerate(ids):
         post = urlencode({"bo_table": "cardlists", "wr_id": ident}).encode()
         # Historical details change rarely. A successful response is reused across interrupted runs.
         body = http.get(DETAIL, post=post, ttl=(1 if index < 40 else 30) * 86400, size=128000, delay=delay)
-        yield parse_detail(body.read_text("utf-8-sig"), ident)
+        record = parse_detail(body.read_text("utf-8-sig"), ident)
+        if ident in artwork:
+            record["specs"].update(images={"ko": artwork[ident]}, imageSources={"ko": record["source_url"]},
+                                   imageProducts={"ko": record["pack_code"]})
+        yield record

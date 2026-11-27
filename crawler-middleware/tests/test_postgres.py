@@ -10,6 +10,69 @@ from PIL import Image
 
 @unittest.skipUnless(os.environ.get("TCG_TEST_DSN"), "set TCG_TEST_DSN to test PostgreSQL/PostGIS")
 class DatabaseTests(unittest.TestCase):
+    def test_supplement_replays_exact_prices_and_keeps_ambiguous_printings_unlinked(self):
+        from tcg_worker.supplements import save, configure
+        with self.db.transaction(force_rollback=True):
+            provider="APITCG"
+            sid=self.db.execute("select id from feed_source where provider=%s",(provider,)).fetchone()[0]
+            source={"provider":provider,"game_code":"ONEPIECE","id":sid,"auto_publish":True}
+            row={"id":"test-price","number":"QAPRICE-004","name":"Price test","lang":"en","packCode":"QAPRICE",
+                 "effect":"Marker","facts":{"rarity":"R","names":{"ko":"unexpected"}},"sourceUrl":"https://api.apitcg.com/api/products/1",
+                 "prices":[{"market":"TCGplayer Normal","currency":"USD","amount":"0.75","time":"2025-01-01T12:00:00Z"}]}
+            self.assertEqual(save(self.db,source,[row]),1)
+            self.assertEqual(save(self.db,source,[row]),0)
+            cid=self.db.execute("select card_id from supplemental_printing where external_id='test-price'").fetchone()[0]
+            self.assertIsNone(self.db.execute("select specs->'names'->>'ko' from card where id=%s",(cid,)).fetchone()[0])
+            self.assertEqual(self.db.execute("""select count(*) from price_snapshot s join price_listing l on l.id=s.listing_id
+                    join card_variant v on v.id=l.variant_id where v.card_id=%s and l.market='TCGplayer Normal'""",(cid,)).fetchone(),(1,))
+            self.db.execute("""insert into card(game_code,name,pack_id,number,status)
+                    select game_code,name,pack_id,number,status from card where id=%s""",(cid,))
+            self.assertEqual(save(self.db,source,[{**row,"id":"ambiguous-print"}]),0)
+            self.assertIsNone(self.db.execute("select card_id from supplemental_printing where external_id='ambiguous-print'").fetchone()[0])
+            with patch.dict(os.environ,{"APITCG_API_KEY":""}):
+                configure(self.db)
+                self.assertEqual(self.db.execute("select enabled from feed_source where id=%s",(sid,)).fetchone(),(False,))
+            with patch.dict(os.environ,{"APITCG_API_KEY":"fixture"}):
+                configure(self.db)
+                self.assertEqual(self.db.execute("select enabled,policy_note from feed_source where id=%s",(sid,)).fetchone(),(True,None))
+
+    def test_local_catalog_webp_replay_retraction_and_shared_retry_after(self):
+        import io
+        import threading
+        from urllib.error import HTTPError
+        from psycopg.types.json import Jsonb
+        from tcg_worker.local_art import batch, backfill_hashes
+        source = "https://assets.tcgdex.net/en/swsh/swsh1/9/high.webp"
+        data = io.BytesIO()
+        Image.new("RGB",(80,110),"teal").save(data,"PNG")
+        stop = threading.Event()
+        with tempfile.TemporaryDirectory() as directory, self.db.transaction(force_rollback=True):
+            media = Path(directory)
+            cid = self.db.execute("""INSERT INTO card(game_code,name,specs,status)
+                VALUES ('POKEMON','batch',%s,'PUBLISHED') RETURNING id""",
+                (Jsonb({"images":{"en":source}}),)).fetchone()[0]
+            def download(url):
+                self.assertEqual(url,source)
+                return data.getvalue()
+            self.assertEqual(batch(self.db,media,stop,("POKEMON",),fetch=download,policy=lambda _:3),1)
+            file_id,key,dhash = self.db.execute(
+                "select id,storage_key,capture_hash::text from catalog_art_file where source_url=%s", (source,)).fetchone()
+            self.assertTrue((media/key).is_file())
+            self.assertRegex(dhash,r"^[01]{64}$")
+            self.assertEqual(batch(self.db,media,stop,("POKEMON",),fetch=self.fail,policy=self.fail),0)
+            self.db.execute("update catalog_art_file set capture_hash=null where id=%s",(file_id,))
+            backfill_hashes(self.db,media)
+            self.assertEqual(self.db.execute("select capture_hash::text from catalog_art_file where id=%s",(file_id,)).fetchone(),(dhash,))
+            self.db.execute("update catalog_art_file set next_attempt=now() where id=%s",(file_id,))
+            self.db.execute("delete from catalog_art_host where hostname='assets.tcgdex.net'")
+            def limited(url):
+                raise HTTPError(url,429,"Limited",{"Retry-After":"72000"},None)
+            self.assertEqual(batch(self.db,media,stop,("POKEMON",),fetch=limited,policy=lambda _:3),0)
+            self.assertTrue(self.db.execute("select next_attempt>now()+interval '19 hours' from catalog_art_host where hostname='assets.tcgdex.net'").fetchone()[0])
+            self.assertEqual(self.db.execute("select local_catalog_art(%s,%s)",(cid,source)).fetchone(),("/media/"+key,))
+            self.db.execute("update card set status='PENDING' where id=%s",(cid,))
+            self.assertEqual(self.db.execute("select local_catalog_art(%s,%s)",(cid,source)).fetchone(),(None,))
+
     @classmethod
     def setUpClass(cls):
         import psycopg
@@ -47,6 +110,25 @@ class DatabaseTests(unittest.TestCase):
             "INSERT INTO card(game_code,name,status) VALUES ('POKEMON','test','PUBLISHED') RETURNING id"
         ).fetchone()[0]
         return self.db.execute("INSERT INTO card_variant(card_id) VALUES (%s) RETURNING id", (card_id,)).fetchone()[0]
+
+    def test_wiki_snapshot_can_be_replayed_and_cannot_roll_back_newer_facts(self):
+        import json
+        from tcg_worker.wiki_cards import SEED, import_wiki_cards
+
+        rows = json.loads(SEED.read_text(encoding="utf-8"))
+        samples = [next(row for row in rows if row["game"] == game) for game in ("YUGIOH", "POKEMON")]
+        file = self.spool.parent / "cards.json"
+        with self.db.transaction(force_rollback=True):
+            self.db.execute("delete from wiki_card_document")
+            file.write_text(json.dumps(samples), encoding="utf-8")
+            self.assertEqual(import_wiki_cards(self.db, file), {"documents": 2, "changed": 2})
+            self.assertEqual(import_wiki_cards(self.db, file)["changed"], 0)
+            file.write_text(json.dumps([{**row, "snapshotDate": "2020-01-01"} for row in samples]), encoding="utf-8")
+            self.assertEqual(import_wiki_cards(self.db, file)["changed"], 0)
+            file.write_text(json.dumps([samples[0], {**samples[1], "verificationUrl": "https://example.org/card"}]), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                import_wiki_cards(self.db, file)
+            self.assertEqual(self.db.execute("select count(*) from wiki_card_document where snapshot_row is not null").fetchone()[0], 2)
 
     def test_regional_product_updates_keep_links_separate_and_seed_does_not_revert_live_dates(self):
         from tcg_worker.release_calendar import checked, save

@@ -6,6 +6,14 @@ final class CardEdition {
     static final String LEGACY_JOIN = """
              left join legacy_card_edition linked on linked.card_id=c.id
                  and linked.matched_number=c.number and linked.matched_name=c.original_name
+             left join wiki_card_document wiki on wiki.game_code=c.game_code and wiki.lookup_key=
+                 case when c.game_code='YUGIOH' and starts_with(c.legacy_key,'catalog:YUGIOH:')
+                      then 'cid:'||(c.specs->>'konami_id')
+                      when c.game_code='YUGIOH' and starts_with(c.legacy_key,'legacy:')
+                      then 'cid:'||linked.konami_id::text else c.legacy_key end
+                 and (wiki.printing_number is null or wiki.printing_number=c.number)
+                 and (wiki.passcode is null or c.specs->>'passcode' is null or wiki.passcode=c.specs->>'passcode')
+             left join card_korean_reading kr_read on kr_read.card_id=c.id and kr_read.due_at is null
             """;
     static final String JOIN = LEGACY_JOIN + """
             cross join lateral (select
@@ -30,6 +38,20 @@ final class CardEdition {
                      and upper(c.original_name) not in ('TBA','TBD','N/A','UNKNOWN') then 'en'
                 end end as lang) original
             left join card_translation reviewed on reviewed.card_id=c.id and reviewed.lang=:lang
+            left join lateral (
+                select case when count(distinct s.name)=1 then min(s.name) end as name,
+                       case when count(distinct s.effect)=1 then min(s.effect) end as effect,
+                       min(s.source_url) as name_url,min(s.source_url) filter(where s.effect is not null) as effect_url
+                from supplemental_printing s where s.card_id=c.id and s.lang=:lang and s.provider<>'RIFTCODEX'
+            ) supplement on c.specs->>'language' is distinct from :lang or nullif(c.effect,'') is null
+            cross join lateral (select case when :lang='ko'
+                 and c.specs->>'language' is distinct from 'ko'
+                 and not (coalesce(starts_with(c.legacy_key,'legacy:'),false) and c.name collate "C" ~ '[가-힣]'
+                          and c.name collate "C" !~ '[ぁ-ヿ]')
+                 then nullif(wiki.names->>'ko','') end as name,
+                 case when :lang='ko' and c.specs->>'language' is distinct from 'ko'
+                      and not (starts_with(coalesce(c.legacy_key,''),'legacy:') and coalesce(c.effect,'') collate "C" ~ '[가-힣]'
+                               and c.effect collate "C" !~ '[ぁ-ヿ]') then wiki.korean_text end as effect) wiki_label
             cross join lateral (select
                 case when reviewed.basis='PRINTED_NAME' or (requested.name is null
                      and original.lang is distinct from :lang and c.specs->>'language' is distinct from :lang)
@@ -43,7 +65,7 @@ final class CardEdition {
                 'https://artworks-en-n.ygoresources.com'||ygo_art.en_path as en,
                 'https://artworks-jp-n.ygoresources.com'||ygo_art.ja_path as ja) regional
             left join lateral (
-                select v.url,v.lang,case when v.reference then 'CARD_REFERENCE' end as basis,
+                select '/media/'||f.storage_key as url,v.lang,case when v.reference then 'CARD_REFERENCE' end as basis,
                        case when v.reference then v.url else c.specs->'imageSources'->>v.lang end as source,
                        case when not v.reference then c.specs->'imageProducts'->>v.lang end as product
                   from (values
@@ -53,19 +75,22 @@ final class CardEdition {
                     (3,c.specs->>'language',nullif(c.specs->'images'->>(c.specs->>'language'),''),false),
                     (4,'ko',regional.ko,true),(5,'en',regional.en,true),(6,'ja',regional.ja,true)
                   ) v(priority,lang,url,reference)
-                 where v.url is not null order by v.priority limit 1
+                  join catalog_art_file f on f.source_url=v.url and f.storage_key is not null
+                  join catalog_art_card allowed on allowed.file_id=f.id and allowed.card_id=c.id
+                 order by v.priority limit 1
             ) art on true
             """;
-    static final String NAME = "coalesce(correction.name,requested.name,case when original.lang=:lang then c.original_name end,requested.reference_name,c.name)";
+    static final String NAME = "coalesce(correction.name,requested.name,case when original.lang=:lang then c.original_name end,requested.reference_name,wiki_label.name,case when c.specs->>'language' is distinct from :lang then supplement.name end,case when :lang='ko' then kr_read.name end,c.name)";
     static final String MATCH_NAME = """
             (strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.specs->'names'->>'ko',c.specs->'names'->>'en',
                 c.specs->'names'->>'ja',linked.names->>'ko',linked.names->>'en',linked.names->>'ja',
-                c.specs->'referenceNames'->>'ko',c.specs->'referenceNames'->>'en',c.specs->'referenceNames'->>'ja')),lower(:q))>0
+                c.specs->'referenceNames'->>'ko',c.specs->'referenceNames'->>'en',c.specs->'referenceNames'->>'ja',wiki.names->>'ko',kr_read.name)),lower(:q))>0
              or c.id in (select t.card_id from card_translation t where strpos(lower(t.name),lower(:q))>0))
             """;
     static final String NAME_FIELDS = NAME + """
              as name,
-            case when correction.name is not null or requested.name is not null or requested.reference_name is not null or original.lang=:lang then :lang
+            case when correction.name is not null or requested.name is not null or requested.reference_name is not null or original.lang=:lang or wiki_label.name is not null
+                     or supplement.name is not null or (:lang='ko' and kr_read.name is not null) then :lang
                  when c.specs->>'language' is not null then c.specs->>'language'
                  when c.name=c.original_name and original.lang is not null then original.lang
                  when c.legacy_key like 'legacy:%' and c.name collate "C" ~ '[가-힣]' and c.name collate "C" !~ '[ぁ-ヿ]' then 'ko'
@@ -76,26 +101,39 @@ final class CardEdition {
                            then c.specs->'nameBasis'->>:lang
                       when nullif(c.specs->'names'->>:lang,'') is null and nullif(linked.names->>:lang,'') is not null then 'PRINTED_NAME'
                       when credit.name_url is not null then 'SOURCE_LABEL' end
-                 when original.lang=:lang or (original.lang is not null and c.name=c.original_name) then 'IMPORTED_ORIGINAL'
+                 when original.lang=:lang then 'IMPORTED_ORIGINAL'
                  when requested.reference_name is not null then 'RELATED_PRINTING'
+                 when wiki_label.name is not null then 'WIKI_REFERENCE'
+                 when supplement.name is not null and c.specs->>'language' is distinct from :lang then 'SOURCE_LABEL'
+                 when :lang='ko' and kr_read.name is not null then kr_read.basis
+                 when original.lang is not null and c.name=c.original_name then 'IMPORTED_ORIGINAL'
                  when starts_with(c.legacy_key,'legacy:') then 'IMPORTED_LABEL'
                  when c.specs->>'language' is not null and c.source_url is not null then 'SOURCE_LABEL' end as "nameBasis",
             case when correction.name is not null then reviewed.source_url
                  when requested.name is not null then credit.name_url
                  when original.lang=:lang then null
                  when requested.reference_name is not null then c.specs->'referenceNameUrls'->>:lang
+                 when wiki_label.name is not null then wiki.document_url
+                 when supplement.name is not null and c.specs->>'language' is distinct from :lang then supplement.name_url
+                 when :lang='ko' and kr_read.name is not null then c.source_url
                  when c.specs->>'language' is not null then coalesce(nullif(c.specs->'sources'->>(c.specs->>'language'),''),c.source_url)
                  end as "nameReferenceUrl"
             """;
     static final String FIELDS = NAME_FIELDS + """
-            ,case when correction.effect is not null then reviewed.source_url else credit.effect_url end as "effectReferenceUrl",
+            ,case when correction.effect is not null then reviewed.source_url
+                  when requested.effect is null and wiki_label.effect is not null then wiki.document_url
+                  when requested.effect is null and supplement.effect is not null then supplement.effect_url
+                  when requested.effect is null and :lang='ko' and kr_read.effect is not null then c.source_url else credit.effect_url end as "effectReferenceUrl",
             case when correction.effect is not null then case when reviewed.basis='PRINTED_NAME'
                       then 'REVIEWED_PRINTING' else 'REVIEWED_TRANSLATION' end
+                 when requested.effect is null and wiki_label.effect is not null then 'NAMUWIKI_KO'
+                 when requested.effect is null and supplement.effect is not null then 'SOURCE_LABEL'
+                 when requested.effect is null and :lang='ko' and kr_read.effect is not null then kr_read.basis
                  when c.game_code='ONEPIECE' and c.specs->'nameBasis'->>
                       (case when requested.effect is not null then :lang else c.specs->>'language' end)='RELATED_PRINTING'
                       and coalesce(requested.effect,nullif(c.effect,'')) is not null then 'RELATED_PRINTING' end as "effectBasis",
-            coalesce(correction.effect,requested.effect,c.effect) as effect,
-            case when correction.effect is not null or requested.effect is not null then :lang
+            coalesce(correction.effect,requested.effect,wiki_label.effect,supplement.effect,case when :lang='ko' then kr_read.effect end,c.effect) as effect,
+            case when correction.effect is not null or requested.effect is not null or wiki_label.effect is not null or supplement.effect is not null or (:lang='ko' and kr_read.effect is not null) then :lang
                  when nullif(c.effect,'') is null then null
                  when c.specs->>'language' is not null then c.specs->>'language'
                  when c.legacy_key like 'legacy:%' and c.specs->>'ej' in ('1','true') then 'ja'

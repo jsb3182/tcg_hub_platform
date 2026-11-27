@@ -7,7 +7,7 @@ import tempfile
 import zipfile
 from collections import Counter
 from pathlib import Path, PurePosixPath
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
 
 from .card_names import PokemonNames, pokemon_edition, pokemon_effect, pokemon_with_name_references, ygo_names
 from .rift_editions import add_korean_edition, galleries, printing_identity
@@ -138,12 +138,19 @@ def weiss(http):
                     continue
                 seen.add(code)
                 pack = code.rsplit("-", 1)[0]
+                source = "https://en.ws-tcg.com/cardlist/cardsearch/exec?cardno=" + quote(code, safe="")
+                image = urlsplit(card.get("image") or "")
+                art = {}
+                if (image.scheme == "https" and image.netloc == "en.ws-tcg.com" and not image.query
+                        and re.fullmatch(r"/(?:wp|wordpress)/wp-content/images/cardimages/[A-Za-z0-9_./+-]+\.(?:png|jpg)",image.path,re.I)
+                        and ".." not in image.path):
+                    art = {"images":{"en":image.geturl()}, "imageSources":{"en":source}, "imageProducts":{"en":pack}}
                 yield {"external_id": "en:" + code, "pack_code": pack, "pack_name": card.get("expansion") or pack,
                        "number": code, "name": name, "original_name": name, "rarity": card.get("rarity"),
                        "effect": "\n".join(card.get("ability") or []) or None, "release_date": None,
-                       "specs": {"language": "en", **selected(card, ("type", "side", "color", "level", "cost",
+                       "specs": {"language": "en", **art, **selected(card, ("type", "side", "color", "level", "cost",
                                                                      "power", "soul", "trigger", "attributes"))},
-                       "source_url": "https://en.ws-tcg.com/cardlist/cardsearch/exec?cardno=" + quote(code, safe="")}
+                       "source_url": source}
     if not seen:
         raise ValueError("Weiss catalog is empty")
 

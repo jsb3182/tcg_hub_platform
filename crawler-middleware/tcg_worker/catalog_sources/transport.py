@@ -72,7 +72,7 @@ class CatalogHTTP:
         next_index.write_text(json.dumps(self.index), encoding="utf-8")
         os.replace(next_index, self.index_file)
 
-    def get(self, url, *, ttl=3600, size=8_000_000, post=None, delay=0.25, revision="", family=None):
+    def get(self, url, *, ttl=3600, size=8_000_000, post=None, delay=0.25, revision="", family=None, headers=None):
         digest = hashlib.sha256(url.encode() + b"\0" + (post or b"") + revision.encode()).hexdigest()
         path = self.root / digest
         family = family or (url if revision else None)
@@ -82,7 +82,7 @@ class CatalogHTTP:
         host = urlsplit(url).hostname
         time.sleep(max(0, self.last_request.get(host, 0) + delay - time.monotonic()))
         self.last_request[host] = time.monotonic()
-        request = Request(url, data=post, headers={"User-Agent": "TCGHub-Catalog/1.0"})
+        request = Request(url, data=post, headers={"User-Agent": "TCGHub-Catalog/1.0", **(headers or {})})
         # Propagate HTTPError (including Retry-After) intact to the source scheduler.
         with self.opener.open(request, timeout=90) as response:
             length = response.headers.get("Content-Length")

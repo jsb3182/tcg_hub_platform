@@ -66,7 +66,8 @@ class RecipeCaptureApi {
                  CROSS JOIN LATERAL (SELECT coalesce(c.specs->>'konami_id',linked.konami_id::text) AS cid) matched
                  WHERE c.game_code='YUGIOH' AND c.status='PUBLISHED' AND cid IN (:ids)
                  ORDER BY cid,(linked.card_id is not null) DESC,c.id)
-                SELECT p.*,n.artwork,n.image_path FROM printings p LEFT JOIN neuron_artwork n ON n.cid=p.cid
+                SELECT p.*,n.artwork,local_catalog_art(p.id,'https://artworks-jp-n.ygoresources.com'||n.image_path) as image_path
+                FROM printings p LEFT JOIN neuron_artwork n ON n.cid=p.cid
                 ORDER BY p.cid,n.artwork
                 """).param("ids",keys).query(rows -> {
                     while (rows.next()) {
@@ -77,8 +78,8 @@ class RecipeCaptureApi {
                                     rows.getString("type"),new LinkedHashMap<>());
                             identities.put(cid,card);
                         }
-                        if (rows.getString("image_path")!=null) {
-                            card.artworks().put(rows.getInt("artwork"),"https://artworks-jp-n.ygoresources.com"+rows.getString("image_path"));
+                        if (rows.getObject("artwork")!=null) {
+                            card.artworks().put(rows.getInt("artwork"),rows.getString("image_path"));
                         }
                     }
                     return identities.size();

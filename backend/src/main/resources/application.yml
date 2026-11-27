@@ -1,0 +1,9 @@
+app:
+  storage:
+    card-images-dir: ${tcg.media-root}/cards
+  providers:
+    min-interval-seconds: ${TCG_PROVIDER_INTERVAL_SECONDS:2}
+    riot-key: ${RIOT_API_KEY:}
+    api-tcg-key: ${APITCG_API_KEY:}
+    trading-card-studio-key: ${TRADINGCARDSTUDIO_API_KEY:}
+    pokewallet-key: ${POKEWALLET_API_KEY:}

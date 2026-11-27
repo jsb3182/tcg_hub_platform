@@ -155,6 +155,7 @@ class LibraryIntegrationTest {
         db.sql("update card set specs='{\"type\":\"character\",\"colors\":[\"red\"]}',effect='You may have any number of this card in your deck.' where id=?")
                 .param(unit).update();
         db.sql("update card set specs='{\"type\":\"don\"}' where id=?").param(don).update();
+        CachedArtwork.link(db,leader,"https://www.onepiece-cardgame.kr/fileDownload?downname=test",'5');
         for(String endpoint:List.of("/api/v1/cards/"+leader,"/api/v1/cards","/api/v1/play/cards")){
             var result=api.perform(get(endpoint).param("game",game).param("q","Test Leader").param("lang","ja"))
                     .andExpect(status().isOk()).andReturn().getResponse();
