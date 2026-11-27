@@ -26,6 +26,7 @@ function fixture(params){
   return {items:rows.slice(p*size,(p+1)*size),page:p,size,total:rows.length,asOf:day}
 }
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||undefined})
+let nextPublicRequest=0
 try{
  for(const width of [360,1280]){
   const ctx=await browser.newContext({viewport:{width,height:800},isMobile:width===360,hasTouch:width===360,serviceWorkers:'block'})
@@ -33,6 +34,12 @@ try{
   await ctx.route('**/*',async route=>{
     const u=new URL(route.request().url()),path=u.pathname
     if(u.origin!==origin)return route.abort()
+    if(actual && path.startsWith('/api/')){
+      // Respect the shared QA service's 180 requests per minute across both viewports.
+      const scheduled=Math.max(Date.now(),nextPublicRequest)
+      nextPublicRequest=scheduled+450
+      if(scheduled>Date.now())await new Promise(done=>setTimeout(done,scheduled-Date.now()))
+    }
     if(actual && !process.env.RELEASE_LOCAL_DIST)return route.continue()
     if(actual && (path.startsWith('/api/')||path.startsWith('/media/')))return route.continue()
     const json=v=>route.fulfill({json:v})
