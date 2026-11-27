@@ -62,7 +62,7 @@ from pathlib import Path
 work = Path(sys.argv[1])
 ready = json.loads((work / "ready.json").read_text())["status"]
 games = {game["code"] for game in json.loads((work / "games.json").read_text())}
-if ready != "UP" or not {"YUGIOH", "POKEMON", "WEISS", "NIVEL", "RIFTBOUND"} <= games:
+if ready != "UP" or not {"YUGIOH", "POKEMON", "WEISS", "NIVEL", "RIFTBOUND", "ONEPIECE"} <= games:
     raise SystemExit("Local readiness or game catalog check failed")
 proof = {"release_sha256": sys.argv[2], "readiness": ready, "game_count": len(games),
          "verified_at": datetime.now(timezone.utc).isoformat()}
