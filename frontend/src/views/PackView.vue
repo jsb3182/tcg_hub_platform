@@ -27,7 +27,12 @@ const pages=computed(()=>Math.ceil(filtered.value.length/pageSize))
 const shown=computed(()=>filtered.value.slice(page.value*pageSize,(page.value+1)*pageSize))
 const special=computed(()=>pack.value?.group && pack.value.group!=='SCHEDULE')
 const showInclusions=computed(()=>pack.value?.gameCode==='YUGIOH'||Object.values(countFields).some(key=>pack.value?.[key]>0))
-const otherEvents=computed(()=>releaseEvents.value.filter(e=>!(e.region==='NA' && e.releaseDate===pack.value?.officialProduct?.launchDate && e.sourceUrl===pack.value?.officialProduct?.sourceUrl)))
+const otherEvents=computed(()=>{
+  const product=pack.value?.officialProduct
+  return releaseEvents.value.filter(e=>e.catalogPackId===pack.value?.id &&
+    !(e.region==='NA' && e.releaseDate===product?.launchDate && e.sourceUrl===product?.sourceUrl))
+})
+const productReference=computed(()=>pack.value?.wikiProductReference)
 const backTo=computed(()=>{
   const {section,...query}=route.query
   const hash=section==='catalog-packs'?'#catalog-packs':['SCHEDULE','DISTRIBUTION','PREMIERE','ARCHIVE'].includes(section)?'#release-'+section:''
@@ -54,7 +59,7 @@ watch([()=>route.params.id,releasePage,releaseRetry],async([id,n],_,cleanup)=>{
   try{
     const data=await request('/release-calendar?'+new URLSearchParams({packId:id,period:'all',size:24,page:n}),{signal:abort.signal})
     if(abort.signal.aborted)return
-    const rows=(data.items||[]).filter(e=>String(e.catalogPackId)===String(id))
+    const rows=data.items||[]
     releaseEvents.value=n?releaseEvents.value.concat(rows):rows
     releaseTotal.value=data.total||0
   }catch{if(!abort.signal.aborted)releaseError.value=true}
@@ -152,6 +157,15 @@ async function pickCard(id){
           <p v-if="pack.metadata?.note">{{ pack.metadata.note }}</p>
         </div>
       </header>
+      <details v-if="productReference" :key="pack.id" class="pack-reference">
+        <summary>{{ pt('상품 출처') }}</summary>
+        <p>{{ regionName(productReference.region) }} · <time :datetime="productReference.releaseDate">{{ productReference.releaseDate }}</time></p>
+        <ul>
+          <li><a :href="sourceLink(productReference.verificationUrl)" target="_blank" rel="noopener noreferrer">{{ pt('공식 상품 안내') }}</a></li>
+          <li><a :href="sourceLink(productReference.documentUrl)" :title="productReference.title+' · '+productReference.section" target="_blank" rel="noopener noreferrer">{{ pt('나무위키 참고 문서') }}</a></li>
+          <li><a :href="sourceLink(productReference.snapshotUrl)" target="_blank" rel="noopener noreferrer">{{ pt('스냅샷') }} {{ productReference.snapshotDate }}</a></li>
+        </ul>
+      </details>
       <section v-if="otherEvents.length||releaseError" class="pack-releases">
         <h2>{{ pt('지역별 발매 일정') }}</h2>
         <ul><li v-for="e in otherEvents" :key="e.id"><span>{{ regionName(e.region) }}</span><time :datetime="e.releaseDate">{{ e.releaseDate }}</time>
@@ -213,6 +227,12 @@ async function pickCard(id){
 </style>
 <style scoped>
 .pack-heading h1,.pack-counts span{word-break:keep-all;overflow-wrap:anywhere}
+.pack-reference{margin-block:0 .75rem;border-block-end:1px solid var(--bd);font-size:.9rem}
+.pack-reference summary{padding:.8rem 0;width:fit-content;min-height:44px;cursor:pointer}
+.pack-reference p{margin:0;color:var(--tx);overflow-wrap:anywhere}
+.pack-reference time{white-space:nowrap;font-variant-numeric:tabular-nums}
+.pack-reference ul{display:flex;flex-wrap:wrap;gap:0 1rem;list-style:none;margin:0;padding:0}
+.pack-reference a{display:inline-flex;align-items:center;min-height:44px;text-underline-offset:.18em}
 .pack-row[open] .pack-raw-type{display:none}
 .pack-releases{margin:0 0 1rem;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:.65rem 0}.pack-releases h2{font-size:1rem;margin:.1rem 0}.pack-releases ul{list-style:none;margin:0;padding:0}.pack-releases li{display:flex;align-items:baseline;flex-wrap:wrap;gap:.3rem .75rem;min-height:34px;padding:.3rem 0}.pack-releases time{font-variant-numeric:tabular-nums}.pack-releases a,.pack-releases p{font-size:.85rem}
 @media(max-width:480px){

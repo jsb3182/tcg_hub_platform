@@ -45,9 +45,13 @@ try{
     if(actual && !process.env.RELEASE_LOCAL_DIST)return route.continue()
     if(actual && (path.startsWith('/api/')||path.startsWith('/media/')))return route.continue()
     const json=v=>route.fulfill({json:v})
+    if(path==='/api/v1/release-calendar' && u.searchParams.get('packId')==='9900'){
+      return json({items:[{id:1,catalogPackId:9901,region:'KR',releaseDate:'2026-01-25',sourceUrl:'https://example.invalid/nivel'}],page:0,total:1})
+    }
     if(path==='/api/v1/release-calendar')return json(fixture(u.searchParams))
     if(path==='/api/v1/auth/refresh')return route.fulfill({status:401,body:'{}'})
     if(path==='/api/v1/auth/admin-mode')return json({mode:'DISABLED'})
+    if(path==='/api/v1/packs/9900')return json({id:9901,gameCode:'NIVEL',name:'정정된 수록 상품',total:0,cards:[]})
     if(path.startsWith('/api/v1/packs/')){
       const id=+path.split('/').pop(),event=events.find(e=>e.catalogPackId===id)
       return json({id,name:event.name,code:event.code,gameCode:event.gameCode,group:'SCHEDULE',metadata:{},total:1,newCount:0,reprintCount:0,newArtCount:0,
@@ -199,6 +203,13 @@ try{
     await page.getByRole('button',{name:'타임라인'}).click()
     await page.waitForURL(u=>!u.searchParams.has('view') && u.searchParams.get('game')?.includes(','))
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width)
+  }
+  if(!actual){
+    await page.goto(origin+'/releases/9900?lang=ko')
+    const calendar=page.locator('.pack-releases')
+    await calendar.getByRole('heading',{name:'지역별 발매 일정'}).waitFor()
+    assert.equal(await calendar.locator('time').getAttribute('datetime'),'2026-01-25')
+    assert.equal(await calendar.getByRole('link').getAttribute('href'),'https://example.invalid/nivel')
   }
   assert.deepEqual(errors,[]);console.log(width+'px '+(actual?'Spring':'fixture')+' six games, default, periods, paging, region, locale, source/pack links, search and width passed: '+evidence.join(' / '))
   await ctx.close()
