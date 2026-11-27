@@ -25,8 +25,8 @@ class ReleaseCalendarApi {
     // and omit its card link until the source can distinguish the exact catalog product.
     static final String LINK = """
         left join lateral (
-            select min(p.id) as pack_id from pack p
-            where p.game_code=e.game_code and (p.id=e.selected_pack_id or (not e.manual and (e.catalog_code is not null or e.catalog_name is not null)
+            select min(p.id) as pack_id from visible_catalog_pack p
+            where p.game_code=e.game_code and (p.id=current_catalog_pack(e.selected_pack_id) or (e.selected_pack_id is null and not e.manual and (e.catalog_code is not null or e.catalog_name is not null)
               and (e.catalog_code is null or upper(p.code)=upper(e.catalog_code))
               and (e.catalog_name is null or lower(p.name)=lower(e.catalog_name))
               and case when e.game_code='YUGIOH' and starts_with(e.product_key,'na-premiere:')
@@ -62,7 +62,7 @@ class ReleaseCalendarApi {
             from.append(" and e.release_date>=:first and e.release_date<:next");
             params.put("first",first); params.put("next",first.plusMonths(1));
         }
-        if (packId!=null) { from.append(" and linked.pack_id=:pack"); params.put("pack",packId); }
+        if (packId!=null) { from.append(" and linked.pack_id=current_catalog_pack(:pack)"); params.put("pack",packId); }
         if (!period.equals("all")) {
             from.append(period.equals("past") ? " and e.release_date<:today" : " and e.release_date>=:today");
             params.put("today",today);

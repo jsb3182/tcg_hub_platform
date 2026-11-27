@@ -52,7 +52,7 @@ class CatalogApi {
     List<Pack> packs(@RequestParam(defaultValue="") @Size(max=32) String game) {
         return db.sql("""
             select id, game_code, code, name, release_label, '/media/' || banner_key as banner_url
-              from pack where (:game='' or game_code=:game) order by id
+              from visible_catalog_pack where (:game='' or game_code=:game) order by id
             """).param("game",game).query(Pack.class).list();
     }
 
@@ -61,7 +61,7 @@ class CatalogApi {
                 @RequestParam(defaultValue="") @Size(max=120) String q,
                 @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
                 @RequestParam(defaultValue="24") @Min(1) @Max(100) int size) {
-        String from=" from pack p where (:game='' or p.game_code=:game) and (:q='' or strpos(lower(concat_ws(' ',p.name,p.code)),lower(:q))>0)";
+        String from=" from visible_catalog_pack p where (:game='' or p.game_code=:game) and (:q='' or strpos(lower(concat_ws(' ',p.name,p.code)),lower(:q))>0)";
         var total=db.sql("select count(*)"+from).param("game",game).param("q",q.strip()).query(Long.class).single();
         var items=db.sql("select p.id,p.game_code,p.code,p.name,(select count(*) from card c where c.pack_id=p.id and c.status='PUBLISHED') as catalog_count"+
                 from+" order by p.release_date desc nulls last,p.id limit :size offset :offset").param("game",game).param("q",q.strip())

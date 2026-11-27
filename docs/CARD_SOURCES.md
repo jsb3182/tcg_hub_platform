@@ -9,7 +9,7 @@
 | 유희왕 | YGOPRODeck의 영문 OCG·TCG 카드와 수록 팩·레어도별 인쇄본. 같은 카드의 팩이 다르면 별도 항목이다. | DB 버전을 확인하고 500장 단위로 카드 목록을 순회한다. 팩 발매일과 카드의 최초 OCG·TCG 발매일을 구분한다. [YGOPRODeck API 가이드](https://ygoprodeck.com/api-guide/) |
 | 포켓몬 | type-null이 Pokémon Korea에서 수집한 한국어 실물 카드. 제품 코드가 없는 인쇄본은 제공된 전체 제품명을 보존한다. | GitHub API에서 받은 커밋으로 압축 파일을 고정하고 한 번 순회한다. 한국어·영어·일본어 원본이 가진 동일 인쇄본 키를 우선하고 카드 지문을 보조로 사용한다. 원본과 대상 언어에서 이름이 하나로 결정될 때만 연결한다. 개별 출처는 포켓몬코리아 상세 페이지다. [데이터셋과 키 설명](https://github.com/type-null/PTCG-database) |
 | 바이스 슈발츠 | CCondeluci가 유지관리한 영문판 목록. 출처가 제공하는 카드 코드, 팩, 레어도, 소울, 트리거, 능력을 보존한다. | 세트 데이터에 영향을 준 커밋의 ZIP 한 개를 읽고 내부 JSON을 세트별 처리한다. 카드는 공식 Bushiroad 카드 검색으로 연결된다. [데이터셋과 구조](https://github.com/CCondeluci/WeissSchwarz-ENG-DB) · [공식 영문 카드 목록](https://en.ws-tcg.com/cardlist/) |
-| 니벨아레나 | 젬블로컴퍼니의 공식 한국어 게시판에 등록된 인쇄본. 같은 번호의 레어도 차이는 게시물 ID로 구분한다. | 원본 사이트가 공개한 HTTP 목록과 카드 상세만 사용한다. 게시판 전체 건수와 고유 ID를 대조하고 `robots.txt` 및 최소 0.5초의 요청 간격을 적용한다. 최신 40건의 상세는 하루, 이전 항목은 30일간 캐시한다. [공식 카드 목록](http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists) |
+| 니벨아레나 | 젬블로컴퍼니의 공식 한국어 게시판에 등록된 인쇄본. 게시물 ID로 판본을 구분하고 각 게시물의 제품명으로 수록 상품을 정한다. `ST08-014` SR은 ST08 스타터, 같은 번호의 SBR은 SB02 부스터에 수록됐다. | 원본 사이트가 공개한 HTTP 목록과 카드 상세만 사용한다. 게시판 전체 건수와 고유 ID를 대조하고 `robots.txt` 및 최소 0.5초의 요청 간격을 적용한다. 최신 40건의 상세는 하루, 이전 항목은 30일간 캐시한다. [SR 원판](http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=664) · [SBR 재록](http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=1291) |
 | 리프트바운드 | RiftHunt 영문 인쇄본·효과·세트 발매일과 Riot 공식 갤러리에서 확인한 한국어판 이름·효과·그림. 카드 번호는 `riftboundId`, 수집 번호(`num`), 구형 자료의 `id` 순으로 표시한다. 바인더·덱은 인쇄본 UUID(`printing_id`)를 사용한다. | RiftHunt 목록은 24시간, Riot 영문·한국어 갤러리는 7일 동안 캐시한다. Riot은 공개 Riftbound 앱 운영에 앱 전용 API 키 또는 서면 라이선스를 요구한다. [RiftHunt 무료 API](https://rifthunt.com/api/) · [Riot Digital Tools Policy](https://developer.riotgames.com/docs/riftbound) |
 
 | 원피스 카드게임 | 한국 공식 카드 목록, 영문 OPTCG API의 부스터·스타터·DON!! 목록, Koala Kollect가 보존하는 일본·영어 공식 카드 목록. 카드 번호와 제품으로 연결하고 대표 일러스트와 판본별 출처를 기록한다. | Koala 자료는 커밋과 SHA-256으로 확인한다. 같은 카드 번호가 여러 제품에 실린 경우 각 제품을 보존한다. 한국 공식 공지는 주제 목록에서 수집하고 공식 X는 운영자가 X API 이용 요건을 충족했을 때 가동한다. [한국 공식 카드](https://www.onepiece-cardgame.kr/cardlist.do) · [한국 공식 소식](https://www.onepiece-cardgame.kr/topics.do) · [일본 공식 카드](https://www.onepiece-cardgame.com/cardlist/) · [영어 공식 카드](https://en.onepiece-cardgame.com/cardlist/) · [OPTCG API](https://optcgapi.com/) · [Koala Kollect 데이터 및 라이선스](https://github.com/hotavocado/koala-kollect-data) |
@@ -76,18 +76,28 @@ Riftcodex 보조 수집기는 인증 없는 `/cards`를 한 번에 100개씩 읽
 
 ## 나무위키 수록표와 카드 데이터
 
-워커는 배포본의 검증 색인을 PostgreSQL의 `wiki_card_document`에 반영한다. 유희왕은 코나미 CID와 카드 패스코드를 대조하고, 포켓몬은 한국판 고유 ID와 인쇄 번호로 연결한다. 기준 자료는 나무위키 기여자의 2021년 3월 1일 문서를 Bingsu가 재배포한 스냅샷이다. 자료 배포 페이지의 라이선스 표기는 CC BY-NC-SA 2.0 KR이다. 서비스는 출판사 자료와 함께 확인한 카드 사실 및 자체 작성한 설명을 배포한다. 카드 상세에서 위키 문서와 발행사 원문을 각각 열 수 있다. [고정된 자료 배포본](https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f) · [한국어판 푸른 눈의 백룡](https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4007&request_locale=ko) · [한국어판 뿔충이](https://pokemoncard.co.kr/cards/detail/BS2014501001)
+카드 상세의 **원문·출처**에서 한국어 참고 문서와 대조에 쓴 발행사 자료를 열 수 있다. 배포 색인은 유희왕 67개 카드와 포켓몬 24개, 원피스 2개, 니벨아레나 7개 인쇄본을 담고 있다. 유희왕은 코나미 CID와 패스코드를 대조해 재수록판에서도 같은 문서를 찾는다. 나머지 세 종목은 도감의 판본 키와 인쇄 번호가 모두 일치할 때 연결한다.
 
-2026년 11월 28일 PC 검증에서 공개 인쇄본 92,899건 중 유희왕 67개 카드가 재수록을 포함해 891건에 연결됐고, 포켓몬 X·Y컬렉션의 한국판 24건이 연결됐다. 배포 색인의 범위는 다음과 같다.
+유희왕·포켓몬은 2021년 3월 1일 스냅샷, 원피스·니벨아레나는 2026년 8월 29일 Internet Archive 보관본을 사용했다. 배포자는 각각 CC BY-NC-SA 2.0 KR과 CC BY-NC-ND 4.0을 표시한다. 이 색인에는 발행사 자료로 확인한 식별·수록 정보와 직접 작성한 짧은 설명을 담는다. 2026년 11월 28일 PC에서 공개 인쇄본 92,899건을 대조했을 때 유희왕 67개 카드는 재수록을 포함해 891건에 연결됐다. [2021년 고정 판본](https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f) · [2026년 보관본 설명](https://archive.org/details/namuwiki-data-dump-20260829)
 
-| 종목 | 카드·수록 정보 | 한국어 규칙 정보 |
+| 종목 | 카드·수록 정보 | 확인한 범위 |
 | --- | --- | --- |
 | 유희왕 67개 카드 | 67개 모두 속성·종족을 확인했다. 49개에는 한국 인쇄 번호가 있으며, 이 중 20개는 같은 번호 앞에 적힌 수록 팩 이름까지 발행사 수록표와 일치했다. | 일반 몬스터 13개에는 자체 몬스터 효과가 없음을 표시한다. 효과 카드 19개는 같은 문서의 카드 표와 CID가 일치하는 한국어판 문구에서 함께 확인한 일부 처리만 짧게 서술한다. 세부 발동 조건·비용·최신 재정은 발행사 카드 페이지에서 확인한다. |
 | 포켓몬 24개 인쇄본 | X컬렉션 12개, Y컬렉션 12개의 수록 번호·팩·분류 또는 레어도를 발행사 정보와 대조했다. | 수록표에서 기술·효과를 확인할 수 없어 해당 필드는 비워 둔다. 도감의 발행사 기술 정보는 그대로 표시한다. |
+| 원피스 2개 인쇄본 | 몽키 D. 루피 `ST01-001`과 `OP01-003`을 각 상품에 연결했다. 두 리더의 파워는 5,000이고 라이프는 각각 5와 4다. | 한국 카드 이름과 번호, 발행사 수록 정보를 대조했다. [한국 발행사 카드 검색](https://onepiece-cardgame.kr/cardlist.do?categories=&colors=&freewords=OP01-003&illustrations=&series=all) |
+| 니벨아레나 7개 인쇄본 | 같은 행의 카드 이름·번호를 확인한 뒤, 발행사 카드 페이지에서 상품·레어도를 대조했다. `ST08-014`는 ST08 스타터에 수록된 SR 판본에 연결했다. | 금지·제한 문서는 카드 식별 근거로 사용했다. 대회 적용 여부는 해당 시점의 공식 공지를 확인해야 한다. [ST08-014 공식 카드](http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=664) |
 
-각 행에 스냅샷 배포일, 문서 제목, UTF-8 본문의 SHA-256 및 발행사 확인 링크를 보관한다. 현재 색인의 `snapshotRow`는 Dataset Viewer의 제목 필터가 돌려준 행 식별값이다. 전체 파일을 순서대로 읽은 번호와 다를 수 있어 재검증은 고정 커밋·제목·본문 해시로 수행한다.
+바이스 슈발츠와 리프트바운드는 2026년 보관본에서 조사한 문서로 개별 인쇄본을 확인할 수 없어 위키 색인에 포함하지 않았다. 두 종목의 도감에서는 기존 카드 공급자 자료를 조회할 수 있다.
 
-`tcgctl media import-wiki-cards`는 같은 색인을 다시 적용한다. PC 도구는 `crawler-middleware/tools/`에 있다. `build_namuwiki_yugioh.py`는 로컬 스냅샷에서 카드 식별자를 찾고, `verify_namuwiki_yugioh.py`는 배포본 식별자·인쇄 번호·수치를 재대조한다. `enrich_namuwiki_facts.py --help`는 도감의 한국어 포켓몬 인쇄본 JSONL, YGOPRODeck 원본 JSON 페이지, Yaml-Yugi 아카이브로 한국어 규칙 요약·팩 표기를 재현하는 방법을 안내한다. `--dump`로 같은 스냅샷의 로컬 JSONL·Parquet 파일을 지정하거나, 고정 스냅샷의 공개 뷰어에서 제목을 찾는다. 유희왕의 한국 발행사 페이지를 추가로 확인하고 별도 출력 경로에 결과를 저장한다. 스냅샷과 일치하는 문서가 없으면 출력 파일 생성을 중단한다. [한국어판 카드 자료](https://github.com/DawnbrandBots/yaml-yugi)
+**PC에서 2026년 판본 재검증.** 이미 보유한 `namu-md.sqlite` 파일과 워커의 Python 환경으로 저장소 루트에서 아래 명령을 실행한다. 마지막 인수는 실제 보관 파일 경로로 바꾼다.
+
+```sh
+python crawler-middleware/tools/verify_namuwiki_printings.py "/path/to/namu-md.sqlite"
+```
+
+도구는 SQLite를 읽기 전용으로 열고 보관본 메타데이터, 문서 행 ID·제목, 압축을 푼 UTF-8 본문의 SHA-256을 확인한다. 원피스는 한 카드 표 안에서, 니벨아레나는 한 표 행에서 인쇄 번호와 한국어 이름이 함께 있어야 통과한다. 기본 색인의 예상 결과는 9건이다. 별도 검수 색인은 `--seed 파일경로`로 지정할 수 있다. 수록 상품과 인쇄판은 각 행의 `verificationUrl`에서 따로 확인한다. 파일 전체용 SHA-1은 보관소가 공개한 `736682e6121cf870b00969821166ec3a817157c2`다. [보관본 파일 목록과 체크섬](https://archive.org/metadata/namuwiki-data-dump-20260829)
+
+**2021년 판본과 서버 반영.** 2021년 자료의 `snapshotRow`에는 Dataset Viewer가 제공한 행 식별값을 저장한다. PC의 `crawler-middleware/tools/` 아래에서 `build_namuwiki_yugioh.py`는 카드 식별자를 추출하고, `verify_namuwiki_yugioh.py`는 유희왕 배포 행을 발행사 자료와 다시 대조한다. `enrich_namuwiki_facts.py --help`에서 유희왕·포켓몬의 수록 정보와 한국어 규칙 요약을 재현하는 데 필요한 입력 파일을 확인할 수 있다. 서버에서는 `tcgctl media import-wiki-cards`로 활성 검수 색인을 적용한다. [한국어판 카드 자료](https://github.com/DawnbrandBots/yaml-yugi)
 
 ## 한국어 검색과 해외 인쇄본 읽기
 

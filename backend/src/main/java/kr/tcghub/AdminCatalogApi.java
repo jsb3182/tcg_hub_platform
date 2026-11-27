@@ -70,7 +70,7 @@ class AdminCatalogApi {
                          @RequestParam(defaultValue="20") @Min(1) @Max(100) int size) {
         operator(user);
         String filter = """
-                 from pack p where (:game='' or p.game_code=:game)
+                 from visible_catalog_pack p where (:game='' or p.game_code=:game)
                    and (:q='' or strpos(lower(concat_ws(' ',p.name,p.code)),lower(:q))>0)
                 """;
         var params=Map.of("game",game,"q",search(q));
@@ -157,7 +157,7 @@ class AdminCatalogApi {
     }
 
     private PackView readPack(long id) {
-        return db.sql(PACK_FIELDS+" from pack p where p.id=?").param(id).query(PackView.class).optional().orElseThrow(AdminCatalogApi::missing);
+        return db.sql(PACK_FIELDS+" from visible_catalog_pack p where p.id=current_catalog_pack(?)").param(id).query(PackView.class).optional().orElseThrow(AdminCatalogApi::missing);
     }
 
     private CardView readCard(long id) {
@@ -183,7 +183,7 @@ class AdminCatalogApi {
     PackView updatePack(Principal user,@PathVariable @Positive long id,@Valid @RequestBody PackInput input) {
         long admin=operator(user);
         var state=db.sql("""
-                select game_code,edit_version as version,legacy_key is null as editable from pack where id=? for update
+                select game_code,edit_version as version,legacy_key is null as editable from pack where id=? and superseded_by is null for update
                 """).param(id).query(EditState.class).optional().orElseThrow(AdminCatalogApi::missing);
         requireEditable(state,input.gameCode(),input.version());
         packParams(db.sql("""
@@ -255,11 +255,11 @@ class AdminCatalogApi {
     private JdbcClient.StatementSpec cardParams(JdbcClient.StatementSpec sql,CardInput input,boolean edit) {
         String data=object(input.specs(),edit);
         validateSpecs(input.gameCode(),input.specs());
-        if (input.packId()!=null && db.sql("select id from pack where id=? and game_code=? for key share")
-                .param(input.packId()).param(input.gameCode()).query(Long.class).optional().isEmpty())
-            throw bad("같은 게임의 팩을 선택해 주세요.");
+        Long pack=input.packId()==null ? null : db.sql("select id from pack where id=current_catalog_pack(?) and game_code=? for key share")
+                .param(input.packId()).param(input.gameCode()).query(Long.class).optional()
+                .orElseThrow(() -> bad("같은 게임의 팩을 선택해 주세요."));
         if (edit && input.status()==null) throw bad("카드의 게시 상태를 지정해 주세요.");
-        return sql.param("game",input.gameCode()).param("pack",input.packId()).param("name",text(input.name()))
+        return sql.param("game",input.gameCode()).param("pack",pack).param("name",text(input.name()))
                 .param("original",text(input.originalName())).param("number",text(input.number()))
                 .param("rarity",text(input.rarity())).param("effect",text(input.effect())).param("day",input.releaseDate())
                 .param("data",data).param("status",input.status()==null ? "PENDING" : input.status());

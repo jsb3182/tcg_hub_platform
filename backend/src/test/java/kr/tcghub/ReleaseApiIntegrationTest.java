@@ -89,6 +89,36 @@ class ReleaseApiIntegrationTest {
         api.perform(get(url+selected)).andExpect(jsonPath("$.releaseDate").isEmpty());
     }
 
+    @Test void formerNivelPackLinksReachTheCorrectBoosterAndListsShowItOnce() throws Exception {
+        long booster = db.sql("""
+            insert into pack(game_code,code,name,legacy_key)
+            values('NIVEL','SB02','Nivel product fixture','catalog:NIVEL:fixture-new') returning id
+            """).query(Long.class).single();
+        long old = db.sql("""
+            insert into pack(game_code,code,name,legacy_key,superseded_by)
+            values('NIVEL','ST08','Nivel product fixture','catalog:NIVEL:fixture-old',?) returning id
+            """).param(booster).query(Long.class).single();
+        long card = db.sql("""
+            insert into card(game_code,pack_id,name,number,status,rarity)
+            values('NIVEL',?,'타락의 유열 샬럿','ST08-014','PUBLISHED','SR') returning id
+            """).param(booster).query(Long.class).single();
+        db.sql("""
+            insert into product_release(game_code,product_key,region,name,release_date,source_url,manual,selected_pack_id)
+            values('NIVEL','fixture:old-pack','KR','Nivel product fixture','2026-01-25','https://example.invalid',true,?)
+            """).param(old).update();
+        api.perform(get("/api/v1/catalog-packs").param("game","NIVEL").param("q","Nivel product fixture"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(booster));
+        api.perform(get("/api/v1/packs/"+old)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(booster)).andExpect(jsonPath("$.code").value("SB02"))
+            .andExpect(jsonPath("$.cards[0].id").value(card)).andExpect(jsonPath("$.rarityCounts[0].count").value(1));
+        api.perform(get("/api/v1/cards").param("packId",""+old)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].id").value(card));
+        api.perform(get("/api/v1/release-calendar").param("packId",""+old).param("period","all"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].catalogPackId").value(booster))
+            .andExpect(jsonPath("$.items[0].catalogCount").value(1));
+    }
+
     @Test void calendarUsesPublishedPrintingsAndDistinguishesTheFourSections() throws Exception {
         long schedule = pack("Announced pack","legacy:release-test-schedule","{}");
         long section = pack("Test promos","legacy:release-test-distribution",

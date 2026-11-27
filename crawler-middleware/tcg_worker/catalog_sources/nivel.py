@@ -36,6 +36,15 @@ def as_text(fragment):
     return "\n".join(" ".join(line.split()) for line in "".join(parser.parts).splitlines() if line.strip())
 
 
+def product_code(label):
+    # The 상품명 identifies this printing. A reprint can retain the starter's
+    # collector number, and a promotion can mention several related products.
+    if "프로모션 카드" in label or re.search(r"\b(?:BT|ST|SB|PR)\d{2,3}\s*[-–~]\s*\d", label):
+        return None
+    codes = set(re.findall(r"(?<![A-Za-z0-9])(?:BT|ST|SB|PR)\d{2,3}(?![A-Za-z0-9])", label))
+    return codes.pop() if len(codes) == 1 else None
+
+
 def parse_detail(html, ident):
     def field(tag, key, closing):
         match = re.search(rf"<{tag}\b[^>]*\bid=['\"]{key}['\"][^>]*>(.*?)</{closing}>", html, re.I | re.S)
@@ -50,11 +59,13 @@ def parse_detail(html, ident):
     for label, value in re.findall(r"<td\s+class=['\"]h3['\"][^>]*>((?:(?!</td>).)*)</td>\s*<td[^>]*>(.*?)</td>", html, re.I | re.S):
         fields[as_text(label)] = as_text(value)
     number = parts[0]
-    pack = number.partition("-")[0]
-    return {"external_id": f"ko:{ident}", "pack_code": pack, "pack_name": fields.get("제품명") or pack,
+    product = fields.get("제품명")
+    if not product:
+        raise ValueError(f"Missing Nivel product for article {ident}")
+    return {"external_id": f"ko:{ident}", "pack_code": product_code(product), "pack_name": product,
             "number": number, "name": name, "original_name": name, "rarity": fields.get("레어도"),
             "effect": field("div", "content", "div") or None, "release_date": None,
-            "specs": {"language": "ko", "type": parts[1], "attribute": parts[2] if len(parts) > 2 else None,
+            "specs": {"language": "ko", "productName": product, "type": parts[1], "attribute": parts[2] if len(parts) > 2 else None,
                       **{k: v for k, v in fields.items() if k not in ("효과", "제품명", "레어도")}},
             "source_url": BOARD + "&wr_id=" + ident}
 
@@ -106,6 +117,7 @@ def nivel(http):
         body = http.get(DETAIL, post=post, ttl=(1 if index < 40 else 30) * 86400, size=128000, delay=delay)
         record = parse_detail(body.read_text("utf-8-sig"), ident)
         if ident in artwork:
-            record["specs"].update(images={"ko": artwork[ident]}, imageSources={"ko": record["source_url"]},
-                                   imageProducts={"ko": record["pack_code"]})
+            record["specs"].update(images={"ko": artwork[ident]}, imageSources={"ko": record["source_url"]})
+            if record["pack_code"]:
+                record["specs"]["imageProducts"] = {"ko": record["pack_code"]}
         yield record

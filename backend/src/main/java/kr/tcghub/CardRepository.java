@@ -45,7 +45,7 @@ interface CardRepository extends Repository<Card, Long> {
         """ + CardEdition.JOIN;
     String FILTER = """
          where c.status='PUBLISHED' and (:game='' or c.game_code=:game)
-           and (cast(:packId as bigint) is null or c.pack_id=:packId)
+           and (cast(:packId as bigint) is null or c.pack_id=current_catalog_pack(:packId))
            and (cast(:yearStart as date) is null
              or (c.release_date>=:yearStart and c.release_date<:yearEnd)
              or (c.release_date is null and c.pack_id in (select pd.pack_id from catalog_pack_date pd

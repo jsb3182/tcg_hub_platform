@@ -55,7 +55,7 @@ class ReleaseApi {
                         when p.metadata->>'wp'='true' then 'PREMIERE'
                         when p.metadata->>'sx'='l' then 'ARCHIVE' else 'DISTRIBUTION' end as release_group,
                    n.english_name,n.launch_date,n.ots_date,n.set_size,n.source_url,totals.*
-              from pack p
+              from visible_catalog_pack p
               left join catalog_pack_date pd on pd.pack_id=p.id
               left join yugioh_na_product n on p.game_code='YUGIOH' and n.code=p.code
                     and p.metadata @> '{"sec":true,"wp":true}'
@@ -115,7 +115,7 @@ class ReleaseApi {
         return db.sql(HEADER + """
                  where starts_with(p.legacy_key,'legacy:') or p.release_date is not null
                     or nullif(btrim(p.release_label),'') is not null
-                    or exists(select from product_release e where e.selected_pack_id=p.id)
+                    or exists(select from product_release e where e.selected_pack_id is not null and current_catalog_pack(e.selected_pack_id)=p.id)
                  order by p.id
                 """).query((r,n) -> header(r)).list();
     }
@@ -127,7 +127,7 @@ class ReleaseApi {
                     @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
                     @RequestParam(defaultValue="200") @Min(1) @Max(200) int size,
                     @RequestParam(defaultValue="source") @Pattern(regexp="source|number|rarity|name") String sort) {
-        Header pack = db.sql(HEADER + " where p.id=:id").param("id",id)
+        Header pack = db.sql(HEADER + " where p.id=current_catalog_pack(:id)").param("id",id)
                 .query((r,n) -> header(r)).optional()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         long offset = (long) page * size;
@@ -143,9 +143,9 @@ class ReleaseApi {
             default -> "c.id";
         };
         var cards = db.sql(PRINTINGS + " order by " + ordering + " limit :size offset :offset")
-                .param("id",id).param("lang",lang).param("size",size).param("offset",offset)
+                .param("id",pack.id()).param("lang",lang).param("size",size).param("offset",offset)
                 .query((r,n) -> printing(r)).list();
-        var rarities=db.sql(RARITY_COUNTS).param("id",id).query(RarityCount.class).list();
+        var rarities=db.sql(RARITY_COUNTS).param("id",pack.id()).query(RarityCount.class).list();
         long unknown=rarities.stream().filter(r -> r.rarity()==null).mapToLong(RarityCount::count).sum();
         return new PackDetail(pack,cards,page,size,offset + cards.size() < pack.total(),sort,
                 rarities.stream().filter(r -> r.rarity()!=null).toList(),unknown,
