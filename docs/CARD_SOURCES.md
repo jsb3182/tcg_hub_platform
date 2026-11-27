@@ -87,7 +87,16 @@ Riftcodex 보조 수집기는 인증 없는 `/cards`를 한 번에 100개씩 읽
 | 원피스 2개 인쇄본 | 몽키 D. 루피 `ST01-001`과 `OP01-003`을 각 상품에 연결했다. 두 리더의 파워는 5,000이고 라이프는 각각 5와 4다. | 한국 카드 이름과 번호, 발행사 수록 정보를 대조했다. [한국 발행사 카드 검색](https://onepiece-cardgame.kr/cardlist.do?categories=&colors=&freewords=OP01-003&illustrations=&series=all) |
 | 니벨아레나 7개 인쇄본 | 같은 행의 카드 이름·번호를 확인한 뒤, 발행사 카드 페이지에서 상품·레어도를 대조했다. `ST08-014`는 ST08 스타터에 수록된 SR 판본에 연결했다. | 금지·제한 문서는 카드 식별 근거로 사용했다. 대회 적용 여부는 해당 시점의 공식 공지를 확인해야 한다. [ST08-014 공식 카드](http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=664) |
 
-바이스 슈발츠와 리프트바운드는 2026년 보관본에서 조사한 문서로 개별 인쇄본을 확인할 수 없어 위키 색인에 포함하지 않았다. 두 종목의 도감에서는 기존 카드 공급자 자료를 조회할 수 있다.
+**팩 단위 참고 자료.** 바이스 슈발츠와 리프트바운드는 2026년 보관본에서 상품을 식별할 수 있었다. 두 문서의 해당 절과 발행사의 영문판 상품 정보를 대조한 네 팩은 팩 상세에서 참고할 수 있다. 표의 발매일은 영문판 기준이다.
+
+| 도감의 상품명과 코드 | 영문판 발매일 | 위키 근거와 발행사 확인 |
+| --- | --- | --- |
+| Sword Art Online Re: Edit · SAO/S47 | 2017-04-28 | 「바이스 슈발츠」 4.2.1 부스터 목록의 Re:Edit 판명. [부시로드 상품](https://en.ws-tcg.com/products/bp-sao-re/) |
+| Sword Art Online -Alicization- Vol.2 · SAO/S80 | 2021-11-05 | 같은 목록의 앨리시제이션 2권. [부시로드 상품](https://en.ws-tcg.com/products/bp-sao-al2/) |
+| Origins · OGN | 2025-10-31 | 「리프트바운드」 7절의 오리진 세트와 영문판 발매일. [Riot 영문판 발매 안내](https://playriftbound.com/en-us/news/announcements/how-to-buy-riftbound/) |
+| Unleashed · UNL | 2026-05-08 | 같은 절의 Unleashed 세트와 영문판 발매일. [Riot 세트 소개](https://playriftbound.com/en-us/news/announcements/the-unleashed-overview/) |
+
+팩 상세 API의 `wikiProductReference`에는 해당 상품의 시장·발매일, 발행사 링크, 위키 문서·절·보관일과 본문 지문을 담는다. V55는 도감 키·게임·상품 코드·상품명이 일치하는 팩에만 이 정보를 연결한다. 네 팩의 개별 카드 식별이나 규칙을 뒷받침하는 근거는 이번 자료에서 확인되지 않았다.
 
 **PC에서 2026년 판본 재검증.** 이미 보유한 `namu-md.sqlite` 파일과 워커의 Python 환경으로 저장소 루트에서 아래 명령을 실행한다. 마지막 인수는 실제 보관 파일 경로로 바꾼다.
 

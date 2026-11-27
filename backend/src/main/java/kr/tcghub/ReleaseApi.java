@@ -1,5 +1,6 @@
 package kr.tcghub;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -37,9 +38,13 @@ class ReleaseApi {
                     int variantCount, String nameBasis, String nameReferenceUrl, String imageBasis,
                     String imageSource, String imageProduct, String productCode, String effectReferenceUrl, String effectBasis) {}
     record RarityCount(String rarity, long count) {}
+    record WikiProductReference(String title, String documentUrl, LocalDate snapshotDate, String snapshotUrl,
+                                int snapshotRow, String articleSha256, String section, String region,
+                                String productName, LocalDate releaseDate, String verificationUrl) {}
     record PackDetail(@JsonUnwrapped Header header, List<Printing> cards, int page, int size,
                       boolean hasMore, String sort, List<RarityCount> rarityCounts, long unknownRarityCount,
-                      long unknownInclusionCount, String contentsStatus) {}
+                      long unknownInclusionCount, String contentsStatus,
+                      @JsonInclude(JsonInclude.Include.NON_NULL) WikiProductReference wikiProductReference) {}
 
     private static final Set<String> PUBLIC_METADATA = Set.of("id","code","kind","jp","kr","cnt","note","sec","sx","wp","bgp");
 
@@ -150,7 +155,20 @@ class ReleaseApi {
         return new PackDetail(pack,cards,page,size,offset + cards.size() < pack.total(),sort,
                 rarities.stream().filter(r -> r.rarity()!=null).toList(),unknown,
                 pack.total()-pack.newCount()-pack.reprintCount()-pack.newArtCount(),
-                pack.total()==0 ? "NO_REGISTERED_CARDS" : "REGISTERED");
+                pack.total()==0 ? "NO_REGISTERED_CARDS" : "REGISTERED", wikiProduct(pack));
+    }
+
+    private WikiProductReference wikiProduct(Header pack) {
+        if (!pack.gameCode().equals("WEISS") && !pack.gameCode().equals("RIFTBOUND")) return null;
+        return db.sql("""
+                select r.title,r.document_url,r.snapshot_date,r.snapshot_url,r.snapshot_row,r.article_sha256,
+                       r.section,r.region,r.product_name,r.release_date,r.verification_url
+                from pack p join wiki_product_reference r
+                    on r.game_code=p.game_code and r.pack_code=p.code and r.product_name=p.name
+                where p.id=:id and p.legacy_key in (
+                    'catalog:'||r.game_code||':'||r.pack_code,
+                    'catalog:'||r.game_code||':product:'||r.catalog_product_hash)
+                """).param("id", pack.id()).query(WikiProductReference.class).optional().orElse(null);
     }
 
     private Header header(ResultSet row) throws SQLException {
