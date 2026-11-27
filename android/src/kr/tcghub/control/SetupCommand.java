@@ -1,7 +1,7 @@
 package kr.tcghub.control;
 
 final class SetupCommand {
-    static final String TAG = "a90-2026.11.27.3";
+    static final String TAG = "a90-2026.11.27.4";
     private static final String HELPER =
             "https://github.com/jsb3182/tcg_hub_platform/releases/download/"
                     + TAG
