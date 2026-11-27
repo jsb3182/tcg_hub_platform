@@ -233,6 +233,24 @@ export function artDistance(a, b) {
   return (sum - worst) / (BLOCKS * BLOCKS - 1)
 }
 
+// A similar score against the screenshot does not prove that two references show
+// the same illustration. Compare their source features as well as competing editions.
+export function matchingLocalPosition(official, siblings, hits, localIndex) {
+  const matches = []
+  for (const {position} of hits) {
+    const local = localIndex[position]
+    if (local.card.konamiId !== official.card.konamiId) continue
+    const distance = artDistance(official.descriptor,local.descriptor)
+    if (distance > 10) continue
+    if (siblings.some(other => other !== official &&
+        artDistance(other.descriptor,local.descriptor) < distance+3)) continue
+    matches.push({position,distance})
+  }
+  matches.sort((a,b) => a.distance-b.distance)
+  if (!matches.length || matches.length > 1 && matches[1].distance-matches[0].distance < 3) return null
+  return matches[0].position
+}
+
 export function rankArt(descriptor, index, limit = 5) {
   const best = []
   for (const item of index) {
