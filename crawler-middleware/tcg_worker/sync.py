@@ -225,6 +225,7 @@ def sync_source(source, stop):
             more, floor = False, 0
             page = None
             schedule = None
+            calendar = None
             editions = None
             if source["provider"] == "CATALOG":
                 from .catalog_sources import iter_catalog
@@ -254,6 +255,9 @@ def sync_source(source, stop):
                 if source["source_key"]=="YUGIOH":
                     from .catalog_art import queue_yugioh_art
                     cursor["artAfter"]=queue_yugioh_art(db,sid,previous.get("artAfter",0),stop)
+            elif source["provider"] == "RELEASE_CALENDAR":
+                from .release_calendar import fetch
+                calendar = fetch(source["game_code"])
             elif source["provider"] == "STORE_SCHEDULE":
                 from .store_schedules import fetch
                 schedule = fetch(source["source_key"], cursor)
@@ -266,6 +270,10 @@ def sync_source(source, stop):
                 cursor, more, floor = page.cursor, page.more, page.retry_after
             with db.transaction():
                 interrupted(db, sid, stop)
+                if calendar is not None:
+                    from .release_calendar import save
+                    added = save(db, calendar)
+                    db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s WHERE id=%s", (len(calendar), added, sid))
                 if schedule is not None:
                     if schedule.deferred:
                         db.execute("""
@@ -327,6 +335,9 @@ def run(db, media, spool, stop, interval):
     db.autocommit = True
     if not db.execute("SELECT pg_try_advisory_lock(%s)", (LOCK,)).fetchone()[0]:
         raise RuntimeError("다른 수집 워커가 실행 중입니다.")
+    from .release_calendar import seed_calendar
+    with db.transaction():
+        seed_calendar(db)
     db.execute("""
         INSERT INTO worker_heartbeat(id,started_at,seen_at) VALUES (%s,now(),now())
           ON CONFLICT(id) DO UPDATE SET started_at=now(),seen_at=now()

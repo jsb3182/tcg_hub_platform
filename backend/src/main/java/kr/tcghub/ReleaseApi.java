@@ -41,7 +41,7 @@ class ReleaseApi {
     private static final Set<String> PUBLIC_METADATA = Set.of("id","code","kind","jp","kr","cnt","note","sec","sx","wp","bgp");
 
     // Both aggregate counters and individual card labels use the same evidence.
-    private static final String INCLUSION = """
+    static final String INCLUSION = """
             case c.specs->>'nw' when '신규' then 'NEW' when '재록' then 'REPRINT'
                  when '신규 일러스트' then 'NEW_ART' end
             """;

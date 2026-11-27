@@ -48,6 +48,23 @@ class DatabaseTests(unittest.TestCase):
         ).fetchone()[0]
         return self.db.execute("INSERT INTO card_variant(card_id) VALUES (%s) RETURNING id", (card_id,)).fetchone()[0]
 
+    def test_regional_product_updates_keep_links_separate_and_seed_does_not_revert_live_dates(self):
+        from tcg_worker.release_calendar import checked, save
+
+        seed = {"game":"POKEMON", "key":"qa-pack", "region":"KR", "name":"QA Pack", "names":{"ko":"테스트 팩"},
+                "date":"2026-12-11", "url":"https://example.invalid/product", "catalogCode":"QA"}
+        with self.db.transaction(force_rollback=True):
+            self.assertEqual(save(self.db, checked([seed, seed]), seed=True), 1)
+            read = "SELECT id,release_date::text,from_seed FROM product_release WHERE game_code='POKEMON' AND product_key='qa-pack' AND region='KR'"
+            original = self.db.execute(read).fetchone()
+            self.assertEqual(save(self.db, checked([{**seed,"date":"2026-12-18"}])), 0)
+            self.assertEqual(save(self.db, checked([seed,{**seed,"region":"JP"}]), seed=True), 1)
+            self.assertEqual(self.db.execute(read).fetchone(), (original[0], "2026-12-18", False))
+            for invalid in ([seed,{**seed,"date":"2026-12-20"}], [{**seed,"date":"2026-12"}],
+                            [{**seed,"url":"javascript:alert(1)"}], [{**seed,"game":"OTHER"}]):
+                with self.assertRaises(ValueError):
+                    checked(invalid)
+
     def test_catalog_check_requires_published_source_cards_and_a_finished_import_for_each_game(self):
         from tcg_worker.__main__ import check_catalogs
 
