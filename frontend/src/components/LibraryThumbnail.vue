@@ -16,4 +16,9 @@ const art=computed(()=>preferredArtwork(cardArtworks(props.src,props.language,[{
   <slot :art="art"/>
 </template>
 
-<style scoped>.art-language{color:var(--mu);font-size:.78rem}.inline-art{object-fit:contain;aspect-ratio:300 / 438}</style>
+<style scoped>
+.lib-thumbnail {display:block}
+span.lib-thumbnail {background-size:400% 300%;background-repeat:no-repeat}
+.art-language {color:var(--mu);font-size:.78rem}
+.inline-art {object-fit:contain;aspect-ratio:300 / 438}
+</style>

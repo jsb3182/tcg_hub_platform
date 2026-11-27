@@ -75,7 +75,7 @@ export const playText = {
 }
 
 export function newRound(cards, opening) {
-  const pile = cards.flatMap(({id, quantity}) => Array(quantity).fill(id))
+  const pile = cards.flatMap(({key,id,quantity}) => Array(quantity).fill(key ?? id))
   for (let i = pile.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     const card = pile[i]
@@ -83,4 +83,35 @@ export function newRound(cards, opening) {
     pile[j] = card
   }
   return { pile, hand: pile.splice(0, opening), table: [], discard: [] }
+}
+
+export function practiceKey(card){
+  const id=card.cardId ?? card.id
+  if(card.variantId!=null)return id+'/variant/'+card.variantId
+  if(card.neuronArtwork!=null)return id+'/neuron/'+card.neuronArtwork
+  return String(id)
+}
+
+export function practiceEntries(entries){
+  const rows=new Map(),variantCounts=new Map()
+  for(const card of entries){
+    if(card.section!=='MAIN')continue
+    const key=practiceKey(card),prior=rows.get(key)
+    if(prior){prior.quantity+=card.quantity;continue}
+    const row={...card,id:card.cardId,key}
+    if(card.variantId!=null){
+      row.printOrder=(variantCounts.get(row.id)||0)+1
+      variantCounts.set(row.id,row.printOrder)
+    }
+    rows.set(key,row)
+  }
+  return [...rows.values()]
+}
+
+export function practiceLabel(entry,localized){
+  const card={...entry,...localized}
+  if(entry.variantId==null && entry.neuronArtwork==null)return card
+  return {...card,image:entry.neuronArtwork==null?entry.image:null,imageUrl:entry.neuronArtwork!=null?entry.imageUrl:null,
+    imageBasis:'SELECTED_ARTWORK',imageSource:entry.imageSource,imageLanguage:entry.imageLanguage,
+    productCode:null,imageProduct:null}
 }

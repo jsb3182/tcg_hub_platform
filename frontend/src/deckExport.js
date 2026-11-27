@@ -6,9 +6,10 @@ const spreadsheet='application/vnd.openxmlformats-officedocument.spreadsheetml.s
 const ns='http://schemas.openxmlformats.org/'
 function xml(s){return String(s??'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
 function xlsx(decks){
-  const lines=[[t('덱 이름'),t('일본어 이름'),t('영어 이름'),t('게임'),t('구역'),t('카드명'),t('카드 번호'),t('수량'),t('일러스트')]]
+  const regionHeader={ko:'대회 지역',en:'Tournament region',ja:'大会地域'}[locale.value]
+  const lines=[[t('덱 이름'),t('일본어 이름'),t('영어 이름'),t('게임'),t('구역'),t('카드명'),t('카드 번호'),t('수량'),t('일러스트'),regionHeader]]
   for(const deck of decks)for(const item of deck.entries.length?deck.entries:[{}]){
-    lines.push([deck.name,deck.nameJa,deck.nameEn,deck.gameCode,item.section?sectionLabel(item.section):'',item.name,item.number,item.quantity,item.neuronArtwork??(item.illustration==null?'':item.illustration+1)])
+    lines.push([deck.name,deck.nameJa,deck.nameEn,deck.gameCode,item.section?sectionLabel(item.section):'',item.name,item.number,item.quantity,item.neuronArtwork??(item.illustration==null?'':item.illustration+1),deck.region])
   }
   const sheet=lines.map((row,i)=>'<row r="'+(i+1)+'">'+row.map((v,j)=>{
     const ref=String.fromCharCode(65+j)+(i+1)
