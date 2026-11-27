@@ -28,6 +28,13 @@ final class PlatformOrigin {
         return lastPublicProfile.isEmpty() ? LOCAL : PublicSite.root(lastPublicProfile);
     }
 
+    static boolean externalBrowserLink(String address, boolean hasGesture) {
+        if (!hasGesture || address == null) return false;
+        // The Korean Nivel product board publishes these notices on its HTTP origin.
+        return !PublicSite.root(address).isEmpty() || address.matches(
+                "http://nivelarena\\.co\\.kr/bbs/board\\.php\\?bo_table=(?:notice|booster)&wr_id=[1-9][0-9]{0,7}");
+    }
+
     boolean owns(String address) {
         try {
             URI uri = new URI(address);
