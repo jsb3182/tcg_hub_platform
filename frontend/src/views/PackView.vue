@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { mediaPath, request } from '../api'
 import { gameName, locale } from '../i18n'
-import { countLabel, facetLabel, inclusions, pt } from '../pack'
+import { countLabel, facetLabel, inclusions, packTitle, pt } from '../pack'
 import { pngSnapshot } from '../pngSnapshot'
 import CardDetails from '../components/CardDetails.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
@@ -100,8 +100,17 @@ function snapshot(card,article,width){
     <template v-else-if="pack">
       <header class="pack-heading">
         <img v-if="mediaPath(pack.bannerUrl)" class="pack-cover" :src="mediaPath(pack.bannerUrl)" alt="">
-        <div class="pack-heading-text"><p>{{ [gameName(pack.gameCode),pack.code].filter(Boolean).join(' · ') }}</p><h1>{{ pack.name }}</h1>
-          <dl v-if="pack.metadata?.jp || pack.metadata?.kr" class="pack-dates">
+        <div class="pack-heading-text"><p>{{ [gameName(pack.gameCode),pack.code].filter(Boolean).join(' · ') }}</p><h1>{{ packTitle(pack) }}</h1>
+          <template v-if="pack.officialProduct">
+            <p v-if="locale==='ko'" lang="en">{{ pack.officialProduct.englishName }}</p>
+            <dl class="pack-dates">
+              <div><dt>{{ pt('북미 일반 발매') }}</dt><dd>{{ pack.officialProduct.launchDate }}</dd></div>
+              <div><dt>{{ pt('북미 공인점 선행 발매') }}</dt><dd>{{ pack.officialProduct.otsDate }}</dd></div>
+              <div><dt>{{ pt('공식 상품 구성') }}</dt><dd>{{ countLabel(pack.officialProduct.setSize) }}</dd></div>
+            </dl>
+            <a :href="pack.officialProduct.sourceUrl" target="_blank" rel="noopener noreferrer">{{ pt('공식 상품 안내') }}</a>
+          </template>
+          <dl v-else-if="pack.metadata?.jp || pack.metadata?.kr" class="pack-dates">
             <div v-if="pack.metadata.jp"><dt>{{ pt('일본 발매') }}</dt><dd>{{ pack.metadata.jp }}</dd></div>
             <div v-if="pack.metadata.kr"><dt>{{ pt('한국 발매') }}</dt><dd>{{ pack.metadata.kr }}</dd></div>
           </dl>
@@ -109,13 +118,13 @@ function snapshot(card,article,width){
           <p v-if="pack.metadata?.note">{{ pack.metadata.note }}</p>
         </div>
       </header>
-      <div class="pack-counts" role="group" :aria-label="pt('수록 구분')">
+      <div v-if="pack.total" class="pack-counts" role="group" :aria-label="pt('수록 구분')">
         <button type="button" :aria-pressed="!inclusion" @click="inclusion=''"><span>{{ pt('전체') }}</span><strong>{{ pack.total.toLocaleString(locale) }}</strong></button>
         <button v-for="(label,key) in inclusions" :key="key" type="button" :aria-pressed="inclusion===key" @click="inclusion=inclusion===key?'':key"><span>{{ pt(label) }}</span><strong>{{ pack[countFields[key]].toLocaleString(locale) }}</strong></button>
       </div>
       <div class="pack-toolbar">
         <h2 ref="listTop" tabindex="-1">{{ pt('수록 카드') }}</h2>
-        <div class="pack-controls"><input type="search" v-model="q" :aria-label="pt('팩에서 검색')" :placeholder="pt('카드명·번호·효과')">
+        <div v-if="pack.total" class="pack-controls"><input type="search" v-model="q" :aria-label="pt('팩에서 검색')" :placeholder="pt('카드명·번호·효과')">
           <PackGallery :key="pack.id" :pack="pack" :cards="cards" :loading="moreBusy" :has-more="hasMore" :error="moreError" @load="loadMore(true)" @pick="pickCard"/>
         </div>
       </div>

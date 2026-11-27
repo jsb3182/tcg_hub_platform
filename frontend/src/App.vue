@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { languages, locale, selectLocale, supportedLanguage, t } from './i18n'
 import { useSession } from './stores/session'
+import DeckPageJump from './components/DeckPageJump.vue'
 
 const session = useSession()
 const router = useRouter()
@@ -95,6 +96,7 @@ async function logout() {
         </button>
       </div>
     </div>
+    <DeckPageJump v-if="['decks','deck-new','deck-edit','shared-deck'].includes($route.name)" :menu-open="menuOpen"/>
   </header>
   <div v-if="!online" class="notice shell" role="status">{{ $t("오프라인입니다. 최근 열어 본 도감 페이지와 이미지를 조회할 수 있습니다.") }}</div>
   <div v-if="logoutError" class="notice shell" role="alert">{{ logoutError }}</div>

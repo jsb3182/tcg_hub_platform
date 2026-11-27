@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute,useRouter } from 'vue-router'
 import { request,mediaPath } from '../api'
 import { gameName,t } from '../i18n'
+import { packTitle,pt } from '../pack'
 const route=useRoute(), router=useRouter()
 const sections=[['SCHEDULE','팩 발매 일정'],['DISTRIBUTION','동봉 · 배포 카드'],['PREMIERE','TCG 월드 프리미어 카드'],['ARCHIVE','장기 미수록 카드']]
 const packs=ref([]), loading=ref(true), error=ref(''), retry=ref(0), limits=ref({})
@@ -10,9 +11,10 @@ const game=computed(()=>typeof route.query.game==='string'?route.query.game:'YUG
 const query=computed(()=>typeof route.query.q==='string'?route.query.q:'')
 const games=computed(()=>[...new Set(packs.value.map(p=>p.gameCode))].sort())
 const matching=computed(()=>packs.value.filter(p=>(!game.value||p.gameCode===game.value) &&
-  [p.name,p.code,p.latestProduct,p.metadata?.kind].some(v=>String(v??'').toLocaleLowerCase().includes(query.value.trim().toLocaleLowerCase()))))
+  [p.name,p.officialProduct?.englishName,p.code,p.latestProduct,p.metadata?.kind].some(v=>String(v??'').toLocaleLowerCase().includes(query.value.trim().toLocaleLowerCase()))))
 const rows=computed(()=>sections.map(([key,title])=>{
   const items=matching.value.filter(p=>p.group===key)
+  if(key==='PREMIERE')items.sort((a,b)=>(a.officialProduct?.launchDate||a.releaseDate||'9999').localeCompare(b.officialProduct?.launchDate||b.releaseDate||'9999'))
   return {key,title,items:items.slice(0,limits.value[key]||16),total:items.length}
 }).filter(s=>s.total))
 function change(key,value){router.replace({name:'releases',query:{...route.query,[key]:value}})}
@@ -37,12 +39,13 @@ function range(p){return [...new Set([p.firstProductDate,p.lastProductDate].filt
   <section v-for="s in rows" :id="'release-'+s.key" :key="s.key" class="release-section">
     <h2>{{ t(s.title) }} <small>{{ s.total }}</small></h2>
     <ul><li v-for="p in s.items" :key="p.id"><RouterLink :to="{name:'pack',params:{id:p.id},query:route.query}">
-      <div class="release-row-title"><small>{{ [p.code,p.metadata?.kind||gameName(p.gameCode)].filter(Boolean).join(' · ') }}</small><strong>{{ t(p.name) }}</strong>
+      <div class="release-row-title"><small>{{ [p.code,p.metadata?.kind||gameName(p.gameCode)].filter(Boolean).join(' · ') }}</small><strong>{{ packTitle(p) }}</strong>
         <span v-if="p.group==='DISTRIBUTION'||p.group==='ARCHIVE'">{{ t('상품 수') }} {{ p.productCount }} <template v-if="range(p)">· {{ range(p) }}</template></span>
+        <span v-else-if="p.officialProduct">{{ pt('북미 일반 발매') }} · {{ p.officialProduct.launchDate }}</span>
         <span v-else>{{ [p.metadata?.jp||p.releaseDate,p.metadata?.kr ? t('한국 발매 예상')+' '+p.metadata.kr : !p.releaseDate ? p.releaseLabel : ''].filter(Boolean).join(' · ') || t('일정 미정') }}</span>
         <span v-if="p.latestProduct && (p.group==='DISTRIBUTION'||p.group==='ARCHIVE')">{{ t('최근 상품') }} · {{ p.latestProduct }}</span>
       </div>
-      <div class="release-count"><b>{{ p.total }}</b> {{ t('수록 카드') }}<small v-if="p.newCount">{{ t('신규') }} {{ p.newCount }}</small></div>
+      <div class="release-count"><template v-if="p.total || !p.officialProduct"><b>{{ p.total }}</b> {{ t('수록 카드') }}</template><template v-else>{{ pt('도감 등록 전') }}</template><small v-if="p.newCount">{{ t('신규') }} {{ p.newCount }}</small></div>
       <img v-if="mediaPath(p.bannerUrl)" :src="mediaPath(p.bannerUrl)" alt="" loading="lazy">
     </RouterLink></li></ul>
     <button v-if="s.total>s.items.length" class="secondary" @click="limits={...limits,[s.key]:s.items.length+24}">{{ t('더 보기') }} ({{ s.items.length }}/{{ s.total }})</button>
