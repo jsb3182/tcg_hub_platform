@@ -29,6 +29,7 @@ import java.io.ByteArrayInputStream;
 public final class PlatformActivity extends LocalizedActivity {
     private PlatformOrigin origin;
     private WebView web;
+    private RecipeDocuments documents;
     private LinearLayout problem;
     private ProgressBar progress;
     private boolean failed;
@@ -103,6 +104,8 @@ public final class PlatformActivity extends LocalizedActivity {
         web.setBackgroundColor(ui.surface);
         page.addView(web, new LinearLayout.LayoutParams(HubUi.FILL, 0, 1));
         WebSettings s = web.getSettings();
+        s.setUserAgentString(s.getUserAgentString()+" TCGHubPng/1");
+        documents=new RecipeDocuments(this,web,origin);
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);
@@ -126,6 +129,7 @@ public final class PlatformActivity extends LocalizedActivity {
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
+                if (request.isForMainFrame() && documents.export(request.getUrl())) return true;
                 if (!request.isForMainFrame()) return !allowed.resource(url);
                 if (allowed.adminPage(url)) { browser(PlatformActivity.this, origin.root + "admin"); return true; }
                 if (allowed.owns(url)) return false;
@@ -176,8 +180,13 @@ public final class PlatformActivity extends LocalizedActivity {
         failed = true; web.setVisibility(View.GONE); progress.setVisibility(View.GONE); problem.setVisibility(View.VISIBLE);
     }
     @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
+    @Override protected void onActivityResult(int request,int result,Intent data) {
+        super.onActivityResult(request,result,data);
+        if(documents!=null)documents.result(request,result,data);
+    }
     @Override public void onBackPressed() { if (!failed && web.canGoBack()) web.goBack(); else super.onBackPressed(); }
     @Override protected void onDestroy() {
+        if(documents!=null)documents.close();
         if (web != null) { ((LinearLayout) web.getParent()).removeView(web); web.destroy(); }
         super.onDestroy();
     }

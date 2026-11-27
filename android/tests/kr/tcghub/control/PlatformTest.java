@@ -15,6 +15,8 @@ public final class PlatformTest {
         require(publicHost.adminPage("https://cards.example.org/admin?tab=operations"));
         require(publicHost.resource("https://tile.openstreetmap.org/13/8752/3882.png"));
         require(publicHost.resource("https://assets.tcgdex.net/ko/test.webp"));
+        require(publicHost.resource("https://artworks-jp-n.ygoresources.com/1/2/4041_2.png"));
+        require(!publicHost.resource("https://artworks-jp-n.ygoresources.com/other.png"));
         require(publicHost.resource("https://www.onepiece-cardgame.kr/fileDownload?downname=OP01.png"));
         for (String blocked : new String[]{"file:///sdcard/test", "content://com.termux.documents/test",
                 "intent://cards.example.org", "https://cards.example.org.evil.example/admin",
