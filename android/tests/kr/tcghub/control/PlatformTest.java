@@ -25,20 +25,20 @@ public final class PlatformTest {
             require(!PlatformOrigin.externalBrowserLink(invalid, true));
         }
         require(publicHost.resource("https://tile.openstreetmap.org/13/8752/3882.png"));
-        require(publicHost.resource("https://assets.tcgdex.net/ko/test.webp"));
-        require(publicHost.resource("https://artworks-jp-n.ygoresources.com/1/2/4041_2.png"));
-        require(publicHost.resource("https://artworks-en-n.ygoresources.com/0/40/41_1.png"));
-        require(publicHost.resource("https://artworks-ko-db.ygoresources.com/0/40/41_1.png"));
-        String riotCard = "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/"
-                + "0123456789abcdef0123456789abcdef01234567-744x1039.png";
-        require(publicHost.resource(riotCard));
-        require(publicHost.resource(riotCard + "?accountingTag=RB"));
-        require(!publicHost.resource(riotCard + "?v=1"));
-        require(!publicHost.resource(riotCard.replace("game_data_live", "other")));
-        require(!publicHost.resource("https://artworks-jp-rn.ygoresources.com/1/51/50_1.png"));
-        require(!publicHost.resource("https://artworks-ko-db.ygoresources.com/0/40/41_1.png?v=1"));
-        require(!publicHost.resource("https://artworks-jp-n.ygoresources.com/other.png"));
-        require(publicHost.resource("https://www.onepiece-cardgame.kr/fileDownload?downname=OP01.png"));
+        require(publicHost.resource("https://dapi.kakao.com/v2/maps/sdk.js?autoload=false"));
+        require(publicHost.resource("https://map2.daumcdn.net/map_2d/example.png"));
+        String media = "/media/cards/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.webp";
+        require(publicHost.resource("https://cards.example.org" + media));
+        require(publicHost.resource("https://cards.example.org/media/sheets/12.webp"));
+        for (String external : new String[]{"https://assets.tcgdex.net/ko/test.webp",
+                "https://images.pokemontcg.io/base1/4.png", "https://cards.image.pokemonkorea.co.kr/data/wmimages/card.png",
+                "https://www.pokemon-card.com/assets/images/card_images/large/example.jpg",
+                "https://artworks-jp-n.ygoresources.com/1/2/4041_2.png", "https://artworks-en-n.ygoresources.com/0/40/41_1.png",
+                "https://artworks-ko-db.ygoresources.com/0/40/41_1.png", "https://www.onepiece-cardgame.kr/fileDownload?downname=OP01.png",
+                "https://en.onepiece-cardgame.com/images/cardlist/card/OP01.png",
+                "https://optcgapi.com/media/static/Card_Images/card.png", "https://other.example.org" + media,
+                "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/0123456789abcdef0123456789abcdef01234567-744x1039.png?accountingTag=RB"})
+            require(!publicHost.resource(external));
         for (String blocked : new String[]{"file:///sdcard/test", "content://com.termux.documents/test",
                 "intent://cards.example.org", "https://cards.example.org.evil.example/admin",
                 "https://cards.example.org@evil.example/", "https://a@cards.example.org/", "http://cards.example.org/",
@@ -46,6 +46,7 @@ public final class PlatformTest {
                 "https://www.onepiece-cardgame.com/images/cardlist/card/../../other", "http://127.0.0.1:8080"})
             require(!publicHost.resource(blocked));
         PlatformOrigin local = new PlatformOrigin(PlatformOrigin.LOCAL);
+        require(local.resource("http://127.0.0.1:8080" + media));
         require(local.owns("http://127.0.0.1:8080/play"));
         require(!local.owns("http://127.0.0.1:5432/"));
         String saved = "https://cards.example.org/";

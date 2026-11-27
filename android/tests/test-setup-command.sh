@@ -18,7 +18,7 @@ cat > "$work/bin/curl" <<'SH'
 #!/usr/bin/env bash
 set -eu
 [[ $# == 10 && $1 == --proto && $2 == '=https' && $3 == --proto-redir && $4 == '=https' &&
-   $5 == -fL && $6 == --retry && $7 == 3 && $8 == 'https://github.com/jsb3182/tcg_hub_platform/releases/download/a90-2026.11.27.5/setup-termux.sh' &&
+   $5 == -fL && $6 == --retry && $7 == 3 && $8 == 'https://github.com/jsb3182/tcg_hub_platform/releases/download/a90-2026.11.28.1/setup-termux.sh' &&
    $9 == -o ]] || exit 4
 [[ ${DOWNLOAD_OK:-yes} == yes ]] || exit 7
 cp "$RESPONSE" "${10}"
@@ -31,7 +31,7 @@ export EXPECTED_ARCHIVE
 EXPECTED_ARCHIVE=$(printf 'test archive' | sha256sum | cut -d' ' -f1)
 command=$(java -cp "$work/classes" kr.tcghub.control.Probe "$hash" "$EXPECTED_ARCHIVE")
 bash -c "$command"
-[[ $(cat "$OBSERVED") == a90-2026.11.27.5 ]]
+[[ $(cat "$OBSERVED") == a90-2026.11.28.1 ]]
 rm "$OBSERVED"
 clean="$work/minimal"
 mkdir "$clean"
@@ -49,7 +49,7 @@ printf '#!/bin/sh\nexec "%s" "$@"\n' "$SHA_TOOL" > "$PATH/sha256sum"
 SH
 chmod 700 "$clean/pkg"
 PATH="$clean" bash -c "$command"
-[[ -x $clean/sha256sum && $(cat "$OBSERVED") == a90-2026.11.27.5 ]]
+[[ -x $clean/sha256sum && $(cat "$OBSERVED") == a90-2026.11.28.1 ]]
 rm "$OBSERVED"
 printf '\n# changed bytes\n' >> "$RESPONSE"
 if bash -c "$command"; then echo 'Accepted changed bytes' >&2; exit 1; fi

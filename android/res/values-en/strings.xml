@@ -1,4 +1,7 @@
 <resources>
+    <string name="save_png_title">Save PNG</string>
+    <string name="save_gallery">Save to gallery</string>
+    <string name="save_folder">Choose folder</string>
     <string name="app_name">"TCG Hub"</string>
     <string name="back">"Back"</string>
     <string name="connect_platform">"Connect to a platform"</string>
