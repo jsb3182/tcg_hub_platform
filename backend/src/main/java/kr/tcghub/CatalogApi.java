@@ -85,11 +85,24 @@ class CatalogApi {
                     @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) throws java.io.IOException {
         var card = cards.published(id,lang).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         var specs = db.sql("""
-                select cast(case when linked.card_id is null then c.specs else c.specs || jsonb_build_object(
+                select cast(((case when linked.card_id is null then c.specs else c.specs || jsonb_build_object(
                     'names', linked.names || case when jsonb_typeof(c.specs->'names')='object' then c.specs->'names' else '{}' end,
                     'texts', linked.texts || case when jsonb_typeof(c.specs->'texts')='object' then c.specs->'texts' else '{}' end
-                ) end as text) from card c
-                """ + CardEdition.LEGACY_JOIN + " where c.id=?").param(id).query(String.class).single();
+                ) end) - 'koreanPrinting') || case when kr.konami_id is null then '{}'::jsonb
+                  else jsonb_build_object('koreanPrinting',jsonb_strip_nulls(jsonb_build_object(
+                    'number',kr.number,'productReleasedOn',kr.product_released_on,
+                    'cardUrl','https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&request_locale=ko&cid='||kr.konami_id,
+                    'printingSourceUrl','https://github.com/DawnbrandBots/yaml-yugi/blob/'||kr.yaml_revision||'/data/cards/'||kr.yaml_file,
+                    'productSourceUrl','https://github.com/iconmaster5326/YGOJSON/blob/ab5016e14cc6c3296a85d52de2c8b61b9db55cfa/sets/'||kr.product_id||'.json'
+                  ))) end as text) from card c
+                """ + CardEdition.LEGACY_JOIN + """
+                left join feed_source origin on origin.id=c.source_id
+                left join yugioh_korean_print kr on c.game_code='YUGIOH' and kr.konami_id=case
+                    when starts_with(c.legacy_key,'catalog:YUGIOH:') and origin.provider='CATALOG' and origin.source_key='YUGIOH'
+                      and c.specs->>'konami_id' ~ '^[1-9][0-9]{0,9}$' then (c.specs->>'konami_id')::bigint
+                    when starts_with(c.legacy_key,'legacy:') then linked.konami_id end
+                where c.id=?
+                """).param(id).query(String.class).single();
         var variants = db.sql("""
             select v.id, v.rarity, v.sheet_id, v.col_idx, v.row_idx, s.storage_key, s.cell_width, s.cell_height,
                    edition.language as tile_language
