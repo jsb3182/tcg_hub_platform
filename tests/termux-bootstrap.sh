@@ -68,8 +68,10 @@ cat > "$PREFIX/bin/curl" <<'SH'
 case "${!#}" in
   'http://127.0.0.1:8080/internal/ready') echo '{"status":"UP"}';;
   'http://127.0.0.1:8080/api/v1/games')
-    if [[ -e $TCG_FIXTURE/missing-game ]]; then echo '[]'; else
+    if [[ -e $TCG_FIXTURE/missing-game ]]; then
       echo '[{"code":"YUGIOH"},{"code":"POKEMON"},{"code":"WEISS"},{"code":"NIVEL"},{"code":"RIFTBOUND"}]'
+    else
+      echo '[{"code":"YUGIOH"},{"code":"POKEMON"},{"code":"WEISS"},{"code":"NIVEL"},{"code":"RIFTBOUND"},{"code":"ONEPIECE"}]'
     fi;;
   *) exit 2;;
 esac
@@ -99,7 +101,7 @@ import json, sys
 from datetime import datetime
 p = json.load(open(sys.argv[1]))
 assert set(p) == {"release_sha256", "readiness", "game_count", "verified_at"}
-assert p["release_sha256"] == sys.argv[2] and p["game_count"] == 5 and p["readiness"] == "UP"
+assert p["release_sha256"] == sys.argv[2] and p["game_count"] == 6 and p["readiness"] == "UP"
 assert datetime.fromisoformat(p["verified_at"]).utcoffset().total_seconds() == 0
 PY
 rm -- "$folder/tcg-hub-ready.json"

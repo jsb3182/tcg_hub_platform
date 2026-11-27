@@ -39,8 +39,11 @@ case "$url" in
     cp "$F/assets/$target" "$2"; echo "$target" >> "$F/downloads";;
   http://127.0.0.1:8080/internal/ready) [[ -f $F/running ]] && echo '{"status":"UP"}';;
   http://127.0.0.1:8080/api/v1/games)
-    if [[ -f $F/missing-game ]]; then echo '[]'; else
-      echo '[{"code":"YUGIOH"},{"code":"POKEMON"},{"code":"WEISS"},{"code":"NIVEL"},{"code":"RIFTBOUND"}]'; fi;;
+    if [[ -f $F/missing-game ]]; then
+      echo '[{"code":"YUGIOH"},{"code":"POKEMON"},{"code":"WEISS"},{"code":"NIVEL"},{"code":"RIFTBOUND"}]'
+    else
+      echo '[{"code":"YUGIOH"},{"code":"POKEMON"},{"code":"WEISS"},{"code":"NIVEL"},{"code":"RIFTBOUND"},{"code":"ONEPIECE"}]'
+    fi;;
   *) exit 2;;
 esac
 SH
