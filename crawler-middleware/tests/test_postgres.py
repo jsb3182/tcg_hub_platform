@@ -10,6 +10,20 @@ from PIL import Image
 
 @unittest.skipUnless(os.environ.get("TCG_TEST_DSN"), "set TCG_TEST_DSN to test PostgreSQL/PostGIS")
 class DatabaseTests(unittest.TestCase):
+    def test_rift_provider_codes_preserve_both_observed_collector_number_styles(self):
+        from tcg_worker.supplements import save
+        with self.db.transaction(force_rollback=True):
+            pack=self.db.execute("insert into pack(game_code,code,name) values('RIFTBOUND','OGN','Origins') returning id").fetchone()[0]
+            source={"provider":"RIFTCODEX","game_code":"RIFTBOUND"}
+            for i,number in enumerate(("ogn-320a-305","OGN-321a/305")):
+                cid=self.db.execute("insert into card(pack_id,game_code,name,number,status) values(%s,'RIFTBOUND','QA printing',%s,'PUBLISHED') returning id",
+                                    (pack,number)).fetchone()[0]
+                row={"id":str(i),"name":"QA printing","number":f"ogn-{320+i}a-305","packCode":"OGN","lang":"en",
+                     "sourceUrl":"https://api.riftcodex.com/cards/qa"}
+                save(self.db,source,[row])
+                self.assertEqual(self.db.execute("select card_id,number from supplemental_printing where provider='RIFTCODEX' and external_id=%s",
+                                                 (str(i),)).fetchone(),(cid,row["number"]))
+
     def test_supplement_replays_exact_prices_and_keeps_ambiguous_printings_unlinked(self):
         from tcg_worker.supplements import save, configure
         with self.db.transaction(force_rollback=True):

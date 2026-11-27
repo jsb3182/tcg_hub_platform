@@ -113,6 +113,21 @@ stop_service() {
   if [[ $1 == worker ]]; then wait_seconds=180; fi
   sv -w "$wait_seconds" stop "$svroot/tcg-$1"
 }
+ensure_supervisor() {
+  local boot="$HOME/.termux/boot/30-tcg-services" n
+  local services=("$svroot/tcg-db" "$svroot/tcg-api" "$svroot/tcg-worker" "$svroot/tcg-tunnel")
+  if sv status "${services[@]}" >/dev/null 2>&1; then return 0; fi
+  [[ -x $boot ]] || { echo 'The installed TCG boot hook is missing. Check the Termux installation.' >&2; return 1; }
+  # Use Termux's service-daemon; it owns runsvdir and handles repeat invocations.
+  # Its descendants must not inherit the operator lock when a start follows reboot.
+  (exec 9>&-; bash "$boot") || return 1
+  for ((n=0; n<20; n++)); do
+    if sv status "${services[@]}" >/dev/null 2>&1; then return 0; fi
+    sleep 1
+  done
+  echo 'Termux service supervision is unavailable. Check termux-services in Termux.' >&2
+  return 1
+}
 enable() {
   rm -f "$svroot/tcg-$1/down" && sv up "$svroot/tcg-$1"
 }
@@ -252,6 +267,11 @@ BOOT
     if [[ $cmd == start ]]; then
       guest tcgtunnel /bin/bash "$guest_script" check-public
     else
+      # Preserve local mode even while an absent supervisor is being started.
+      touch "$svroot/tcg-tunnel/down"
+    fi
+    ensure_supervisor
+    if [[ $cmd == start-local ]]; then
       disable tunnel
     fi
     enable db

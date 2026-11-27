@@ -173,16 +173,18 @@ def save(db,source,rows):
         number=str(row.get("number") or "").strip()
         if not number or len(number)>128 or not row.get("name") or not row.get("id"):continue
         code=str(row.get("packCode") or "").strip()
-        if game=="RIFTBOUND" and number.count("-")==2:
-            first,denominator=number.rsplit("-",1)
-            if denominator.isdigit(): number=first.upper()+"/"+denominator
+        spellings={number.lower()}
+        if game=="RIFTBOUND":
+            ident=re.fullmatch(r"([a-z0-9]+-[a-z0-9*]+)[/-]([0-9]+)",number.lower())
+            if ident:
+                spellings.update((ident[1]+"/"+ident[2],ident[1]+"-"+ident[2]))
         identity=f"{provider}:{row['id']}"
         own_key=f"catalog:{game}:{identity}"
         lang=row.get("lang","und")
         if lang not in ("ko","en","ja"):lang="und"
         candidates=db.execute("""select c.id,c.legacy_key,p.code,c.name,c.original_name,c.specs->'names'
-            from card c left join pack p on p.id=c.pack_id where c.game_code=%s and lower(c.number)=lower(%s)
-            and c.status='PUBLISHED'""",(game,number)).fetchall()
+            from card c left join pack p on p.id=c.pack_id where c.game_code=%s and lower(c.number)=any(%s)
+            and c.status='PUBLISHED'""",(game,list(spellings))).fetchall()
         exact=[r[0] for r in candidates if r[1]==own_key]
         if not exact and code:
             exact=[r[0] for r in candidates if (r[2] or "").lower()==code.lower() and row["name"].casefold() in
