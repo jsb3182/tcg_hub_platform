@@ -71,7 +71,9 @@ class DeckRules {
                 select id,name,lower(trim(case when game_code in ('NIVEL','ONEPIECE') then coalesce(nullif(number,''),name)
                     when game_code='RIFTBOUND' then coalesce(nullif(specs->>'cleanName',''),original_name,name)
                     else coalesce(nullif(original_name,''),name) end)) as identity,
-                    lower(coalesce(specs->>'type',specs->>'card_type',specs->>'k','')) as kind,
+                    lower(coalesce(nullif(specs->>'type',''),nullif(specs->>'card_type',''),
+                        case when game_code='YUGIOH' and specs->>'k'='몬스터'
+                             then concat_ws(' ',specs->>'k',specs->>'sub') else specs->>'k' end,'')) as kind,
                     lower(coalesce(specs->>'stage','')) as stage,
                     (name ~* '^(기본.*에너지|basic .*energy|基本.*エネルギー)$'
                         or lower(coalesce(specs->>'card_type','')) in ('basic energy','기본 에너지','기본에너지')) as basic_energy,
