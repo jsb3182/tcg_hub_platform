@@ -17,6 +17,7 @@ final class LibraryImage {
             from card_variant v join image_sheet s on s.id=v.sheet_id
         """ + EDITION_JOIN + " where v.card_id=c.id and c.status='PUBLISHED' and not s.retired ";
     static final String JOIN=PUBLIC_TILES + " order by v.position limit 1) tile on true ";
+    static final String DECK_JOIN=PUBLIC_TILES + " and (e.variant_id is null or v.id=e.variant_id) order by v.position limit 1) tile on true ";
     static final String LOCALIZED_JOIN=PUBLIC_TILES
             + " order by case when edition.language=:lang then 0 else 1 end,v.position limit 1) tile on true ";
     static CatalogApi.Image read(ResultSet row) throws SQLException {

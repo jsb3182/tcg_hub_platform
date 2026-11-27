@@ -19,6 +19,8 @@ interface CardRepository extends Repository<Card, Long> {
         String getRarity();
         String getEffect();
         String getLanguage();
+        String getNameBasis();
+        String getNameReferenceUrl();
         String getEffectLanguage();
         String getImageUrl();
         String getImageLanguage();
@@ -48,7 +50,8 @@ interface CardRepository extends Repository<Card, Long> {
                       or lower(:rarity)=any(regexp_split_to_array(lower(v.rarity),'[[:space:]]+')))))
            and (:q='' or strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.effect,
                c.specs->'names'->>'ko',c.specs->'names'->>'en',c.specs->'names'->>'ja',
-               linked.names->>'ko',linked.names->>'en',linked.names->>'ja')),lower(:q))>0)
+               linked.names->>'ko',linked.names->>'en',linked.names->>'ja',
+               c.specs->'referenceNames'->>'en',c.specs->'referenceNames'->>'ja')),lower(:q))>0)
         """;
 
     @Query(value=SELECT + FILTER + " order by c.id", countQuery="select count(*) from card c" + CardEdition.LEGACY_JOIN + FILTER, nativeQuery=true)

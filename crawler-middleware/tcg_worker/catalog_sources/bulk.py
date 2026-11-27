@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote, urlencode
 
-from .card_names import PokemonNames, pokemon_edition, pokemon_effect, ygo_names
+from .card_names import PokemonNames, pokemon_edition, pokemon_effect, pokemon_with_name_references, ygo_names
 
 def document(path):
     with path.open(encoding="utf-8-sig") as stream:
@@ -54,9 +54,7 @@ def pokemon(http):
     derived = http.root / hashlib.sha256(f"pokemon-localized-v4:{sha}:{week}".encode()).hexdigest()
     if derived.is_file():
         http.remember_revision("pokemon-korean-archive", derived)
-        with derived.open(encoding="utf-8") as cache:
-            for line in cache:
-                yield json.loads(line)
+        yield from pokemon_with_name_references(derived)
         return
     archive = http.get(f"https://codeload.github.com/{repo}/tar.gz/{sha}", ttl=365 * 86400, size=320_000_000,
                        family="pokemon-source-archive")
@@ -66,11 +64,11 @@ def pokemon(http):
             art = pokemon_english_art(http)
             for row in pokemon_archive(archive, http.root, art):
                 output.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
-                yield row
         os.replace(temp, derived)
         http.remember_revision("pokemon-korean-archive", derived)
     finally:
         Path(temp).unlink(missing_ok=True)
+    yield from pokemon_with_name_references(derived)
 
 
 def pokemon_english_art(http):

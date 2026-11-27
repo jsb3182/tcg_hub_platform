@@ -16,7 +16,7 @@ class MapConfiguration {
         String maps = key.isEmpty() ? "" : " https://*.daumcdn.net https://*.kakaocdn.net https://*.daum.net";
         String printings = " https://www.onepiece-cardgame.kr https://en.onepiece-cardgame.com https://www.onepiece-cardgame.com"
                 + " https://optcgapi.com https://www.optcgapi.com https://assets.tcgdex.net https://images.pokemontcg.io"
-                + " https://cards.image.pokemonkorea.co.kr https://www.pokemon-card.com";
+                + " https://cards.image.pokemonkorea.co.kr https://www.pokemon-card.com https://artworks-jp-n.ygoresources.com";
         return "default-src 'self'; script-src 'self'" + script + "; connect-src 'self'" + script
                 + "; img-src 'self' data: blob: https://tile.openstreetmap.org" + maps + printings
                 + "; style-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'"

@@ -146,6 +146,67 @@ def pokemon_edition(lang, card, english_art):
                             "imageSources":source if image else None}.items() if v}
 
 
+def pokemon_with_name_references(printed_rows):
+    """Index attested names on the full snapshot before yielding any reference matches."""
+    def key(row):
+        specs = row["specs"]
+        number = specs.get("pokedex_number")
+        if specs.get("card_type") == "Pokémon" and type(number) is int and number > 0:
+            return number, row["name"]
+        return None
+
+    def source_url(lang, value):
+        if not isinstance(value, str):
+            return None
+        url = urlsplit(value)
+        if url.scheme == "https" and ((lang == "ja" and url.netloc == "www.pokemon-card.com"
+                                      and url.path.startswith("/card-search/details.php/card/")) or
+                                     (lang == "en" and url.netloc == "www.pokemon.com"
+                                      and url.path.startswith("/us/pokemon-tcg/pokemon-cards/")) or
+                                     (lang == "en" and url.netloc == "pkmncards.com"
+                                      and url.path.startswith("/card/"))):
+            return value
+        return None
+
+    # A source spelling disagreement vetoes the whole group, independent of input order.
+    references = {}
+    with printed_rows.open(encoding="utf-8") as records:
+        for line in records:
+            row = json.loads(line)
+            species = key(row)
+            if species is None:
+                continue
+            specs = row["specs"]
+            for lang in ("en", "ja"):
+                name = specs.get("names", {}).get(lang)
+                if not name:
+                    continue
+                identity = (*species, lang)
+                source = source_url(lang, specs.get("sources", {}).get(lang))
+                if identity not in references:
+                    references[identity] = (name, source)
+                else:
+                    previous = references[identity]
+                    if previous is None or previous[0] != name:
+                        references[identity] = None
+                    elif source and (not previous[1] or source < previous[1]):
+                        references[identity] = (name, source)
+        records.seek(0)
+        for line in records:
+            row = json.loads(line)
+            specs = row["specs"]
+            species = key(row)
+            if species is not None:
+                for lang in ("en", "ja"):
+                    match = references.get((*species, lang))
+                    if match and not specs.get("names", {}).get(lang):
+                        name, url = match
+                        specs.setdefault("referenceNames", {})[lang] = name
+                        if url:
+                            specs.setdefault("referenceNameUrls", {})[lang] = url
+            yield row
+
+
 class PokemonNames:
     """Prefer an exact regional printing, then a unique name on the provider's card fingerprint."""
     def __init__(self):
