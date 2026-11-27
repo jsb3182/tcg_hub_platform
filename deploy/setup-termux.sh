@@ -197,7 +197,7 @@ sv -w 30 up "$svroot/tcg-mobile"
 curl --noproxy '*' -fsS --max-time 10 "$base_url/internal/ready" |
   python -c 'import json,sys; sys.exit(json.load(sys.stdin).get("status") != "UP")'
 curl --noproxy '*' -fsS --max-time 10 "$base_url/api/v1/games" |
-  python -c 'import json,sys; sys.exit(not {"YUGIOH","POKEMON","WEISS","NIVEL","RIFTBOUND"} <= {g["code"] for g in json.load(sys.stdin)})'
+  python -c 'import json,sys; sys.exit(not {"YUGIOH","POKEMON","WEISS","NIVEL","RIFTBOUND","ONEPIECE"} <= {g["code"] for g in json.load(sys.stdin)})'
 record "$finished" "$tag $id"
 rm -f -- "$journal"
 echo "$tag 설치가 완료되었습니다. 이 휴대폰에서 $base_url/ 을 여세요."
