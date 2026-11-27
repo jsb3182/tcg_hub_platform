@@ -133,12 +133,17 @@ try {
  const fits=async()=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),360)
  await go('/cards/51?lang=ja')
  await visible(page.getByRole('heading',{name:'練習カード'}))
+ const sources=page.locator('.reader-source'), openSources=async()=>{await sources.locator('summary').click();await visible(sources.locator('.source-content'))}
+ await visible(page.locator('.detail-section p').getByText('この言語の効果テキストは未登録です'))
+ assert.ok(!await page.getByText('Fixture effect',{exact:true}).count())
+ await openSources()
  await visible(page.locator('.card-facts [lang=en]').filter({hasText:'Practice card'}))
  assert.equal(await page.locator('html').getAttribute('lang'),'ja')
  assert.equal(await select.inputValue(),'ja')
  assert.equal(await page.locator('.card-facts [lang=ja] a').getAttribute('href'),'https://example.invalid/public-card-ja')
- await visible(page.locator('.detail-section .card-text-credit').filter({hasText:'効果の言語 · 英語'}))
- await visible(page.locator('.detail-section .card-text-credit').getByText('別の収録版を参考にした効果',{exact:true}))
+ await visible(sources.locator('.card-text-credit').filter({hasText:'効果の言語 · 英語'}))
+ await visible(sources.locator('.card-text-credit').getByText('別の収録版を参考にした効果',{exact:true}))
+ await visible(sources.locator('p[lang=en]').getByText('Fixture effect',{exact:true}))
  const translations={
    ko:{different:'다른 제품의 그림',same:'그림 수록 제품',unknown:'수록 제품 미확인',edition:'한국어판'},
    en:{different:'Art from another set',same:'Art from set',unknown:'Printing unconfirmed',edition:'English edition'},
@@ -169,6 +174,10 @@ try {
    await go('/cards/'+id+'?lang=ko')
    for(const lang of ['ko','en','ja']){
      await select.selectOption(lang)
+     if(lang==='ja'||kind==='different'){
+       await visible(page.locator('.card-reader .atlas.missing'))
+       await openSources()
+     }
      await checkCredit(page.locator('.illustration .edition-note'),lang,kind)
      await fits()
      if(id===51 && lang==='ja'){
@@ -189,12 +198,15 @@ try {
  const caption=page.locator('.illustration .edition-note')
  await visible(caption.getByText('日本語版',{exact:true}))
  await position(page.locator('.illustration button.atlas'),'100% 0%')
- await page.locator('.variant-nav button').last().click()
- await visible(caption.getByText('言語未確認',{exact:true}))
- await page.locator('.illustration button.atlas').click()
+ await openSources()
+ await sources.locator('.variant-nav button').last().click()
+ await visible(sources.locator('.edition-note').getByText('言語未確認',{exact:true}))
+ await sources.locator('.illustration button.atlas').click()
  await position(page.getByRole('dialog').locator('.atlas'),'66.6667% 0%')
  await page.getByRole('dialog').getByRole('button').click()
  await go('/cards/54?lang=ko')
+ await visible(page.locator('.card-reader .atlas.missing'))
+ await openSources()
  await visible(caption.getByText('영어판',{exact:true}))
  assert.match(await caption.innerText(),/대체 이미지/)
  await position(page.locator('.illustration button.atlas'),'0% 0%')
@@ -206,15 +218,19 @@ try {
  await visible(caption.getByText('English edition',{exact:true}))
  // A general reference has its own citation. A matching, verified local printing wins a tie.
  await go('/cards/56?lang=ko')
- await visible(caption.getByRole('link',{name:'카드 참고 이미지'}))
- assert.equal(await caption.locator('a').getAttribute('href'),'https://example.invalid/prints/ko/art')
+ await visible(page.locator('.card-reader .atlas.missing'))
+ await openSources()
+ await visible(sources.getByRole('link',{name:'카드 참고 이미지'}))
+ assert.equal(await sources.getByRole('link',{name:'카드 참고 이미지'}).getAttribute('href'),'https://example.invalid/prints/ko/art')
  await select.selectOption('ja')
  await visible(caption.getByText('日本語版',{exact:true}))
  assert.equal(await caption.locator('a').count(),0)
  for(const lang of ['ko','en','ja']){
    await select.selectOption(lang)
+   await visible(page.locator('.detail-section p[lang='+lang+']'))
+   await openSources()
    await visible(page.locator('.card-facts .card-text-credit a[href$="/'+lang+'/name"]'))
-   await visible(page.locator('.detail-section .card-text-credit a[href$="/'+lang+'/effect"]'))
+   await visible(sources.locator('.card-text-credit a[href$="/'+lang+'/effect"]'))
    await visible(page.locator('.detail-section .card-text-credit').getByText(({ko:'검수한 번역 효과',en:'Verified printed effect',ja:'確認済みの収録版の効果'})[lang],{exact:true}))
    assert.equal(await page.getByText('Obsolete unreviewed name',{exact:true}).count(),0)
    await fits()

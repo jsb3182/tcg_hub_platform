@@ -13,7 +13,7 @@ const announced={id:8,code:'MZMC',name:'메이즈 오브 머신즈',gameCode:'YU
 const origin=actual||'http://127.0.0.1:19892'
 assert.equal(new URL(origin).hostname,'127.0.0.1')
 const mime={'.html':'text/html;charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'}
-const tile=(i)=>({url:'/media/sheets/pack-qa.png',sheetId:9,col:i%4,row:0,cellWidth:40,cellHeight:58,language:'ja'})
+const tile=(i)=>({url:'/media/sheets/pack-qa.png',sheetId:9,col:i%4,row:0,cellWidth:40,cellHeight:58,language:i===0?'ko':'ja'})
 const fakeCards=Array.from({length:45},(_,i)=>({id:i+1,number:'QA-'+String(i+1).padStart(3,'0'),name:'합성 카드 '+(i+1),gameCode:'YUGIOH',language:'ko',
   inclusion:i<33?'NEW':'REPRINT',type:i%2?'마법':'몬스터',rarity:i%2?'R':'UR',rarities:[i%2?'R':'UR'],image:tile(i),effect:'검증용 카드 효과',effectLanguage:'ko'}))
 const pack={id:7,code:'DBGV',name:'테스트 팩',gameCode:'YUGIOH',metadata:{jp:'2026-09-05',kr:'2026-12'},total:45,newCount:33,reprintCount:12,newArtCount:0,group:'SCHEDULE',page:0,size:200,hasMore:false,cards:fakeCards}
@@ -50,6 +50,7 @@ try{
       if(path==='/api/v1/packs/7')return json(pack)
       if(path==='/api/v1/packs/8')return json(announced)
       if(path==='/api/v1/releases')return json([pack,announced])
+      if(path==='/api/v1/release-calendar')return json({items:[],total:0,page:0,size:24,asOf:'2026-11-27'})
       if(path.match(/^\/api\/v1\/cards\/\d+$/)){const c=fakeCards.find(x=>x.id===Number(path.split('/').pop()));return json({...c,
         nameBasis:'RELATED_PRINTING',nameReferenceUrl:'https://example.invalid/references/name',
         specs:{k:c.type,atk:1000},variants:[{id:c.id,rarity:c.rarity,image:c.image}]})}
@@ -77,13 +78,18 @@ try{
     const row=page.locator('.pack-row[open]')
     await visible(row.locator('.detail-section p'));assert.equal(await row.count(),1)
     assert.equal(await row.locator('summary .pack-number').innerText(),header.cards[0].number)
-    if(!actual)assert.equal(await row.getByRole('link',{name:'참고 인쇄본'}).getAttribute('href'),'https://example.invalid/references/name')
+    if(!actual){
+      await row.locator('.reader-source>summary').click()
+      assert.equal(await row.getByRole('link',{name:'참고 인쇄본'}).getAttribute('href'),'https://example.invalid/references/name')
+      await row.locator('.reader-source>summary').click()
+    }
     await noOverflow();await shot('pack-detail')
     await row.getByRole('button',{name:'카드 정보 PNG'}).click()
     const preview=page.locator('.pack-save[open]')
     await preview.getByRole('combobox').selectOption('360')
     await preview.getByRole('button',{name:'이미지 만들기'}).click()
-    const single=await save(preview.getByRole('button',{name:'PNG 파일 다운로드'}));assert.equal(single.readUInt32BE(16),360);assert.ok(await colorPixels(single)>1000)
+    const single=await save(preview.getByRole('button',{name:'PNG 파일 다운로드'}));assert.equal(single.readUInt32BE(16),360)
+    if(await row.locator('.card-reader .illustration button.atlas').count())assert.ok(await colorPixels(single)>1000)
     await preview.getByRole('button',{name:'닫기'}).click()
     await page.getByRole('button',{name:'카드 배열',exact:true}).click()
     const gallery=page.locator('.pack-gallery[open]')
@@ -113,6 +119,7 @@ try{
     await page.getByRole('button',{name:'카드 배열',exact:true}).click()
     await page.keyboard.press('Escape');assert.equal(await gallery.count(),0);await noOverflow()
     await page.locator('.pack-back').click();await page.waitForURL(u=>u.pathname==='/releases')
+    await visible(page.locator('#release-SCHEDULE'))
     await page.locator('.release-filters input').fill('Maze of Machines')
     const upcoming=page.locator('#release-PREMIERE li a').filter({hasText:'MZMC'})
     await visible(upcoming.getByText('도감 등록 전',{exact:true}))
@@ -126,6 +133,9 @@ try{
     await page.locator('.locale-switch select').selectOption('en')
     await visible(page.getByRole('heading',{name:'Maze of Machines'}))
     await page.locator('.locale-switch select').selectOption('ko')
+    await page.locator('.pack-back').click()
+    await page.waitForURL(u=>u.pathname==='/releases' && u.hash==='#release-PREMIERE')
+    await visible(page.locator('#release-PREMIERE').getByText('메이즈 오브 머신즈',{exact:true}))
     await page.goto(origin+'/shared/decks/fixture')
     const recipe=page.locator('.recipe-panel');await visible(recipe.locator('.lib-recipe'))
     assert.equal(await recipe.locator('.lib-recipe .lib-thumbnail').count(),4)
