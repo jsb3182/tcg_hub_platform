@@ -20,6 +20,19 @@ class Pages:
 
 
 class ReleaseProducts(unittest.TestCase):
+    def test_onepiece_publisher_categories_survive_offline_replay(self):
+        from collections import Counter
+        rows = checked(row for row in json.loads(source.SEED.read_text("utf-8")) if row["game"] == "ONEPIECE")
+        self.assertEqual(Counter((r["region"], r["publisherCategory"]) for r in rows),
+                         {("EN","BOOSTERS"):27, ("KR","BOOSTERS"):19, ("KR","DECKS"):23})
+        by_code = {r["code"]:r for r in rows}
+        self.assertEqual(by_code["STK-10"]["publisherCategory"], "DECKS")
+        for code in ("OP14-EB04", "OP15-EB04"):
+            self.assertEqual(by_code[code]["publisherCategory"], "BOOSTERS")
+            self.assertNotIn("catalogCode", by_code[code])
+        with self.assertRaisesRegex(ValueError, "publisher product category"):
+            checked([{**by_code["OP-01"], "publisherCategory":"unverified"}])
+
     def test_published_snapshots_have_distinct_regions_sources_and_dates(self):
         rows = json.loads(source.SEED.read_text("utf-8"))
         by_key = {(r["game"], r["key"]): r for r in rows}
@@ -85,8 +98,11 @@ class ReleaseProducts(unittest.TestCase):
             <span class="tit">[OPK-35] 부스터 팩 예시</span><span class="date">2029-07-01</span></a>'''
         pages = Pages({source.OP_KR: kr + kr.replace("2029-07-01","발매일 미정"), source.OP_EN: en("Release Date", "op35.html")
                        + en("Pre-Release", "op36.html") + en("Release Date", "https://elsewhere.invalid/products/op35.html")})
+        pages.pages[source.OP_KR] += kr.replace("BOOSTERS","DECKS").replace("OPK-35","STK-35").replace("부스터 팩 예시","자유로운 이름")
         out = list(source.onepiece(pages))
-        self.assertEqual([(r["key"],r["date"]) for r in out], [("kr-opk-35","2029-07-01"),("en-op-35","2029-04-13")])
+        self.assertEqual([(r["key"],r["date"],r["publisherCategory"]) for r in out],
+                         [("kr-opk-35","2029-07-01","BOOSTERS"),("kr-stk-35","2029-07-01","DECKS"),
+                          ("en-op-35","2029-04-13","BOOSTERS")])
 
     def test_riot_announcement_day_is_not_the_release_day(self):
         kr = '''<a href="/ko-kr/news/announcements/example/" aria-label="테스트 대한민국 출시 안내">

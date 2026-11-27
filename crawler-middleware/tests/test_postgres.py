@@ -219,6 +219,41 @@ class DatabaseTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     checked(invalid)
 
+    def test_onepiece_release_category_replay_preserves_ids_links_and_live_edits(self):
+        import json
+        from tcg_worker.catalog_sources.onepiece_rift_nivel_releases import SEED
+        from tcg_worker.release_calendar import checked, save
+        official = {r["key"]:r for r in json.loads(SEED.read_text("utf-8")) if r["game"] == "ONEPIECE"}
+        en, kr = official["en-op-01"], official["kr-stk-10"]
+        old = {k:v for k,v in en.items() if k!="publisherCategory"}
+        with self.db.transaction(force_rollback=True):
+            db = self.db
+            def get(key):
+                return db.execute("""SELECT id,product_type,publisher_category,selected_pack_id,release_date::text,from_seed,version
+                                     FROM product_release WHERE game_code='ONEPIECE' AND product_key=%s""",(key,)).fetchone()
+            pid = db.execute("INSERT INTO pack(game_code,name) VALUES('ONEPIECE','QA existing product') RETURNING id").fetchone()[0]
+            live = {**old,"date":"2022-12-05"}
+            save(db, checked([live]))
+            db.execute("UPDATE product_release SET selected_pack_id=%s WHERE game_code='ONEPIECE' AND product_key=%s",(pid, en["key"]))
+            prior = get(en["key"])
+            self.assertEqual(prior[1:4], ("UNKNOWN",None,pid))
+            save(db, checked([en,kr]),seed=True)
+            updated = get(en["key"])
+            self.assertEqual(updated[:6],(prior[0],"BOOSTER","BOOSTERS",pid,live["date"],False))
+            self.assertEqual(get(kr["key"])[1:3],("STARTER","DECKS"))
+            save(db, checked([en,kr]), seed=True)
+            save(db, checked([live]))
+            self.assertEqual(get(en["key"]),updated)
+            # A subsequent live publisher classification wins, and an administrator can override both.
+            save(db, checked([{**live,"publisherCategory":"DECKS"}]))
+            save(db, checked([en]), seed=True)
+            self.assertEqual(get(en["key"])[1:3],("STARTER","DECKS"))
+            db.execute("UPDATE product_release SET manual=true,product_type='SPECIAL' WHERE id=%s",(prior[0],))
+            manual = get(en["key"])
+            for seed in (True,False):
+                save(db,checked([en]),seed=seed)
+                self.assertEqual(get(en["key"]),manual)
+
     def test_onepiece_english_calendar_repairs_old_hints_and_finds_a_korean_first_catalog(self):
         import json
         from tcg_worker.catalog_sources.onepiece import CARD_LIST, Index, edition

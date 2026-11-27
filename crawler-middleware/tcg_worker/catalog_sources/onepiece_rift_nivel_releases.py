@@ -82,13 +82,14 @@ def product_pages(pages, start, next_selector, first_page, filters):
 
 def korean_product_rows(page):
     for a in page.select("a.desc_wrap[href]"):
-        if text(a.select_one(".cate")) not in ("BOOSTERS", "DECKS"):
+        category = text(a.select_one(".cate"))
+        if category not in ("BOOSTERS", "DECKS"):
             continue
         url = urljoin(OP_KR, a["href"])
         title = re.fullmatch(r"\[([A-Z0-9-]+)\]\s*(.+)", text(a.select_one(".tit")))
         day = dated(text(a.select_one(".date")))
         if title and day and re.fullmatch(r"https://www\.onepiece-cardgame\.kr/products/view\.do\?brdno=\d+", url):
-            yield record("ONEPIECE", "KR", title[1].lower(), title[1], title[2], day, url)
+            yield {**record("ONEPIECE", "KR", title[1].lower(), title[1], title[2], day, url), "publisherCategory": category}
 
 
 def english_product_rows(page):
@@ -100,7 +101,7 @@ def english_product_rows(page):
         if (title and text(a.select_one(".linkListColCat")) == "BOOSTERS" and day and
                 text(a.select_one(".linkListColDate .head")) == "Release Date" and
                 re.fullmatch(r"https://en\.onepiece-cardgame\.com/products/[a-z0-9/_-]+(?:\.html|\.php|/)", url)):
-            yield record("ONEPIECE", "EN", title[2].lower(), title[2], title[1], day, url)
+            yield {**record("ONEPIECE", "EN", title[2].lower(), title[2], title[1], day, url), "publisherCategory": "BOOSTERS"}
 
 
 def onepiece(pages):
