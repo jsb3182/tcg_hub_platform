@@ -16,7 +16,7 @@ class DeckCodes {
             encode(sha256(convert_to(jsonb_build_array(c.game_code,p.code,p.name,c.number,c.name,c.rarity)::text,'UTF8')),'hex') end
             """;
     record Printing(String key,String section,int quantity,Integer illustration,Integer neuronArtwork) {}
-    record Recipe(String game,String name,List<Printing> entries,String nameJa,String nameEn) {}
+    record Recipe(String game,String name,List<Printing> entries,String nameJa,String nameEn,String region) {}
     record Code(String code) {}
     final JdbcClient db;
     final ObjectMapper json;
@@ -33,7 +33,7 @@ class DeckCodes {
                 }).list();
         try {
             return new Code(PREFIX+Base64.getUrlEncoder().withoutPadding().encodeToString(
-                    json.writeValueAsBytes(new Recipe(deck.gameCode(),deck.name(),rows,deck.nameJa(),deck.nameEn()))));
+                    json.writeValueAsBytes(new Recipe(deck.gameCode(),deck.name(),rows,deck.nameJa(),deck.nameEn(),deck.region()))));
         } catch(JsonProcessingException e) {throw new IllegalStateException(e);}
     }
 
@@ -76,7 +76,8 @@ class DeckCodes {
                     .orElseThrow(()->new DeckRules.Invalid("이 도감에서 선택한 일러스트를 찾을 수 없습니다."));
             lines.add(new DeckRules.Line(id,entry.section(),entry.quantity(),variant,entry.neuronArtwork()));
         }
-        return new DeckApi.Save(recipe.name(),recipe.game(),"DRAFT",0,false,lines,recipe.nameJa(),recipe.nameEn());
+        return new DeckApi.Save(recipe.name(),recipe.game(),"DRAFT",0,false,lines,recipe.nameJa(),recipe.nameEn(),
+                                YugiohLimits.selection(recipe.game(),recipe.region(),null));
     }
     private static ResponseStatusException invalid(){return new ResponseStatusException(HttpStatus.BAD_REQUEST);}
 }

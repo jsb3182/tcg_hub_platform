@@ -13,6 +13,7 @@ class LegacyEditions:
         self.conflicts = set()
         self.yaml_complete = False
         self.allow_english_bootstrap = allow_english_bootstrap
+        self.limit_checks = {}
 
     @classmethod
     def from_database(cls, db, source_id=None):

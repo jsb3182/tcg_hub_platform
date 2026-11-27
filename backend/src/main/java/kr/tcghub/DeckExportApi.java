@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 class DeckExportApi {
     record Item(String section,long cardId,String name,String number,int quantity,Integer illustration,Integer neuronArtwork,
                 String language,String nameBasis,String nameReferenceUrl) {}
-    record Deck(long id,String gameCode,String name,String nameJa,String nameEn,String state,List<Item> entries) {}
+    record Deck(long id,String gameCode,String name,String nameJa,String nameEn,String state,String region,List<Item> entries) {}
     record Batch(List<Deck> items,Long next) {}
     private final JdbcClient db;
     DeckExportApi(JdbcClient db){this.db=db;}
@@ -24,7 +24,7 @@ class DeckExportApi {
         db.sql("""
             with page as (select d.* from deck d join app_user u on u.id=d.owner_id
                 where u.email=:email and u.enabled and d.id>:after order by d.id limit 24)
-            select d.id,d.game_code,d.name as deck_name,d.name_ja,d.name_en,d.state,e.section,e.card_id,
+            select d.id,d.game_code,d.name as deck_name,d.name_ja,d.name_en,d.state,d.region,e.section,e.card_id,
             """ + CardEdition.NAME_FIELDS + """
                    ,
                    c.number,e.quantity,v.position,e.neuron_artwork
@@ -37,7 +37,7 @@ class DeckExportApi {
                     var deck=decks.get(id);
                     if(deck==null){
                         deck=new Deck(id,rows.getString("game_code"),rows.getString("deck_name"),rows.getString("name_ja"),
-                                rows.getString("name_en"),rows.getString("state"),new ArrayList<>());
+                                rows.getString("name_en"),rows.getString("state"),rows.getString("region"),new ArrayList<>());
                         decks.put(id,deck);
                     }
                     Long card=rows.getObject("card_id",Long.class);
