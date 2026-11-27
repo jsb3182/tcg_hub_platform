@@ -176,17 +176,15 @@ async function publishedIdentities(matches, signal) {
 }
 
 export function resolveMatch(match, refs, identities) {
-  const candidates = match.local.map(({position,score}) => ({...refs[position].card, score}))
+  const local = new Map(match.local.map(({position,score}) => [position,{...refs[position].card,score}]))
+  const candidates = [...local.values()]
   for (const hit of match.neuron) {
     const printing = identities.get(hit.konamiId)
     const imageUrl = printing?.artworks?.[hit.neuronArtwork]
     if (!imageUrl) continue
     const { artworks, ...card } = printing
-    // When both indexes see the same artwork almost equally well, retain the actual
-    // local variant. A distinct official artwork ID is never used as a local variant ID.
-    const tile = candidates.find(item => item.variantId != null && item.konamiId === hit.konamiId &&
-      Math.abs(item.score - hit.score) <= .025 && item.neuronArtwork == null)
-    if (tile) {
+    const tile = local.get(hit.localPosition)
+    if (tile && tile.konamiId === hit.konamiId && tile.neuronArtwork == null) {
       tile.neuronArtwork = hit.neuronArtwork
       tile.score = Math.max(hit.score, tile.score)
     } else {
@@ -254,7 +252,8 @@ export async function recognizeRecipeCapture(file, { game = 'YUGIOH', signal, on
     const { refs, missingSheets } = await referenceIndex(groups, onProgress, signal)
     onProgress({ stage:'match', done:0, total:slots.length })
     const ranked = await processPixels(worker, {
-      kind:'rank', slots:slots.map(({ descriptor }) => ({ descriptor })), index:refs.map(r => r.descriptor),
+      kind:'rank', slots:slots.map(({ descriptor }) => ({ descriptor })),
+      index:refs.map(r => ({descriptor:r.descriptor,konamiId:r.card.konamiId})),
     }, [], signal)
     const identities = await publishedIdentities(ranked.matches, signal)
     const thumb = canvas(64, 92)

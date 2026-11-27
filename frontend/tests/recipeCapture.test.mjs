@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { detectRecipeGrid, describeArt, rankArt } from '../src/recipeCaptureVision.js'
+import { detectRecipeGrid, describeArt, matchingLocalPosition, rankArt } from '../src/recipeCaptureVision.js'
 import { readNeuronIndex } from '../src/recipeCaptureNeuron.js'
 import { captureFileTitle, mergeConfirmedRows, resolveMatch } from '../src/recipeCapture.js'
 
@@ -56,7 +56,7 @@ test('same-CID editions remain distinct and a nonexistent official painting neve
   const refs = [{card:{cardId:18,variantId:123,artworkIndex:2,konamiId:'4041'}}]
   const map = new Map([['4041',{cardId:18,konamiId:'4041',artworks:{1:'first.png',3:'third.png'}}]])
   const both = resolveMatch({local:[{position:0,score:.91}],neuron:[
-    {konamiId:'4041',neuronArtwork:3,score:.92},{konamiId:'4041',neuronArtwork:1,score:.81}]},refs,map)
+    {konamiId:'4041',neuronArtwork:3,score:.92,localPosition:0},{konamiId:'4041',neuronArtwork:1,score:.81}]},refs,map)
   assert.equal(both.confidence,'high')
   assert.equal(both.candidates[0].variantId,123)
   assert.equal(both.candidates[1].variantId,null)
@@ -65,6 +65,28 @@ test('same-CID editions remain distinct and a nonexistent official painting neve
   assert.deepEqual(missing,{confidence:'unmatched',candidates:[]})
   const ambiguous = resolveMatch({local:[{position:0,score:.80}],neuron:[{konamiId:'900',neuronArtwork:1,score:.89}]},refs,map)
   assert.equal(ambiguous.confidence,'review')
+})
+test('equidistant but different illustrations of one card stay separate until source features agree', () => {
+  const source = (color,art) => ({card:{konamiId:'4041',neuronArtwork:art},descriptor:new Uint8Array(108).fill(color)})
+  const first = source(102,1), second = source(154,2)
+  const local = [{card:{konamiId:'4041',position:0},descriptor:new Uint8Array(108).fill(152)}]
+  const query = new Uint8Array(108).fill(128)
+  const localHits = rankArt(query,local).candidates
+  const official = rankArt(query,[first,second]).candidates
+  // Both official paintings have score .74 against this ambiguous screenshot.
+  assert.equal(official[0].score,official[1].score)
+  assert.equal(matchingLocalPosition(first,[first,second],localHits,local),null)
+  assert.equal(matchingLocalPosition(second,[first,second],localHits,local),0)
+  const refs = [{card:{cardId:31,variantId:105,konamiId:'4041'}}]
+  const ids = new Map([['4041',{cardId:31,konamiId:'4041',artworks:{1:'first.png',2:'second.png'}}]])
+  const hits = official.map((hit,i) => ({...hit,localPosition:matchingLocalPosition(
+    [first,second][i],[first,second],localHits,local)}))
+  const result = resolveMatch({local:localHits,neuron:hits},refs,ids)
+  assert.equal(result.candidates.length,2)
+  assert.equal(result.candidates.find(x=>x.variantId===105).neuronArtwork,2)
+  assert.equal(result.candidates.find(x=>x.neuronArtwork===1).variantId,null)
+  const tie = source(152,3)
+  assert.equal(matchingLocalPosition(second,[first,second,tie],localHits,local),null)
 })
 test('quantity groups confirmed artwork within sections and keeps unresolved and alternative rows', () => {
   const row = {section:'MAIN',quantity:1,confidence:'high',candidates:[{konamiId:'4041',neuronArtwork:1}]}
