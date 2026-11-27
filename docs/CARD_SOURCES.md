@@ -48,9 +48,9 @@
 
 리프트바운드의 새 덱은 2026년 10월 9일 종합·대회 규칙과 11월 23일 금지 목록을 적용한다. 메인 40장에 선택한 챔피언 1장이 포함되고, 룬 12장·서로 다른 전장 3장·레전드 1장·사이드보드 최대 10장을 검사한다. 기존 저장 덱의 규칙 버전은 유지한다. [Riot 공식 규칙과 금지 목록](https://playriftbound.com/en-us/rules-hub/)
 
-2026년 11월 27일 RiftHunt 인쇄본 1,732장을 Riot의 영문·한국어 갤러리와 대조했다. 세트, 수집 번호, 공개 카드 코드, Riot 식별자와 영문 인쇄본 이미지 키가 일치한 카드 중 364장(OGN 340장, OGS 24장)에서 한국어 카드명, 344장에서 한국어 효과를 확인했다. `OGN-001/298`은 **타오르는 화염용**, `OGS-001/024`는 **애니, 화염**이다. 다음 리프트바운드 정기 수집이 기존 카드 ID에 판본 근거를 채운다. 갤러리를 읽지 못하면 같은 인쇄본에서 앞서 확인한 자료를 유지한다. [Riot 한국어 카드 갤러리](https://playriftbound.com/ko-kr/card-gallery/) · [영문 카드 갤러리](https://playriftbound.com/en-us/card-gallery/)
+2026년 11월 28일 PC에서 RiftHunt 인쇄본 1,732장과 보관된 Riot 영문·한국어 갤러리를 다시 대조했다. 한국어 카드명은 376장(OGN 352장, OGS 24장), 한국어 효과는 356장에서 확인했다. 새로 연결된 12장은 오리진 서명판이다. 예를 들어 `OGN-303*/298` **구미호**는 RiftHunt에 `ogn-303*-298`와 `ogn-303-star-298` 두 식별자가 함께 있다. 뒤쪽 식별자가 양쪽 Riot 갤러리와 일치하고, 세트·수집 번호·별표를 포함한 공개 번호·영문 그림까지 대조해야 서명판으로 연결한다. 다음 정기 수집은 기존 인쇄본 ID에 이 근거를 채운다. 갤러리를 읽지 못하면 같은 인쇄본에서 앞서 확인한 자료를 유지한다. [Riot 한국어 카드 갤러리](https://playriftbound.com/ko-kr/card-gallery/) · [영문 카드 갤러리](https://playriftbound.com/en-us/card-gallery/)
 
-그림은 Riot이 해당 이름으로 설명한 공식 CDN URL을 사용한다. 한국어판 363장은 영문판과 에셋이 달랐다. **빅토르**(`OGN-246a/298`)는 한국어 갤러리에도 영문판 그림이 실려 있어 한국어 이름과 영문판 그림을 표시한다. [타오르는 화염용 한국어판](https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/8e1175bebba326d3d38e52499870d23828934092-1488x2079.png?accountingTag=RB)
+그림은 Riot이 해당 이름으로 설명한 공식 CDN URL을 사용한다. 한국어판 375장은 영문판과 에셋이 달랐다. **빅토르**(`OGN-246a/298`)는 한국어 갤러리에도 영문판 그림이 실려 있어 한국어 이름과 영문판 그림을 표시한다. [타오르는 화염용 한국어판](https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/8e1175bebba326d3d38e52499870d23828934092-1488x2079.png?accountingTag=RB)
 
 바이스 영문 인쇄본 19,321건에는 일본어명 필드가 없다. 별도 일본판 자료에는 일본어 카드명과 일부 일본어 효과가 있지만, 두 지역에서 같은 번호가 다른 카드를 뜻하는 사례가 있다. 예를 들어 `BD/W63`의 102~104번은 영문판에서 순서가 바뀌었다. 지역 간 카드의 대응이 확인되기 전에는 영문 원문을 제공한다. [영문 카드 예시](https://en.ws-tcg.com/cardlist/?cardno=5HY%2FW101-E001) · [일본판 자료](https://github.com/CCondeluci/WeissSchwarz-JP-DB) · [대조표 유지관리자가 확인한 번호 변경](https://github.com/Cris-Oblea/ws-card-db/blob/main/documentation/en-name-matching.md)
 

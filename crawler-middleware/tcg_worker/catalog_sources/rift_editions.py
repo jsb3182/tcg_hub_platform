@@ -120,8 +120,19 @@ def read_gallery(path, locale, wanted):
     return entries
 
 
+def printing_identity(card):
+    pack, ident = card.get("set"), card.get("riftboundId")
+    if card.get("variant") == "signature" and isinstance(ident, str):
+        # RiftHunt keeps '*' in the printing number and Riot's '-star-' slug in its other ID field.
+        match = re.fullmatch(r"([a-z0-9]+)-([0-9]{1,4})\*-([0-9]{1,4})", ident)
+        if (match and pack == match[1].upper() and card.get("num") == int(match[2])
+                and card.get("id") == f"{match[1]}-{match[2]}-star-{match[3]}"):
+            ident = card["id"]
+    return pack, ident, image_key(card.get("imgUrl"))
+
+
 def galleries(http, printings):
-    wanted = {card["riftboundId"] for card in printings if card.get("riftboundId") and image_key(card.get("imgUrl"))}
+    wanted = {ident for _, ident, asset in map(printing_identity, printings) if ident and asset}
     if not wanted:
         return {}, {}
     try:
@@ -145,10 +156,6 @@ def galleries(http, printings):
     return {}, {}
 
 
-def printing_identity(card):
-    return card.get("set"), card.get("riftboundId"), image_key(card.get("imgUrl"))
-
-
 def add_korean_edition(record, card, indexes, unique):
     pack, ident, asset = printing_identity(card)
     if not ident or not asset or unique[(pack, ident, asset)] != 1:
@@ -165,6 +172,10 @@ def add_korean_edition(record, card, indexes, unique):
             en["set"] != pack or ko["set"] != pack or card.get("num") is None or
             en["number"] != card["num"] or ko["number"] != card["num"] or en["image"] != asset):
         return
+    if ident != card["riftboundId"]:
+        number, total = card["riftboundId"].upper().rsplit("-", 1)
+        if en["code"] != f"{number}/{total}":
+            return
     name = ko["name"]
     if not isinstance(name, str) or not HANGUL.search(name):
         return  # Korean gallery pages also include unreleased cards in English.
