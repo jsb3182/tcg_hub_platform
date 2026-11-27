@@ -111,6 +111,22 @@ class CatalogIntegrationTest {
         api.perform(get("/api/v1/cards").param("size","101")).andExpect(status().isBadRequest());
     }
 
+    @Test void legacyFacetsCombineWithSelectedLanguageEffectSearch() throws Exception {
+        String marker="effective-"+UUID.randomUUID();
+        for (String type : java.util.List.of("몬스터","마법")) {
+            db.sql("""
+                    insert into card(game_code,name,status,specs) values('YUGIOH','검색 시험','PUBLISHED',
+                      jsonb_build_object('k',cast(? as text),'nw','재록','texts',jsonb_build_object('en',cast(? as text))))
+                    """).param(type).param(marker).update();
+        }
+        api.perform(get("/api/v1/cards").param("lang","en").param("q",marker).param("size","1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2));
+        api.perform(get("/api/v1/cards").param("lang","en").param("q",marker).param("inclusion","REPRINT").param("ygoType","SPELL"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
+        api.perform(get("/api/v1/cards").param("lang","en").param("q",marker).param("inclusion","NEW"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+    }
+
     private MockHttpServletRequestBuilder write(String action) {
         String path = "/api/v1/auth/" + action;
         return post(path).servletPath(path).header("Origin",origin).header("X-TCG-Request","1");

@@ -53,10 +53,12 @@ class CatalogApi {
                     @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang,
                     @RequestParam(required=false) @Positive Long packId,
                     @RequestParam(defaultValue="") @Size(max=64) String rarity,
+                    @RequestParam(defaultValue="") @Pattern(regexp="|NEW|REPRINT|NEW_ART") String inclusion,
+                    @RequestParam(defaultValue="") @Pattern(regexp="|MONSTER|SPELL|TRAP") String ygoType,
                     @RequestParam(defaultValue="") @Size(max=120) String q,
                     @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
                     @RequestParam(defaultValue="24") @Min(1) @Max(100) int size) {
-        var result = cards.search(game, packId, lang, rarity.strip(), q.strip(), PageRequest.of(page,size));
+        var result = cards.search(game, packId, lang, rarity.strip(), inclusion, ygoType, q.strip(), PageRequest.of(page,size));
         return new PageResult(withImages(result.getContent(),lang),page,size,result.getTotalElements());
     }
 
