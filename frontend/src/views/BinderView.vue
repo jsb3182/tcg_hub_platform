@@ -24,14 +24,18 @@ const lot=()=>new URLSearchParams({edition:edition.value,condition:condition.val
 const editionName=v=>languages[v] || uiText('미지정')
 const conditionName=v=>v==='UNSPECIFIED'?uiText('미지정'):v
 const lotBusy=ref(false),lotReady=ref(false)
+const quantityEdited=ref(false)
 let lotVersion=0
 async function readLot(){
   if(!selected.value)return
   const generation=++lotVersion;lotBusy.value=true;lotReady.value=false;formError.value=''
+  quantityEdited.value=false
   try{
     const row=await session.authenticatedRequest('/me/binder/'+selected.value.id+'?'+lot())
     if(generation!==lotVersion||!selected.value)return
-    lotReady.value=true;selected.value.expected=row.quantity;quantity.value=Math.max(1,row.quantity)
+    selected.value.expected=row.quantity
+    if(!quantityEdited.value)quantity.value=Math.max(1,row.quantity)
+    lotReady.value=true
   }catch(cause){if(generation===lotVersion)formError.value=cause.message}
   finally{if(generation===lotVersion)lotBusy.value=false}
 }
@@ -143,7 +147,7 @@ async function save() {
     <dialog v-if="selected" ref="quantityDialog" class="lib-dialog" aria-labelledby="binder-card-title" @cancel.prevent="!busy && close()">
       <form @submit.prevent="save">
         <h2 id="binder-card-title" :lang="selected.language || ''">{{ selected.name }}</h2><CardTextCredit :card="selected"/>
-        <label>{{ $t("보유 수량") }}<input ref="quantityInput" v-model.number="quantity" type="number" required min="0" max="9999" inputmode="numeric" autofocus :readonly="busy" aria-describedby="binder-quantity-help" /></label>
+        <label>{{ $t("보유 수량") }}<input ref="quantityInput" v-model.number="quantity" type="number" required min="0" max="9999" inputmode="numeric" autofocus :readonly="busy" @input="quantityEdited=true" aria-describedby="binder-quantity-help" /></label>
         <div class="binder-fields"><label>{{ $t("언어판") }}<select v-model="edition" :disabled="busy" @change="readLot"><option v-for="v in editions" :key="v" :value="v">{{ editionName(v) }}</option></select></label>
          <label>{{ $t("카드 상태") }}<select v-model="condition" :disabled="busy" @change="readLot"><option v-for="v in conditions" :key="v" :value="v">{{ conditionName(v) }}</option></select></label>
          <label><input type="checkbox" v-model="tradable" :disabled="busy" @change="readLot">{{ $t("거래 가능") }}</label></div>
