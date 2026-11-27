@@ -24,6 +24,18 @@ class WikiCardTests(unittest.TestCase):
                          "verificationUrl": "https://en.ws-tcg.com/cardlist/cardsearch/exec"})
         self.assertEqual(other["printing_number"], "QA-001")
 
+    def test_nivel_http_source_identifies_the_exact_publisher_article(self):
+        link = "http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=664"
+        record = {**fixture(), "game": "NIVEL", "match": {"catalogKey": "catalog:NIVEL:ko:664", "number": "ST08-014"},
+                  "verificationUrl": link}
+        self.assertEqual(checked(record)["verification_url"], link)
+        for bad in (link.replace("664", "1291"), link.replace("cardlists", "notice"),
+                    link + "&redirect=other", link.replace(".co.kr/", ".co.kr.example/")):
+            with self.subTest(url=bad), self.assertRaises(ValueError):
+                checked({**record, "verificationUrl": bad})
+        with self.assertRaises(ValueError):
+            checked({**fixture(), "verificationUrl": link})
+
     def test_mismatched_documents_and_unstructured_values_are_rejected(self):
         for edit in [{"url":"https://namu.wiki/w/other"}, {"url":"https://namu.wiki.example/w/표본"},
                      {"verificationUrl":"https://www.db.yugioh-card.com/?cid=235"}, {"match":{"cid":""}},

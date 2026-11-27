@@ -305,6 +305,9 @@ def main():
     pending = defaultdict(list)
     for row in seed:
         checked(row)
+        # Other games use their own publisher records and keep their reviewed snapshot metadata.
+        if row["game"] not in {"YUGIOH", "POKEMON"}:
+            continue
         if not args.dump and (row["snapshotUrl"] != SNAPSHOT or row["snapshotDate"] != "2021-03-01"):
             cli.error(
                 "The public viewer supports only the pinned March 2021 snapshot; provide its matching local dump"
@@ -326,7 +329,7 @@ def main():
             if (r := json.loads(line)) and (key := "catalog:POKEMON:" + r["external_id"]) in keys
         }
     rules = publisher_rules()
-    inputs = articles(args.dump) if args.dump else read_viewer([r["title"] for r in seed])
+    inputs = articles(args.dump) if args.dump else read_viewer([title for title, _ in pending])
     for article in inputs:
         key = (article["title"], hashlib.sha256(article["text"].encode()).hexdigest())
         for row in pending.pop(key, []):
