@@ -3,8 +3,8 @@ import unittest
 import uuid
 from pathlib import Path
 
-from tcg_worker.catalog_sources.onepiece import CARD_LIST, Index, edition
-from tcg_worker.sync import catalog_product_key, save_cards
+from tcg_worker.catalog_sources.onepiece import CARD_LIST, OPTCG, Index, edition
+from tcg_worker.sync import catalog_product_key, is_numbered_printing, save_cards
 
 
 PREFIX = "catalog:ONEPIECE:"
@@ -84,7 +84,32 @@ class OnePiecePackContinuity(unittest.TestCase):
                 insert into product_release(game_code,product_key,region,name,release_date,source_url,catalog_code,catalog_name)
                 values('ONEPIECE','test:regional','KR','국내 발매','2088-01-02','https://example.invalid','OP-01',%s)
                 """, (REGIONAL,))
+            # Shipped .13 added DON!! alongside collector-number printings; V56 kept these pairs visible.
+            # Check each independent reason the source or editor might require both records to remain.
+            don_cases = []
+            for sku, source_url, kind, product in [
+                    ("OP-03", OPTCG + "allDonCards/", "don", "OP-03"),
+                    ("OP-04", "https://example.invalid/don", "don", "OP-04"),
+                    ("OP-05", OPTCG + "allDonCards/", "leader", "OP-05"),
+                    ("OP-06", OPTCG + "allDonCards/", "don", "OP-07"),
+                    ("OP-07", OPTCG + "allDonCards/", "don", "OP-07")]:
+                base = pack(sku, "Old package title", PREFIX + sku)
+                hashed_pack = pack(sku, "Regional package title", hashed(sku))
+                did = card(hashed_pack, sku, "DON:don_19")
+                db.execute("""update card set source_url=%s, specs=jsonb_build_object('type',%s::text,'productCode',%s::text)
+                              where id=%s""", (source_url, kind, product, did))
+                if sku == "OP-07":
+                    db.execute("update pack set release_label='manual A' where id=%s", (base,))
+                    db.execute("update pack set release_label='manual B' where id=%s", (hashed_pack,))
+                don_cases.append((sku, base, hashed_pack, did))
             db.execute(next(migrations.glob("V56__*.sql")).read_text("utf-8"))
+            for _, _, hashed_pack, _ in don_cases:
+                self.assertEqual(db.execute("select current_catalog_pack(%s)", (hashed_pack,)).fetchone(), (hashed_pack,))
+            db.execute(next(migrations.glob("V57__*.sql")).read_text("utf-8"))
+            for sku, base, hashed_pack, did in don_cases:
+                target = base if sku == "OP-03" else hashed_pack
+                self.assertEqual(db.execute("select current_catalog_pack(%s),pack_id from card where id=%s",
+                                            (hashed_pack, did)).fetchone(), (target, target))
             source_id = db.execute("select id from feed_source where provider='CATALOG' and source_key='ONEPIECE'").fetchone()[0]
             source = {"game_code": "ONEPIECE", "id": source_id, "auto_publish": True}
             rows = [
@@ -121,3 +146,13 @@ class OnePiecePackContinuity(unittest.TestCase):
             self.assertEqual(db.execute("select count(distinct pack_id) from card where legacy_key like 'catalog:ONEPIECE:PROMO:%'").fetchone(), (2,))
             self.assertEqual(db.execute("select onepiece_numbered_pack_key('OP-01'),onepiece_numbered_pack_key('PROMO')").fetchone(),
                              (hashed("OP-01"), None))
+
+    def test_don_id_must_belong_to_the_source_and_product(self):
+        card = {"external_id":"OP-01:DON:don_19", "number":"DON:don_19", "source_url":OPTCG + "allDonCards/",
+                "specs":{"type":"don", "productCode":"OP-01"}}
+        self.assertTrue(is_numbered_printing(card, "OP-01"))
+        for patch in ({"external_id":"OP-02:DON:don_19"}, {"source_url":OPTCG + "allSetCards/"},
+                      {"specs":{"type":"leader", "productCode":"OP-01"}}, {"specs":{"type":"don"}},
+                      {"number":"DON:other_19", "external_id":"OP-01:DON:other_19"}):
+            self.assertFalse(is_numbered_printing({**card, **patch}, "OP-01"))
+        self.assertFalse(is_numbered_printing(card, "PROMO"))
