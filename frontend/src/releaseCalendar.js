@@ -1,4 +1,4 @@
-export const productTypes={BOOSTER:'부스터 팩',STARTER:'스타터 덱',PROMO:'프로모션',ACCESSORY:'액세서리',SPECIAL:'특별 상품',UNKNOWN:'유형 미확인'}
+export const productTypes={BOOSTER:'부스터 팩',STARTER:'구축 덱',PROMO:'프로모션',ACCESSORY:'액세서리',SPECIAL:'특별 상품',UNKNOWN:'유형 미확인'}
 
 export function selectedCodes(raw,options){
   const codes=new Set(typeof raw==='string' ? raw.split(',') : [])

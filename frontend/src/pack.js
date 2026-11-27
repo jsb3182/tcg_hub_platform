@@ -41,7 +41,7 @@ const labels = {
   '월간 달력':['Month calendar','月間カレンダー'],'타임라인':['Timeline','タイムライン'],
   '이전 달':['Previous month','前の月'],'다음 달':['Next month','次の月'],'이 달의 전체 일정':['All releases this month','今月の予定をすべて表示'],
   '종목·지역·상품 필터':['Games, regions and products','ゲーム・地域・商品で絞り込む'],'상품 유형':['Product type','商品種別'],
-  '부스터 팩':['Booster pack','ブースターパック'],'스타터 덱':['Starter deck','スタートデッキ'],'프로모션':['Promotion','プロモーション'],
+  '부스터 팩':['Booster pack','ブースターパック'],'구축 덱':['Preconstructed deck','構築済みデッキ'],'프로모션':['Promotion','プロモーション'],
   '액세서리':['Accessory','アクセサリー'],'특별 상품':['Special product','特別商品'],'유형 미확인':['Type unconfirmed','種別未確認'],
   '필터 초기화':['Clear filters','絞り込みを解除'],'발매 일정 관리':['Manage releases','発売予定の管理'],
   '발매 일정 추가':['Add release','発売予定を追加'],'발매 일정 수정':['Edit release','発売予定を編集'],

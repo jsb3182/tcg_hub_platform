@@ -35,7 +35,7 @@ try {
     g.fillStyle='#dc244d';g.fillRect(30,44,30,44)
     return sheet.toDataURL('image/webp',1).split(',')[1]
   })
-  let writes=0, rejectSave=false, quantity=2, createCount=0
+  let writes=0, rejectSave=false, quantity=2, createCount=0, pendingLotEdit
   await context.route('**/*',async route=>{
     const req=route.request(), url=new URL(req.url())
     if(url.origin!==host)return route.abort()
@@ -65,6 +65,7 @@ try {
       if(api==='me/binder/stats')return respond([{gameCode:'YUGIOH',uniqueCards:24,copies:24}])
       if(api==='me/binder')return respond({items:owned,total:24,copies:24,page:0})
       if(api==='me/binder/'+card.id){
+        if(method==='GET' && url.searchParams.get('edition')==='ko')await pendingLotEdit
         if(method==='PUT'){assert.equal(req.postDataJSON().expectedQuantity,quantity);quantity=req.postDataJSON().quantity}
         return respond({quantity})
       }
@@ -227,7 +228,12 @@ try {
   await page.keyboard.press('Escape')
   assert.ok(await pick.evaluate(el=>el===document.activeElement))
   await pick.click()
+  let releaseLotLookup
+  pendingLotEdit=new Promise(resolve=>{releaseLotLookup=resolve})
+  await dialog.getByRole('combobox',{name:/언어판/}).selectOption('ko')
   await input.fill('5')
+  assert.ok(await button('수량 저장').isDisabled())
+  releaseLotLookup()
   await button('수량 저장').click()
   await page.getByText(card.name+' 5장을 저장했습니다.').waitFor()
   assert.equal(quantity,5)
