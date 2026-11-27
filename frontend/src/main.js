@@ -19,6 +19,7 @@ const router = createRouter({
     { path: '/releases/:id(\\d+)', name: 'pack', component: () => import('./views/PackView.vue'), meta: { title: '수록 카드' } },
     { path: '/login', name: 'login', component: () => import('./views/LoginView.vue'), meta: { title: '로그인' } },
     { path: '/news', name: 'news', component: () => import('./views/NewsView.vue'), meta: { title: '새 소식' } },
+    { path: '/community/:id(\\d+)?', name: 'community', component: () => import('./views/CommunityView.vue'), meta: { title: '커뮤니티' } },
     { path: '/stores', name: 'stores', component: () => import('./views/StoresView.vue'), meta: { title: '매장 지도' } },
     { path: '/binder', name: 'binder', component: () => import('./views/BinderView.vue'), meta: { title: '바인더' } },
     { path: '/decks', name: 'decks', component: () => import('./views/DecksView.vue'), meta: { title: '내 덱' } },

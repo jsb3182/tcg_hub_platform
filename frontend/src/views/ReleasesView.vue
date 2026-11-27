@@ -5,12 +5,24 @@ import {mediaPath,request,sourceLink} from '../api'
 import {gameCodes,gameName,locale} from '../i18n'
 import {packTitle,pt,regionName,releaseName,releaseRegions} from '../pack'
 import {bookmarkedPack,publicPacks} from '../legacyPacks'
+import {selectedCodes,toggledCode,releaseDistance,kstMonth,changeMonth,productTypes} from '../releaseCalendar'
+import ReleaseMonthGrid from '../components/ReleaseMonthGrid.vue'
+import PersonalCalendar from '../components/PersonalCalendar.vue'
+import PublicPackFinder from '../components/PublicPackFinder.vue'
 
 const route=useRoute(),router=useRouter(),size=24
 const periods={upcoming:'발매 예정',past:'지난 발매',all:'날짜 전체'}
 const sections=[['SCHEDULE','팩 발매 일정'],['DISTRIBUTION','동봉 · 배포 카드'],['PREMIERE','TCG 월드 프리미어 카드'],['ARCHIVE','장기 미수록 카드']]
-const game=computed(()=>gameCodes.includes(route.query.game)?route.query.game:'')
-const region=computed(()=>Object.keys(releaseRegions).includes(route.query.region)?route.query.region:'')
+const games=computed(()=>selectedCodes(route.query.game,gameCodes))
+const regions=computed(()=>selectedCodes(route.query.region,Object.keys(releaseRegions)))
+const types=computed(()=>selectedCodes(route.query.productType,Object.keys(productTypes)))
+const game=computed(()=>games.value.join(',')),region=computed(()=>regions.value.join(','))
+const products=computed(()=>types.value.join(','))
+const grid=computed(()=>route.query.view==='month')
+const asOf=ref('')
+const month=computed(()=>/^\d{4}-(0[1-9]|1[0-2])$/.test(route.query.month||'') ? route.query.month : kstMonth(asOf.value))
+const requestedMonth=computed(()=>grid.value ? month.value : '')
+const day=computed(()=>typeof route.query.day==='string' && route.query.day.startsWith(month.value+'-')?route.query.day:'')
 const period=computed(()=>Object.keys(periods).includes(route.query.period)?route.query.period:'upcoming')
 const query=computed(()=>typeof route.query.q==='string'?route.query.q.slice(0,100):'')
 const page=computed(()=>/^\d{1,6}$/.test(route.query.page||'')?Number(route.query.page):0)
@@ -23,7 +35,7 @@ function destination(edits){
   for(const key of Object.keys(params))if(params[key]===''||params[key]==null)delete params[key]
   return {name:'releases',query:params}
 }
-function filter(edits){return router.replace(destination({q:draft.value.trim(),page:null,...edits}))}
+function filter(edits){return router.replace(destination({q:draft.value.trim(),page:null,day:null,...edits}))}
 watch(query,value=>{draft.value=value})
 watch(draft,(value,_,cleanup)=>{
   if(value.trim()===query.value)return
@@ -47,19 +59,32 @@ watch([()=>route.hash,packs],async([hash,rows])=>{
   if(!sections.some(([id])=>hash==='#release-'+id))return
   await nextTick();document.getElementById(hash.slice(1))?.scrollIntoView({block:'start'})
 },{immediate:true})
-watch([game,region,period,query,page,retry],async([g,r,when,q,n],_,cleanup)=>{
+watch([game,region,period,query,page,retry,grid,requestedMonth,products],async([g,r,when,q,n,_,calendar,m,product],previous,cleanup)=>{
   const controller=new AbortController(),signal=controller.signal
   cleanup(()=>controller.abort())
   error.value='';loading.value=true;result.value=null
   try{
-    const params=new URLSearchParams({period:when,page:n,size})
+    const params=new URLSearchParams({period:when,page:calendar?0:n,size:calendar?100:size})
     if(g)params.set('game',g)
     if(r)params.set('region',r)
     if(q)params.set('q',q)
+    if(product)params.set('productType',product)
+    if(calendar)params.set('month',m)
     const data=await request('/release-calendar?'+params,{signal})
     if(signal.aborted)return
+    if(calendar){
+      let p=0
+      while(data.items.length<data.total && data.items.length>0){
+        params.set('page',String(++p))
+        const chunk=await request('/release-calendar?'+params,{signal})
+        if(signal.aborted)return
+        if(!chunk.items.length)break
+        data.items.push(...chunk.items)
+      }
+    }
+    asOf.value=data.asOf
     const last=Math.max(0,Math.ceil(data.total/size)-1)
-    if(n>last){await router.replace(destination({page:last||null}));return}
+    if(!calendar && n>last){await router.replace(destination({page:last||null}));return}
     result.value=data
   }catch(cause){if(!signal.aborted)error.value=cause.message}
   finally{
@@ -77,6 +102,7 @@ const months=computed(()=>{
   const dates=new Map()
   const format=new Intl.DateTimeFormat(locale.value,{year:'numeric',month:'long',timeZone:'UTC'})
   for(const event of result.value?.items||[]){
+    if(grid.value && day.value && day.value!==event.releaseDate)continue
     const month=event.releaseDate.slice(0,7)
     if(!dates.has(month))dates.set(month,{id:month,title:format.format(new Date(month+'-01T00:00:00Z')),items:[]})
     dates.get(month).items.push(event)
@@ -85,7 +111,7 @@ const months=computed(()=>{
 })
 const groups=computed(()=>{
   const term=query.value.trim().normalize('NFKC').toLocaleLowerCase()
-  const matching=(packs.value||[]).filter(p=>(!game.value||p.gameCode===game.value) &&
+  const matching=(packs.value||[]).filter(p=>(!games.value.length||games.value.includes(p.gameCode)) &&
     [p.name,p.officialProduct?.englishName,p.code,p.latestProduct,p.metadata?.kind].some(v=>String(v||'').normalize('NFKC').toLocaleLowerCase().includes(term)))
   return sections.map(([id,title])=>{
     const items=matching.filter(p=>p.group===id)
@@ -100,11 +126,13 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
   <div class="releases-page">
     <header class="release-head"><h1>{{ pt('발매 일정') }}</h1>
       <div class="release-filters">
-        <label>{{ pt('게임') }}<select :value="game" @change="filter({game:$event.target.value})"><option value="">{{ pt('모든 종목') }}</option>
+        <label>{{ pt('게임') }}<select :value="game" @change="filter({game:$event.target.value})"><option value="">{{ pt('모든 종목') }}</option><option v-if="games.length>1" :value="game" disabled>{{ games.map(gameName).join(' · ') }}</option>
           <option v-for="code in gameCodes" :key="code" :value="code">{{ gameName(code) }}</option></select></label>
         <label class="release-search">{{ pt('팩 검색') }}<input v-model="draft" type="search" maxlength="100" :placeholder="pt('팩 이름 또는 코드')" @keydown.enter.prevent="filter({})"></label>
       </div>
     </header>
+    <PublicPackFinder :game="game"/>
+    <PersonalCalendar/>
     <nav v-if="groups.length" class="release-sections" :aria-label="pt('팩 분류')">
       <a v-for="s in groups" :key="s.id" :href="'#release-'+s.id">{{ pt(s.title) }}</a>
       <a href="#regional-calendar" class="calendar-jump">{{ pt('지역별 발매 일정') }} ↓
@@ -131,12 +159,20 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
       </div>
       <section id="regional-calendar" class="regional-calendar">
         <div class="calendar-heading"><h2>{{ pt('지역별 발매 일정') }}</h2>
-          <label>{{ pt('발매 지역') }}<select :value="region" @change="filter({region:$event.target.value})"><option value="">{{ pt('모든 지역') }}</option>
+          <label>{{ pt('발매 지역') }}<select :value="region" @change="filter({region:$event.target.value})"><option value="">{{ pt('모든 지역') }}</option><option v-if="regions.length>1" :value="region" disabled>{{ regions.map(regionName).join(' · ') }}</option>
             <option v-for="(_,code) in releaseRegions" :key="code" :value="code">{{ regionName(code) }}</option></select></label>
         </div>
+    <details class="release-multi"><summary>{{ pt('종목·지역·상품 필터') }}<small v-if="games.length+regions.length+types.length"> ({{ games.length+regions.length+types.length }})</small></summary>
+      <fieldset><legend>{{ pt('게임') }}</legend><label v-for="code in gameCodes" :key="code"><input type="checkbox" :checked="games.includes(code)" @change="filter({game:toggledCode(games,code)})">{{ gameName(code) }}</label></fieldset>
+      <fieldset><legend>{{ pt('발매 지역') }}</legend><label v-for="(_,code) in releaseRegions" :key="code"><input type="checkbox" :checked="regions.includes(code)" @change="filter({region:toggledCode(regions,code)})">{{ regionName(code) }}</label></fieldset>
+      <fieldset><legend>{{ pt('상품 유형') }}</legend><label v-for="(label,code) in productTypes" :key="code"><input type="checkbox" :checked="types.includes(code)" @change="filter({productType:toggledCode(types,code)})">{{ pt(label) }}</label></fieldset>
+      <button class="text-button" type="button" @click="filter({game:null,region:null,productType:null})">{{ pt('필터 초기화') }}</button>
+    </details>
+    <div class="calendar-mode" :aria-label="pt('일정 보기')"><button type="button" :aria-pressed="!grid" @click="filter({view:null,month:null})">{{ pt('타임라인') }}</button>
+      <button type="button" :aria-pressed="grid" @click="filter({view:'month',month,period:'all'})">{{ pt('월간 달력') }}</button></div>
     <nav class="release-views" :aria-label="pt('일정 보기')">
       <RouterLink v-for="(label,key) in periods" :key="key" :aria-current="period===key?'page':null"
-        :to="destination({period:key,q:draft.trim(),region,page:null})">{{ pt(label) }}</RouterLink>
+        :to="destination({period:key,q:draft.trim(),region,page:null,day:null})">{{ pt(label) }}</RouterLink>
     </nav>
     <p v-if="loading" role="status" class="state">{{ pt('불러오는 중…') }}</p>
     <p v-else-if="error" role="alert" class="inline-error">{{ error }} <button type="button" class="text-button" @click="retry++">{{ pt('다시 시도') }}</button></p>
@@ -145,14 +181,16 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
         <span role="status">{{ pt('일정') }} <b>{{ result.total.toLocaleString(locale) }}</b></span>
         <small v-if="result.asOf">{{ pt('기준일') }} <time :datetime="result.asOf">{{ result.asOf }}</time></small>
       </div>
+      <ReleaseMonthGrid v-if="grid" :month="month" :items="result.items" :as-of="result.asOf" :day="day"
+        @select="value=>filter({day:value})" @month="offset=>filter({month:changeMonth(month,offset)})"/>
       <p v-if="!result.total" class="state">{{ pt(period==='upcoming'&&!query?'등록된 발매 예정 일정이 없습니다.':'조건에 맞는 발매 일정이 없습니다.') }}
         <RouterLink v-if="period==='upcoming'" :to="destination({period:'past',page:null})">{{ pt('지난 발매') }} →</RouterLink></p>
       <section v-for="month in months" :key="month.id" class="release-month">
         <h2>{{ month.title }}</h2>
         <ul><li v-for="e in month.items" :key="e.id">
-          <time class="release-date" :datetime="e.releaseDate">{{ e.releaseDate }}</time>
+          <time class="release-date" :datetime="e.releaseDate">{{ e.releaseDate }} <small>{{ releaseDistance(e.releaseDate,result.asOf) }}</small></time>
           <div class="event-product">
-            <small>{{ [gameName(e.gameCode),regionName(e.region),e.code].filter(Boolean).join(' · ') }}</small>
+            <small>{{ [gameName(e.gameCode),regionName(e.region),productTypes[e.productType] && e.productType!=='UNKNOWN'?pt(productTypes[e.productType]):'',e.code].filter(Boolean).join(' · ') }}</small>
             <RouterLink v-if="e.catalogPackId" :to="packRoute(e.catalogPackId)" :aria-label="releaseName(e)+' · '+pt('팩 상세')">
               <span :lang="e.names?.[locale]?locale:undefined">{{ releaseName(e) }}</span> <span class="to-pack" aria-hidden="true">→</span></RouterLink>
             <strong v-else :lang="e.names?.[locale]?locale:undefined">{{ releaseName(e) }}</strong>
@@ -162,7 +200,7 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
           </div>
         </li></ul>
       </section>
-      <nav v-if="result.total>size" class="pagination" :aria-label="pt('결과 페이지')">
+      <nav v-if="!grid && result.total>size" class="pagination" :aria-label="pt('결과 페이지')">
         <button class="secondary" :disabled="!page" @click="turn(page-1)">{{ pt('이전') }}</button>
         <span>{{ page+1 }} / {{ Math.ceil(result.total/size) }}</span>
         <button class="secondary" :disabled="(page+1)*size>=result.total" @click="turn(page+1)">{{ pt('다음') }}</button>
@@ -173,6 +211,10 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
   </div>
 </template>
 <style scoped>
+.release-multi{margin:.55rem 0;border-block:1px solid var(--bd)}.release-multi summary{cursor:pointer;padding:.65rem 0;min-height:44px;font-size:.88rem;font-weight:600}
+.release-multi fieldset{border:0;padding:0;margin:3px 0 9px}.release-multi legend{font-weight:600;font-size:.84rem;color:var(--mu)}.release-multi label{display:inline-flex;align-items:center;gap:4px;padding:4px 10px 4px 0;min-height:36px;font-size:.85rem}.release-multi input{accent-color:var(--ac)}
+.calendar-mode{display:flex;gap:4px;margin:.7rem 0}.calendar-mode button{background:var(--sf);color:var(--mu);border:1px solid var(--bd);border-radius:5px;padding:.4rem .7rem;min-height:40px}.calendar-mode button[aria-pressed=true]{color:var(--ac);border-color:var(--ac)}
+.release-date small{white-space:nowrap}
 .releases-page{max-width:62rem;margin:2rem auto}.release-head h1{margin:0 0 1.15rem}.release-filters{display:grid;grid-template-columns:minmax(8rem,1fr) minmax(10rem,2.2fr);gap:.6rem 1rem}
 .release-filters label,.calendar-heading label{display:grid;gap:.25rem;min-width:0;color:var(--mu);font-size:.85rem}.release-filters :is(input,select),.calendar-heading select{width:100%;min-width:0;min-height:44px;background:var(--sf);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:.45rem .65rem}
 .release-views,.release-sections{display:flex;align-items:center;flex-wrap:wrap;gap:0 1.15rem;border-bottom:1px solid var(--bd);margin-top:1rem}

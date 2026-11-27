@@ -148,7 +148,11 @@ button.atlas { cursor: zoom-in; box-shadow: 0 1px 5px rgba(0,0,0,.28); }
   .card-title .card-id-mobile:not(:empty) { display:block; font-size:.77rem; }
   .detail-grid { grid-template-columns: minmax(96px, 118px) minmax(0, 1fr); gap: 14px; }
 }
-@media (max-width:880px) {
+@media (min-width:1041px) and (max-width:1160px) {
+  .masthead-inner {gap:18px}
+  .masthead nav {gap:13px}
+}
+@media (max-width:1040px) {
   .masthead-inner { min-height:54px; position:relative; }
   .brand img { width:28px; height:28px; }
   .menu-switch { display:inline-flex; }

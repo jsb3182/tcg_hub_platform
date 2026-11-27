@@ -1,4 +1,5 @@
 import { pt } from './pack'
+import {mediaPath} from './api'
 
 export async function pngSnapshot(source, title, subtitle, width) {
   const { toBlob } = await import('html-to-image')
@@ -18,17 +19,22 @@ export async function pngSnapshot(source, title, subtitle, width) {
   caption.style.cssText='margin:0 0 15px;font-size:13px'
   caption.textContent=subtitle
   const content=source.cloneNode(true)
+  for(const img of content.querySelectorAll('img')){
+    img.removeAttribute('srcset')
+    if(!mediaPath(img.getAttribute('src')))img.removeAttribute('src')
+  }
   content.querySelectorAll('dialog,.variant-nav,.lib-actions,[data-png-skip]').forEach(el=>el.remove())
   content.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'))
   sheet.append(heading,caption,content)
   stage.append(sheet);document.body.append(stage)
   try {
     await document.fonts.ready
-    // Some publishers permit displaying their print but restrict copying the pixels to a canvas.
     await Promise.all([...content.querySelectorAll('img')].map(async img=>{
       try{
+        const url=mediaPath(img.getAttribute('src'))
+        if(!url)throw new Error('Missing local artwork')
         const original=new Image()
-        original.crossOrigin='anonymous'; original.referrerPolicy='no-referrer'; original.src=img.src
+        original.src=url
         await original.decode()
         const copy=document.createElement('canvas')
         copy.width=Math.min(original.naturalWidth,Math.max(width,300))

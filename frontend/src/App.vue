@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { languages, locale, selectLocale, supportedLanguage, t } from './i18n'
 import { useSession } from './stores/session'
 import DeckPageJump from './components/DeckPageJump.vue'
+import BottomTabs from './components/BottomTabs.vue'
 
 const session = useSession()
 const router = useRouter()
@@ -36,12 +37,13 @@ const loginTarget = computed(() => {
   const route = router.currentRoute.value
   if (route.name === 'admin') return {name:'login',query:{to:'admin'}}
   if (route.name === 'login') return {name:'login',query:{next:route.query.next,to:route.query.to}}
-  if (['binder','decks','deck-new','deck-edit','play','stores'].includes(route.name)) return {name:'login',query:{next:route.fullPath}}
+  if (['binder','decks','deck-new','deck-edit','play','stores','community'].includes(route.name)) return {name:'login',query:{next:route.fullPath}}
   return {name:'login'}
 })
 const navigation = [
   {to:'/', label:'카드 도감', pages:['catalog','card']}, {to:'/releases',label:'발매 일정',pages:['releases','pack']},
   {to:'/news', label:'새 소식', pages:['news']},
+  {to:'/community', label:'커뮤니티', pages:['community']},
   {to:'/stores', label:'매장 지도', pages:['stores']}, {to:'/binder', label:'바인더', pages:['binder']},
   {to:'/decks', label:'내 덱', pages:['decks','deck-new','deck-edit','shared-deck']}, {to:'/play', label:'플레이', pages:['play']},
 ]
@@ -102,4 +104,5 @@ async function logout() {
   <div v-if="logoutError" class="notice shell" role="alert">{{ logoutError }}</div>
   <main id="content" class="shell" tabindex="-1"><RouterView /></main>
   <footer class="shell footer">{{ $t("카드 이름과 이미지의 권리는 각 권리자에게 있습니다.") }}</footer>
+  <BottomTabs v-if="!menuOpen"/>
 </template>

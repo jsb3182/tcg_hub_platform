@@ -9,10 +9,15 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 const dist=fileURLToPath(new URL('../dist/',import.meta.url)), origin='http://127.0.0.1:19891'
 const mime={'.html':'text/html;charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png'}
 const subscriptions=[]
+const releases=[]
+let conflictingRelease=true
 let fixtureRole='ROLE_ADMIN'
 const codes=['YUGIOH','POKEMON','ONEPIECE','WEISS','NIVEL','RIFTBOUND']
 const titles={ko:'연습용 카드',en:'Practice card',ja:'練習カード'}, writes=[],errors=[]
 const effects={ko:'확인된 한국어 효과',en:'Verified English effect',ja:'確認済みの日本語効果'}
+const wikiTitle='카드 <b>별칭</b> & 기록'
+const wiki={title:wikiTitle,language:'ko',url:'https://namu.wiki/w/'+encodeURIComponent(wikiTitle),snapshotDate:'2021-03-01',
+ textKo:'문서에서 확인한 설명 <b>정보</b>',details:{packs:['문서의 검증 팩 (QA-57)']}}
 const atlasTile=(col,language)=>({sheetId:9,col,row:0,url:'/media/fixture.webp',cellWidth:200,cellHeight:290,language})
 const atlasVariants=[{id:71,image:atlasTile(0,'en')},{id:72,image:atlasTile(3,'ja')},{id:73,image:atlasTile(2,null)}]
 function atlasCard(lang){
@@ -31,6 +36,9 @@ function artwork(id,lang){
 const deck={id:70,name:'Fixture deck',gameCode:'ONEPIECE',revision:1,state:'DRAFT',updatedAt:'2026-11-01T00:00:00Z',entries:[],rule:{version:1,sections:[{section:'MAIN',minCards:50,maxCards:50}]}}
 const sourceCard={id:54,name:'수집 카드 QA',number:'QA-54',gameCode:'YUGIOH',status:'PENDING',version:1,editable:false,specs:{}}
 let translation={lang:'ja',name:'保存済み',effect:'',sourceUrl:'https://example.invalid/ja',basis:'TRANSLATED_NAME',version:1},firstSave=true
+const communityReports=[{id:3,postId:16,commentId:4,title:'Synthetic post',reason:'Reported reply <b>literal</b>',excerpt:'Synthetic comment',status:'OPEN',createdAt:'2026-11-01T00:00:00Z'},
+  {id:4,postId:17,title:'Another post',reason:'Duplicate listing',excerpt:'Fixture excerpt',status:'OPEN',createdAt:'2026-11-02T00:00:00Z'}]
+let reportReads=0
 try {
  const context=await browser.newContext({viewport:{width:360,height:800},isMobile:true,hasTouch:true,serviceWorkers:'block'})
  // Android System WebView 91 predates these built-ins. Disable them before any app module loads.
@@ -50,11 +58,11 @@ try {
   const req=route.request(),u=new URL(req.url()),path=u.pathname
   if(u.origin==='https://example.invalid' && path.startsWith('/prints/') && req.isNavigationRequest())
     return route.fulfill({contentType:'text/plain',body:'Fixture card printing'})
-  if(u.origin!==origin)return route.abort()
+  if(u.origin!==origin){if(u.hostname==='publisher.example.invalid')errors.push('External artwork attempted');return route.abort()}
   const json=(data,status=200)=>route.fulfill({json:data,status})
   if(path.startsWith('/api/')){
    const api=path.replace(/^\/api\/(v1\/)?/,''), lang=u.searchParams.get('lang')||'ko'
-   const card={id:51,name:titles[lang],language:lang,gameCode:u.searchParams.get('game')||'ONEPIECE',number:'QA-51',rarity:'R',effect:'Fixture effect',effectLanguage:'en'}
+   const card={id:51,name:titles[lang],language:lang,gameCode:u.searchParams.get('game')||'ONEPIECE',number:'QA-51',rarity:'R',effect:'Fixture effect',effectLanguage:'en',imageUrl:'https://publisher.example.invalid/uncached.png'}
    if(req.method()!=='GET'&&api!=='auth/refresh'){
      assert.equal(req.headers()['x-tcg-request'],'1');assert.equal(req.headers().authorization,'Bearer fixture')
      const body=req.postData()?req.postDataJSON():null
@@ -70,11 +78,15 @@ try {
      {id:6,category:'RESTOCK',title:'신상품 입고',gameCode:null,startsAt:'2026-11-25T13:30:00Z',sourceUrl:'https://example.invalid/store-restock'}
    ]}],total:1})
    if(api==='me/favorites/stores')return json([])
-   if(api==='play/cards' && u.searchParams.get('game')==='YUGIOH')return json([atlasCard(lang)])
+   if(api==='play/cards' && u.searchParams.get('game')==='YUGIOH')return json([{...atlasCard(lang),imageUrl:'https://publisher.example.invalid/neuron.webp',imageLanguage:lang}])
    if(api==='play/cards')return json([{...card,...artwork(51,lang)}])
    if(api==='cards' && u.searchParams.get('game')==='YUGIOH')return json({items:[atlasCard(lang)],total:1})
    if(api==='cards')return json({items:[card],total:1})
-   if(api==='cards/54')return json({...atlasCard(lang),specs:{},variants:atlasVariants})
+   if(api==='cards/54')return json({...atlasCard(lang),specs:{wikiReferences:[wiki,
+     {...wiki,title:'Invalid host',url:'https://other.invalid/w/article'}]},variants:atlasVariants})
+   if(api==='cards/57')return json({id:57,number:'WK-57',gameCode:'YUGIOH',name:'위키 근거 카드명',language:'ko',
+     nameBasis:'WIKI_REFERENCE',nameReferenceUrl:wiki.url,effect:'근거 문서를 읽고 요약한 효과.',effectLanguage:'ko',
+     effectBasis:'NAMUWIKI_KO',effectReferenceUrl:wiki.url,specs:{wikiReferences:[wiki]},variants:[],prices:[{variantId:1,provider:'QA Source',market:'QA Market',currency:'KRW',amount:3500,sourceUrl:'https://example.invalid/snapshot',observedAt:'2026-11-01T00:00:00Z'}]})
    if(api==='cards/55')return json({...atlasCard(lang),id:55,imageUrl:'/media/fixture.webp',imageLanguage:'en',specs:{},variants:atlasVariants})
    if(api==='cards/56')return json({...atlasCard(lang),id:56,imageUrl:'/media/fixture.webp',imageLanguage:lang,imageBasis:'CARD_REFERENCE',imageSource:'https://example.invalid/prints/'+lang+'/art',effectBasis:lang==='ko'?'REVIEWED_TRANSLATION':'REVIEWED_PRINTING',specs:{names:{[lang]:'Obsolete unreviewed name'}},variants:atlasVariants})
    if(['cards/51','cards/52','cards/53'].includes(api)){
@@ -99,6 +111,17 @@ try {
    if(api==='me/decks/needed')return json({items:[{cardId:54,name:titles.en,language:'en',nameBasis:'SOURCE_LABEL',number:'AT-54',owned:0,required:1}],next:null})
    if(api==='me/decks/70/code')return json({code:'TCGHUB1-fixture'})
    if(api==='admin/operations')return json({cardCounts:{ONEPIECE:1},sources:subscriptions})
+   if(api==='admin/providers')return json({providers:[{code:'X',requiresKey:true,configured:false},{code:'POKEMON',requiresKey:false}],cacheBytes:1048576})
+   if(api==='admin/releases'){
+     if(req.method()==='GET')return json({items:releases,total:releases.length})
+     const item={...req.postDataJSON(),id:91,version:1};releases.push(item);return json(item,201)
+   }
+   if(api==='admin/releases/91'){
+     if(req.method()==='GET')return json(releases[0])
+     if(conflictingRelease){conflictingRelease=false;Object.assign(releases[0],{version:2,name:'다른 운영자 수정'});return json({},409)}
+     assert.equal(req.postDataJSON().version,2)
+     Object.assign(releases[0],req.postDataJSON(),{version:3});return json(releases[0])
+   }
    if(api==='admin/catalog/cards')return json({items:[sourceCard],total:1})
    if(api==='admin/catalog/cards/54')return json(sourceCard)
    if(api==='admin/catalog/cards/54/translations')return json([translation])
@@ -118,6 +141,12 @@ try {
    if(api==='admin/actions')return json([{action:'TEST_ACTION',occurredAt:'2026-11-01T00:00:00Z'}])
    if(api==='admin/users')return json([{id:8,email:'fixture@example.invalid',role:'ROLE_USER',enabled:true}])
    if(api==='admin/posts')return json({items:[{id:4,title:'Fixture post',hidden:false,pinned:false}],total:1})
+   if(api==='admin/community/reports'){
+     reportReads++;const items=communityReports.filter(r=>r.status===u.searchParams.get('status'));return json({items,total:items.length,page:0,size:20})
+   }
+   if(api.startsWith('admin/community/reports/')&&req.method()==='PATCH'){
+     const row=communityReports.find(r=>r.id===Number(api.split('/').pop()));row.status=req.postDataJSON().status;return json({id:row.id})
+   }
    if(api==='admin/stores' && u.searchParams.get('q')==='not-a-store')return json([])
    if(api==='admin/stores')return json([{id:8,name:'Fixture shop',address:'Seoul',gameCodes:['ONEPIECE'],version:2}])
    if(api==='news')return json({items:[{id:3,title:titles[lang],originalTitle:'Practice card',originalLanguage:'en',originalSummary:'Original summary',summary:'Original summary',contentLanguage:lang,summaryLanguage:'en',translationStatus:lang==='en'?'ORIGINAL':'TRANSLATED',gameCode:'ONEPIECE',sourceUrl:'https://example.invalid/news/3'}],total:1})
@@ -200,12 +229,19 @@ try {
  await position(page.locator('.illustration button.atlas'),'100% 0%')
  await openSources()
  await sources.locator('.variant-nav button').last().click()
+ const wikiLink=sources.getByRole('link',{name:wiki.title,exact:true})
+ assert.equal(await wikiLink.getAttribute('href'),wiki.url)
+ assert.equal(await wikiLink.getAttribute('lang'),'ko')
+ assert.equal(await wikiLink.locator('b').count(),0)
+ assert.equal(await sources.locator('.wiki-references a').count(),1)
+ await visible(sources.locator('.wiki-references time').getByText(wiki.snapshotDate,{exact:true}))
  await visible(sources.locator('.edition-note').getByText('言語未確認',{exact:true}))
  await sources.locator('.illustration button.atlas').click()
  await position(page.getByRole('dialog').locator('.atlas'),'66.6667% 0%')
  await page.getByRole('dialog').getByRole('button').click()
  await go('/cards/54?lang=ko')
  await visible(page.locator('.card-reader .atlas.missing'))
+ assert.equal(await page.getByText(wiki.title,{exact:true}).count(),0)
  await openSources()
  await visible(caption.getByText('영어판',{exact:true}))
  assert.match(await caption.innerText(),/대체 이미지/)
@@ -234,6 +270,22 @@ try {
    await visible(page.locator('.detail-section .card-text-credit').getByText(({ko:'검수한 번역 효과',en:'Verified printed effect',ja:'確認済みの収録版の効果'})[lang],{exact:true}))
    assert.equal(await page.getByText('Obsolete unreviewed name',{exact:true}).count(),0)
    await fits()
+ }
+ // A referenced Korean name can be read as a Korean name. Its article title belongs in the sources only.
+ for(const [lang,credit] of [['ko','나무위키 참고 표기'],['en','Name from NamuWiki'],['ja','ナムウィキを参考にした表記']]){
+   await go('/cards/57?lang='+lang)
+   const reader=page.locator('.card-reader')
+   await visible(reader.getByRole('heading',{name:lang==='ko'?'위키 근거 카드명':'WK-57'}))
+   assert.ok(!(await reader.innerText()).includes(wiki.title))
+   if(lang==='ko'){await visible(reader.getByText(credit,{exact:true}));await visible(reader.getByText('나무위키 문서 기반 효과 요약',{exact:true}))}
+   else {assert.ok(!(await reader.innerText()).includes('위키 근거 카드명'));assert.ok(!(await reader.innerText()).includes('근거 문서를 읽고 요약한 효과.'))}
+   assert.ok((await page.locator('.reader-prices').innerText()).includes('QA Market'))
+   await openSources();await visible(sources.locator('.card-text-credit').getByText(credit,{exact:true}))
+   await visible(sources.locator('.card-text-credit').getByText(({ko:'나무위키 문서 기반 효과 요약',en:'Effect summary based on a NamuWiki article',ja:'ナムウィキの記事に基づく効果の要約'})[lang],{exact:true}))
+   await visible(sources.getByText(wiki.textKo,{exact:true}))
+   await visible(sources.getByText(wiki.details.packs[0],{exact:true}))
+   assert.equal(await sources.locator('.wiki-references p b').count(),0)
+   assert.equal(await sources.locator('.wiki-references a').getAttribute('rel'),'noopener noreferrer')
  }
  await go('/?game=YUGIOH&lang=ko')
  await visible(page.locator('.catalog-edition').filter({hasText:'대체 이미지 · 영어판'}))
@@ -381,6 +433,14 @@ try {
  await expand();await trans.getByLabel('Language to edit').selectOption('ja')
  assert.equal(await trans.getByLabel('Card name',{exact:true}).inputValue(),translation.name)
  await trans.getByLabel('Card name',{exact:true}).fill('編集中')
+ await trans.getByLabel('Source URL checked').fill(wiki.url)
+ assert.equal(await trans.getByRole('link',{name:'Open NamuWiki article'}).getAttribute('href'),wiki.url)
+ await trans.getByLabel('Text basis').selectOption('PRINTED_NAME')
+ const writesBefore=writes.length
+ await trans.getByRole('button',{name:'Save language entry'}).click()
+ await visible(trans.getByRole('alert'))
+ assert.equal(writes.length,writesBefore)
+ await trans.getByLabel('Text basis').selectOption('TRANSLATED_NAME')
  await trans.getByLabel('Language to edit').selectOption('ko')
  assert.equal(await trans.getByLabel('Card name',{exact:true}).inputValue(),'')
  // Drafts survive other languages and selecting a different editor tab.
@@ -394,6 +454,7 @@ try {
  await trans.getByRole('button',{name:'Save my edit over this version'}).click()
  await visible(trans.getByRole('status').getByText('Language entry saved.'))
  assert.equal(translation.name,'編集中')
+ assert.equal(translation.sourceUrl,wiki.url)
  await trans.getByLabel('Card name',{exact:true}).fill('')
  await trans.getByRole('button',{name:'Remove this language entry'}).click()
  await visible(trans.getByRole('status').getByText('Language entry removed.'))
@@ -424,9 +485,71 @@ try {
  assert.deepEqual(writes.filter(x=>x.api==='admin/sources/x').pop().body,{username:'qa_all',gameCode:null,storeId:null})
  await select.selectOption('ja');await visible(sourceForm.getByLabel('Xユーザー名'))
  await select.selectOption('ko');await visible(sourceForm.getByLabel('X 사용자명'));await fits()
+ await page.locator('.provider-status summary').click();await visible(page.locator('.provider-status').getByText('키 미설정'))
+ await btn('발매 일정 관리').click()
+ const adminReleases=page.locator('.admin-releases'),releaseForm=adminReleases.locator('.release-editor')
+ await adminReleases.getByRole('button',{name:'발매 일정 추가'}).click()
+ await releaseForm.getByLabel('게임',{exact:true}).selectOption('WEISS')
+ await releaseForm.getByLabel('상품명',{exact:true}).fill('검토한 팩')
+ await releaseForm.getByLabel('발매일').fill('2027-03-01')
+ await releaseForm.getByLabel('상품 유형').selectOption('BOOSTER')
+ await releaseForm.getByLabel('발매 정보 출처').fill('https://example.invalid/release')
+ await releaseForm.getByRole('button',{name:'저장',exact:true}).click()
+ await adminReleases.getByRole('button',{name:'검토한 팩'}).click()
+ assert.equal(await releaseForm.getByLabel('발매 지역').isDisabled(),true)
+ assert.equal(await releaseForm.getByLabel('상품 유형').inputValue(),'BOOSTER')
+ await releaseForm.getByLabel('상품명',{exact:true}).fill('검토한 새 이름')
+ await releaseForm.getByRole('button',{name:'저장',exact:true}).click()
+ await visible(releaseForm.getByRole('alert'));assert.equal(await releaseForm.getByLabel('상품명',{exact:true}).inputValue(),'검토한 새 이름')
+ await visible(releaseForm.getByText('다른 운영자 수정',{exact:false}))
+ await releaseForm.getByRole('button',{name:'입력한 값으로 다시 저장',exact:true}).click()
+ await visible(adminReleases.getByRole('button',{name:'검토한 새 이름'}))
+ assert.equal(writes.filter(x=>x.api==='admin/releases/91').pop().body.version,2)
+ await fits()
  await select.selectOption('en');await btn('Server controls').click();await visible(page.getByText('TEST_ACTION'));assert.equal(await btn('Shut down server').isDisabled(),true)
  await btn('Member roles').click();await visible(page.getByText('fixture@example.invalid'))
  await btn('Posts').click();await visible(page.getByText('Fixture post'))
+ const reports=page.locator('.community-reports')
+ assert.equal(reportReads,0);await reports.locator('summary').click()
+ const firstReport=reports.locator('li').filter({hasText:'Synthetic comment'})
+ assert.equal(await firstReport.getByRole('link',{name:'Synthetic post'}).getAttribute('href'),'/community/16')
+ await visible(firstReport.getByText('Reported reply <b>literal</b>',{exact:false}))
+ assert.equal(await firstReport.locator('b').count(),0)
+ await firstReport.getByRole('button',{name:'Hide reported content'}).click()
+ await firstReport.getByRole('button',{name:'Cancel'}).click()
+ assert.equal(writes.filter(w=>w.api.startsWith('admin/community/reports')).length,0)
+ await firstReport.getByRole('button',{name:'Hide reported content'}).click()
+ await visible(firstReport.getByText('Hide this comment and its replies?'))
+ await firstReport.getByRole('button',{name:'Confirm decision'}).click()
+ await visible(reports.getByText('Reported content is now hidden.'))
+ await reports.getByRole('button',{name:'Keep visible'}).click()
+ await reports.getByRole('button',{name:'Confirm decision'}).click()
+ await visible(reports.getByText('No reports with this status.'))
+ assert.deepEqual(writes.filter(w=>w.api.startsWith('admin/community/reports')).map(w=>w.body.status),['RESOLVED','DISMISSED'])
+ await reports.getByLabel('Review status').selectOption('RESOLVED');await visible(reports.getByText('Synthetic comment'))
+ await select.selectOption('ja');await visible(reports.getByText('コメントへの通報',{exact:false}));await fits()
+ await select.selectOption('ko');await visible(reports.getByText('댓글 신고',{exact:false}));await fits()
+ for(const width of [360,1024,1280]){
+   await page.setViewportSize({width,height:820})
+   for(const l of ['en','ja','ko']){
+     await select.selectOption(l)
+     const bounds=await page.evaluate(()=>{
+       const links=[...document.querySelectorAll('.masthead a,.masthead button,.masthead select')].filter(el=>el.getClientRects().length)
+       const nav=[...document.querySelectorAll('#site-navigation a')].filter(el=>el.getClientRects().length)
+       return {w:document.documentElement.scrollWidth,right:Math.max(...links.map(el=>el.getBoundingClientRect().right)),
+         navRight:Math.max(0,...nav.map(el=>el.getBoundingClientRect().right)),toolsLeft:document.querySelector('.account-actions').getBoundingClientRect().left}
+     })
+     assert.equal(bounds.w,width);assert.ok(bounds.right<=width+1)
+     assert.ok(bounds.navRight<=bounds.toolsLeft+1,`header overlap at ${width}px in ${l}: ${JSON.stringify(bounds)}`)
+     if(width===1024 && l==='en'){
+       await page.locator('.menu-switch').click();await visible(page.locator('#site-navigation a[href="/community"]'))
+       await page.keyboard.press('Escape');assert.equal(await page.locator('.menu-switch').getAttribute('aria-expanded'),'false')
+     }
+   }
+   if(process.env.QA_SCREENSHOTS)await page.screenshot({path:join(process.env.QA_SCREENSHOTS,'admin-community-'+width+'.png')})
+ }
+ await page.setViewportSize({width:360,height:800})
+ await select.selectOption('en')
  await btn('Stores').click();await visible(page.getByText('Fixture shop'))
  await select.selectOption('ja');await visible(btn('店舗を登録'));await fits()
  fixtureRole='ROLE_USER';await page.reload();await visible(page.getByRole('alert'))

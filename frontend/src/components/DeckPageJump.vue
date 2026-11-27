@@ -57,6 +57,11 @@ onBeforeUnmount(()=>{
 .deck-jump button{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;min-width:44px;min-height:44px;padding:0 .55rem;background:var(--bg);border:0;color:var(--tx);font:inherit;font-size:.85rem}
 .deck-jump button[aria-disabled=true]{color:var(--mu)}.deck-jump button:hover:not([aria-disabled=true]){color:var(--ac)}
 .down{transform:rotate(180deg)}
+@media(max-width:760px){
+  .deck-jump{position:fixed;inset:auto .5rem calc(66px + env(safe-area-inset-bottom)) auto;width:auto;display:grid;gap:4px;border:0;padding:0;z-index:4}
+  .deck-jump button{background:var(--sf);border:1px solid var(--bd);border-radius:50%;box-shadow:0 2px 5px rgb(0 0 0 / .10)}
+  .deck-jump span{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
+}
 @media(min-width:1250px){
   .deck-jump{position:fixed;top:48%;right:max(.4rem,calc((100vw - 1120px)/2 - 58px));width:auto;display:grid;gap:0;border:1px solid var(--bd);border-radius:7px;background:var(--bg)}
   .deck-jump button{border-radius:6px}.deck-jump button+button{border-top:1px solid var(--bd)}

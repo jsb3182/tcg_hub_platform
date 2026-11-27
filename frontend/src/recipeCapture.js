@@ -180,8 +180,8 @@ export function resolveMatch(match, refs, identities) {
   const candidates = [...local.values()]
   for (const hit of match.neuron) {
     const printing = identities.get(hit.konamiId)
-    const imageUrl = printing?.artworks?.[hit.neuronArtwork]
-    if (!imageUrl) continue
+    if (!Object.prototype.hasOwnProperty.call(printing?.artworks || {},hit.neuronArtwork)) continue
+    const imageUrl = printing.artworks[hit.neuronArtwork]
     const { artworks, ...card } = printing
     const tile = local.get(hit.localPosition)
     if (tile && tile.konamiId === hit.konamiId && tile.neuronArtwork == null) {
@@ -195,7 +195,7 @@ export function resolveMatch(match, refs, identities) {
   candidates.sort((a,b) => b.score-a.score)
   const best = candidates[0]?.score ?? 0
   const runner = candidates[1]?.score ?? 0
-  const unavailable = match.neuron.find(hit => !identities.get(hit.konamiId)?.artworks?.[hit.neuronArtwork])?.score ?? 0
+  const unavailable = match.neuron.find(hit => !Object.prototype.hasOwnProperty.call(identities.get(hit.konamiId)?.artworks || {},hit.neuronArtwork))?.score ?? 0
   const credible = best >= .78 && best-runner >= .04 && best-unavailable >= .035
   return {confidence:best < .60 ? 'unmatched' : credible ? 'high' : 'review', candidates:candidates.slice(0,5)}
 }

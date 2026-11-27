@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
 import {pt} from '../pack'
+import {riftEffectText} from '../riftSymbols'
 import {deckName as localizedDeckName} from '../library'
 import { request, artworkUrl } from '../api'
 import { useSession } from '../stores/session'
@@ -223,7 +224,7 @@ function move(from, index, to) {
             </figure>
 
             <span><strong :lang="label(id)?.language">{{ label(id)?.name }}</strong><small v-if="artLabel(label(id))">{{ artLabel(label(id)) }}<template v-if="!artworkUrl(label(id).imageUrl) && !label(id).image"> · {{ pt('이미지 없음') }}</template></small><CardTextCredit :card="label(id)" detailed link/></span>
-            <details v-if="label(id)?.effect"><summary>{{ $t('효과') }}</summary><p :lang="label(id).effectLanguage || ''">{{ label(id).effect }}</p><CardTextCredit :card="label(id)" effect link/></details>
+            <details v-if="label(id)?.effect"><summary>{{ $t('효과') }}</summary><p :lang="label(id).effectLanguage || ''">{{ game==='RIFTBOUND'?riftEffectText(label(id).effect,label(id).effectLanguage):label(id).effect }}</p><CardTextCredit :card="label(id)" effect link/></details>
             <small v-if="zone==='table' && attached[i]">{{ game==='ONEPIECE'?'DON!!':$t('에너지') }} × {{ attached[i] }}</small>
             <button v-if="zone==='table' && game!=='YUGIOH'" class="secondary" :disabled="!stock" @click="attach(i)">{{ $t('부착') }}</button>
             <div><button v-if="zone === 'hand'" class="secondary" @click="move(zone,i,'table')">{{ t.place }}</button>

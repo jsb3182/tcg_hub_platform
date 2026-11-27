@@ -23,7 +23,7 @@ const destination = computed(() => {
   const next = route.query.next
   if (typeof next !== 'string' || !next.startsWith('/') || next.startsWith('//') || next.includes('\\')) return '/'
   const target = router.resolve(next)
-  return ['binder','decks','deck-edit','deck-new','play','stores'].includes(target.name) ? target.fullPath : '/'
+  return ['binder','decks','deck-edit','deck-new','play','stores','community','releases'].includes(target.name) ? target.fullPath : '/'
 })
 
 const switchMode = computed(() => ({

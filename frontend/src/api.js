@@ -22,13 +22,14 @@ export async function request(path, options = {}) {
   const { signal, method = 'GET', body, token, privateRequest = false } = options
   const multipart = body instanceof FormData
   const protectedAdmin = privateRequest && path.startsWith('/admin/')
-  const headers = { Accept: 'application/json' }
+  const calendarFile = options.calendarFile === true
+  const headers = { Accept: calendarFile ? 'text/calendar' : 'application/json' }
   if (privateRequest) headers['X-TCG-Request'] = '1'
   if (body !== undefined && !multipart) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = 'Bearer ' + token
   let response
   try {
-    response = await fetch(path.startsWith('/admin/server/') ? '/api'+path : baseUrl + path, {
+    response = await fetch(path.startsWith('/admin/server/') || path==='/decks/import-capture' ? '/api'+path : baseUrl + path, {
       method, headers, signal, body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),
       credentials: privateRequest ? 'same-origin' : 'omit',
       cache: privateRequest ? 'no-store' : 'default',
@@ -49,6 +50,10 @@ export async function request(path, options = {}) {
     throw error
   }
   if (response.status === 204) return null
+  if (calendarFile) {
+    if (response.headers.get('Content-Type')?.split(';')[0] !== 'text/calendar') throw new ApiError(502)
+    return new Blob([await response.arrayBuffer()], { type: 'text/calendar' })
+  }
   const text = await response.text()
   if (!text) return null
   try { return JSON.parse(text) } catch { throw new ApiError(502) }
@@ -58,7 +63,7 @@ export function mediaPath(rawPath) {
   if (typeof rawPath !== 'string' || !rawPath) return ''
   try {
     const url = new URL(rawPath, location.origin)
-    return url.origin === location.origin && url.pathname.startsWith('/media/') ? url.href : ''
+    return url.origin === location.origin && ['https:','http:'].includes(url.protocol) && !url.username && !url.password && url.pathname.startsWith('/media/') ? url.href : ''
   } catch { return '' }
 }
 
@@ -71,13 +76,5 @@ export function sourceLink(rawUrl) {
 }
 
 export function artworkUrl(value) {
-  const local = mediaPath(value)
-  if (local) return local
-  const external = sourceLink(value)
-  if(!external.startsWith('https://'))return ''
-  const url=new URL(external)
-  if(url.hostname==='cmsassets.rgpub.io' && (url.port || url.hash ||
-    !/^\/sanity\/images\/dsfx7636\/game_data_live\/[0-9a-f]{40}-[1-9][0-9]*x[1-9][0-9]*\.(?:png|jpe?g|webp)$/.test(url.pathname) ||
-    (url.search && url.search!=='?accountingTag=RB')))return ''
-  return external
+  return mediaPath(value)
 }

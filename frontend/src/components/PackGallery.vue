@@ -60,7 +60,7 @@ onBeforeUnmount(restoreScroll)
             <legend>{{ pt(label) }}</legend><div class="gallery-options">
               <button class="facet-all" type="button" :aria-pressed="!chosen[key].length" @click="chosen[key]=[]">{{ pt('전체') }}</button>
               <label v-for="value in options[key]" :key="value" :class="{active:chosen[key].includes(value)}">
-                <input type="checkbox" v-model="chosen[key]" :value="value"><span>{{ facetLabel(key,value) }}</span>
+                <input type="checkbox" v-model="chosen[key]" :value="value"><span>{{ facetLabel(key,value,pack.gameCode) }}</span>
               </label>
             </div>
           </fieldset>

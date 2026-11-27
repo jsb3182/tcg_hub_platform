@@ -39,7 +39,7 @@ try{
   const bottom=()=>page.waitForFunction(()=>{const s=document.scrollingElement;return s.scrollHeight-s.scrollTop-s.clientHeight<=2})
   const layout=async()=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width)
   await page.goto(origin+'/decks?lang=ko')
-  await page.locator('.lib-list li').nth(14).waitFor().catch(async e=>{throw new Error(e.message+' '+(await page.locator('body').innerText()).slice(0,380)+' '+errors.join(','))})
+  await page.locator('.deck-banner-list li').nth(14).waitFor().catch(async e=>{throw new Error(e.message+' '+(await page.locator('body').innerText()).slice(0,380)+' '+errors.join(','))})
   await jump.waitFor().catch(async e=>{throw new Error(e.message+' '+JSON.stringify(await page.evaluate(()=>({height:document.querySelector('#content').offsetHeight,viewport:innerHeight,focus:document.activeElement.tagName})))+' '+errors.join(','))})
   for(const [l,up,down] of [['en','Top','Bottom'],['ja','先頭','末尾'],['ko','맨 위','맨 아래']]){
     await lang.selectOption(l)

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { request } from '../api'
 import { locale, supportedLanguage, gameName } from '../i18n'
 import NewsItem from '../components/NewsItem.vue'
+import {pt} from '../pack'
 
 const route = useRoute()
 const router = useRouter()
@@ -60,6 +61,10 @@ watch([selected, page, language, retry], async (_, __, cleanup) => {
     <h1>{{ $t("새 소식") }}</h1>
 
   </header>
+  <details id="restriction-sources" :open="route.hash==='#restriction-sources'"><summary>{{ pt('금제 확인') }}</summary>
+    <p><a href="https://www.yugioh.co.kr/site/limit_regulation.php" target="_blank" rel="noopener noreferrer">{{ $t('한국 OCG 금지·제한 목록') }}</a></p>
+    <RouterLink :to="{name:'deck-new',query:{game:'YUGIOH',lang:locale}}">{{ pt('내 덱의 대회 제한 확인') }}</RouterLink>
+  </details>
   <nav class="game-tabs" :aria-label="$t('소식 게임별 보기')">
     <button type="button" :aria-pressed="!selected" @click="navigate('', 0)">{{ $t("전체") }}</button>
     <button v-for="game in games" :key="game.code" type="button" :aria-pressed="selected === game.code" @click="navigate(game.code, 0)">{{ gameName(game.code,game.name) }}</button>

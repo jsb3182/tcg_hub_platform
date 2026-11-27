@@ -5,10 +5,12 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { mediaPath, request } from '../api'
 import {pt, inclusions, shortRarity} from '../pack'
+import {traitLabel,traitValueLabel} from '../cardDetailLocale'
 import CardDetails from '../components/CardDetails.vue'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
 import ArtworkCredit from '../components/ArtworkCredit.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
+import RiftEffectSummary from '../components/RiftEffectSummary.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,11 +20,17 @@ const result = ref({ items: [], total: 0 })
 const activeGame = computed(() => param('game'))
 const selectedPack = computed(() => packs.value.find(pack => String(pack.id) === param('packId')))
 const filters = reactive(filtersFromRoute())
-const filtersOpen = ref(false)
+const filtersOpen = ref(Boolean(param('releaseYear') || param('traitKey')))
+const facetOptions=ref({years:[],traitKeys:[],values:[]}), facetBusy=ref(false), facetError=ref(false), facetRetry=ref(0)
+const koreanPrintingFilter=key=>activeGame.value==='ONEPIECE' && ['traits','attribute'].includes(key)
+const knownTraits=computed(()=>(facetOptions.value.traitKeys || []).filter(key=>traitLabel(activeGame.value,key,locale.value) &&
+  (locale.value==='ko' || !koreanPrintingFilter(key) || filters.traitKey===key)))
+const traitValues=computed(()=>(facetOptions.value.values || []).map(raw=>({raw:String(raw),
+  label:traitValueLabel(activeGame.value,filters.traitKey,raw,locale.value)})).filter(row=>row.label))
 const needsPacks = computed(() => filtersOpen.value || Boolean(param('packId')))
 const packError = ref('')
 const packLoading = ref(false)
-const advancedCount = computed(() => ['packId','rarity','inclusion','ygoType'].filter(key=>param(key)).length)
+const advancedCount = computed(() => ['packId','rarity','inclusion','ygoType','releaseYear','traitValue'].filter(key=>param(key)).length)
 const resultsTitle = computed(() => param('q') || advancedCount.value ? uiText("검색 결과") : activeGame.value ? gameName(activeGame.value) : uiText("전체 카드"))
 const loading = ref(true)
 const error = ref('')
@@ -35,7 +43,8 @@ const hasSearchConditions = computed(() => Boolean(param('q') || advancedCount.v
 
 function param(key) { return typeof route.query[key] === 'string' ? route.query[key] : '' }
 function filtersFromRoute() {
-  return { q: param('q'), packId: param('packId'), rarity: param('rarity'), inclusion:param('inclusion'), ygoType:param('ygoType') }
+  return { q:param('q'),packId:param('packId'),rarity:param('rarity'),inclusion:param('inclusion'),ygoType:param('ygoType'),
+    releaseYear:param('releaseYear'),traitKey:param('traitKey'),traitValue:param('traitValue') }
 }
 function navigate(changes) {
   const values = { ...route.query, page: '', ...changes }
@@ -43,17 +52,32 @@ function navigate(changes) {
   router.push({ name: 'catalog', query })
 }
 function apply() {
-  navigate({ ...filters, q: filters.q.trim(), rarity: filters.rarity.trim() })
+  navigate({ ...filters,q:filters.q.trim(),rarity:filters.rarity.trim(),traitKey:filters.traitValue?filters.traitKey:'' })
 }
 function chooseGame(game) {
   const ygo = !game || game==='YUGIOH'
-  navigate({ game, packId: '', q: filters.q.trim(), rarity: filters.rarity.trim(), inclusion:ygo?filters.inclusion:'', ygoType:ygo?filters.ygoType:'' })
+  navigate({ game,packId:'',q:filters.q.trim(),rarity:filters.rarity.trim(),inclusion:ygo?filters.inclusion:'',ygoType:ygo?filters.ygoType:'',
+    releaseYear:'',traitKey:'',traitValue:'' })
 }
 function goPage(index) {
   navigate({page:index ? String(index):''})
   document.getElementById('results-heading')?.focus()
 }
 watch(() => route.query, () => Object.assign(filters, filtersFromRoute()), { immediate: true })
+watch([activeGame,filtersOpen,()=>filters.traitKey,facetRetry],async([game,open,key],previous,cleanup)=>{
+  const abort=new AbortController();cleanup(()=>abort.abort())
+  if(previous?.[0]!==game)facetOptions.value={years:[],traitKeys:[],values:[]}
+  facetError.value=false;facetBusy.value=open
+  if(!open)return
+  const params=new URLSearchParams()
+  if(game)params.set('game',game)
+  if(game && key)params.set('traitKey',key)
+  try{
+    const data=await request('/cards/facets?'+params,{signal:abort.signal})
+    if(!abort.signal.aborted)facetOptions.value=data
+  }catch{if(!abort.signal.aborted)facetError.value=true}
+  finally{if(!abort.signal.aborted)facetBusy.value=false}
+},{immediate:true})
 watch(reload, async (_, __, onCleanup) => {
   const controller = new AbortController()
   onCleanup(() => controller.abort())
@@ -80,7 +104,7 @@ watch([() => route.fullPath, reload,locale], async (_, __, onCleanup) => {
   const controller = new AbortController()
   onCleanup(() => controller.abort())
   const query = new URLSearchParams({ page: String(page.value), size: String(pageSize),lang:locale.value })
-  for (const key of ['q', 'game', 'packId', 'rarity','inclusion','ygoType']) if (param(key)) query.set(key, param(key))
+  for (const key of ['q','game','packId','rarity','inclusion','ygoType','releaseYear','traitKey','traitValue']) if (param(key)) query.set(key,param(key))
   loading.value = true
   error.value = ''
   try { result.value = await request('/cards?' + query, { signal: controller.signal }) }
@@ -118,6 +142,19 @@ function reset() {
       <option v-for="pack in packs" :key="pack.id" :value="String(pack.id)">{{ pack.name }}</option>
     </select></label>
     <label>{{ $t("레어도") }}<input v-model="filters.rarity" maxlength="64" :placeholder="$t('예: UR')" /></label>
+    <label>{{ pt('발매 연도') }}<select v-model="filters.releaseYear" :disabled="!facetOptions.years?.length && !filters.releaseYear">
+      <option value="">{{ pt('모든 연도') }}</option><option v-for="year in facetOptions.years" :key="year" :value="String(year)">{{ year }}</option>
+    </select></label>
+    <template v-if="activeGame">
+      <label>{{ pt('카드 특성') }}<select v-model="filters.traitKey" :disabled="!knownTraits.length" @change="filters.traitValue=''">
+        <option value="">{{ pt('특성 선택') }}</option><option v-for="key in knownTraits" :key="key" :value="key">{{ traitLabel(activeGame,key,locale) }}</option>
+      </select></label>
+      <label v-if="filters.traitKey">{{ pt('특성 값') }}<select v-model="filters.traitValue" :disabled="facetBusy || facetError || !traitValues.length">
+        <option value="">{{ $t('전체') }}</option>
+        <option v-if="locale!=='ko' && koreanPrintingFilter(filters.traitKey) && filters.traitValue" :value="filters.traitValue">{{ pt('선택한 한국판 특성') }}</option>
+        <option v-for="item in traitValues" :key="item.raw" :value="item.raw">{{ item.label }}</option>
+      </select></label>
+    </template>
     <template v-if="!activeGame || activeGame==='YUGIOH'">
       <label>{{ pt('수록 구분') }}<select v-model="filters.inclusion"><option value="">{{ $t('전체') }}</option>
         <option v-for="(label,value) in inclusions" :key="value" :value="value">{{ pt(label) }}</option>
@@ -127,6 +164,7 @@ function reset() {
       </select></label>
     </template>
     <button type="submit" class="secondary">{{ $t("필터 적용") }}</button>
+    <p v-if="facetError" class="inline-error" role="alert">{{ pt('필터를 불러오지 못했습니다.') }} <button type="button" class="text-button" @click="facetRetry++">{{ pt('다시 시도') }}</button></p>
   </form>
   <div v-if="metaError || packError" class="inline-error" role="alert">{{ metaError ? $t("게임 목록") : $t("팩 목록") }}{{ $t("을 불러오지 못했습니다.") }}
     <button type="button" class="text-button" @click="reload++">{{ $t("다시 시도") }}</button>
@@ -153,14 +191,16 @@ function reset() {
         <button v-if="Object.keys(route.query).length" type="button" class="secondary" @click="reset">{{ $t("전체 카드 보기") }}</button>
       </div>
       <div v-else class="catalog-list">
-        <details v-for="card in result.items" :key="card.id" class="card-row">
+        <div v-for="card in result.items" :key="card.id" class="catalog-entry"><details class="card-row">
           <summary>
             <span class="card-leading">
-              <LibraryThumbnail v-slot="{art}" :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card">
+              <LibraryThumbnail v-slot="{art}" placeholder :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card">
                 <span class="card-title"><strong :class="{'closed-card-name':card.language!==locale}" :lang="card.language || ''">{{ card.name || card.originalName || $t("이름 미정") }}</strong>
                 <strong v-if="card.language!==locale" class="expanded-card-name">{{ card.number || $t('이름 미정') }}</strong>
                 <CardTextCredit :card="card"/>
                 <small v-if="card.packName">{{ card.packName }}</small>
+                <RiftEffectSummary v-if="card.gameCode==='RIFTBOUND'" :card="card"/>
+                <small v-if="param('releaseYear') && (card.releaseDate || card.productReleaseDate)">{{ card.releaseDate?$t('발매일'):pt('수록 상품 첫 발매일') }} · <time :datetime="card.releaseDate || card.productReleaseDate">{{ card.releaseDate || card.productReleaseDate }}</time></small>
                 <small class="card-id-mobile">{{ [card.number,shortRarity(card)].filter(Boolean).join(' · ') }}</small>
                 <small v-if="art && (art.language!==locale || art.reference)" class="catalog-edition">
                   <ArtworkCredit :language="art.language" :label-image="!supportedLanguage(art.language)" :printing="art.reference ? card : null" automatic disable-link/>
@@ -171,8 +211,9 @@ function reset() {
             <span class="card-code">{{ card.number }}</span>
             <span class="card-rarity">{{ shortRarity(card) }}</span><span class="chevron" aria-hidden="true"></span>
           </summary>
-          <CardDetails :card-id="card.id" lazy />
+          <CardDetails :card-id="card.id" :catalog-query="route.query" lazy />
         </details>
+        <RouterLink class="catalog-open" :to="{name:'card',params:{id:card.id},query:{...route.query,lang:locale}}" :aria-label="pt('카드 상세 보기')+' · '+(card.number||card.name)">{{ pt('상세') }} →</RouterLink></div>
       </div>
       <nav v-if="!loading && !error && (pageCount > 1 || page > 0)" class="pagination" :aria-label="$t('결과 페이지')">
         <button class="secondary" type="button" :disabled="page === 0" @click="goPage(page-1)">{{ $t("이전") }}</button>
@@ -182,5 +223,7 @@ function reset() {
     </section>
 </template>
 <style scoped>
+.catalog-entry{position:relative}.catalog-entry+.catalog-entry{border-top:1px solid var(--bd)}.catalog-entry>.card-row>summary{padding-right:5rem}
+.catalog-open{position:absolute;inset-inline-end:11px;top:10px;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:4px;font-size:.82rem;font-weight:600}
 .card-row:not([open]) .expanded-card-name,.card-row[open] .closed-card-name{display:none}
 </style>

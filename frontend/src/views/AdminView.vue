@@ -11,15 +11,21 @@ import AdminTools from '../components/AdminTools.vue'
 import AdminXSource from '../components/AdminXSource.vue'
 import { locale, gameName } from '../i18n'
 import AdminCatalog from '../components/AdminCatalog.vue'
+import AdminReleases from '../components/AdminReleases.vue'
+import AdminProviders from '../components/AdminProviders.vue'
+import AdminCommunityReports from '../components/AdminCommunityReports.vue'
+import {pt} from '../pack'
 
 const session = useSession()
 const tab = ref('overview')
-const tabs = {overview:'서버 상태',sources:'수집 출처',review:'검수 대기',catalog:'도감 편집',posts:'게시물 관리',stores:'매장 관리',users:'회원 권한',server:'서버 제어'}
+const tabs = {overview:'서버 상태',sources:'수집 출처',review:'검수 대기',catalog:'도감 편집',releases:'발매 일정 관리',posts:'게시물 관리',stores:'매장 관리',users:'회원 권한',server:'서버 제어'}
 const intervals=ref({})
 const catalogPanel=ref(null)
+const releasesPanel=ref(null)
 const catalogBusy=ref(false)
 function selectTab(next) {
   if (tab.value === 'catalog' && next !== 'catalog' && catalogPanel.value && !catalogPanel.value.mayLeave()) return
+  if (tab.value === 'releases' && next !== 'releases' && !releasesPanel.value?.mayLeave()) return
   tab.value=next
 }
 const states = computed(()=>({IDLE: uiText("대기"), RUNNING: uiText("수집 중"), OK: uiText("수집 성공"), ERROR: uiText("수집 오류"), BLOCKED: uiText("수집 차단"), QUEUED: uiText("실행 예약"), PAUSED: uiText("일시정지")}))
@@ -168,15 +174,20 @@ onBeforeUnmount(() => {
     <p v-else-if="!session.isAdmin" role="alert" class="state">{{ $t("관리자 권한이 필요합니다.") }}</p>
     <AdminAccess v-else-if="session.adminAccessBlocked" />
     <template v-else>
-      <nav class="game-tabs admin-tabs" :aria-label="$t('관리 메뉴')"><button v-for="(title, key) in tabs" :key="key" :aria-pressed="tab === key" :disabled="!!activeAction || catalogBusy" @click="selectTab(key)">{{ $t(title) }}</button></nav>
-      <div class="ops-heading"><h2>{{ $t(tabs[tab]) }}</h2>
+      <nav class="game-tabs admin-tabs" :aria-label="$t('관리 메뉴')"><button v-for="(title, key) in tabs" :key="key" :aria-pressed="tab === key" :disabled="!!activeAction || catalogBusy" @click="selectTab(key)">{{ pt(title) }}</button></nav>
+      <div class="ops-heading"><h2>{{ pt(tabs[tab]) }}</h2>
         <button v-if="['overview','sources','review'].includes(tab)" class="secondary" :disabled="!!activeAction || (tab === 'review' ? reviewBusy : snapshotBusy)" @click="refresh">{{ $t("새로고침") }}</button>
       </div>
       <p v-if="notice" class="success-message" role="status">{{ notice }}</p>
       <p v-if="actionError" role="alert" class="inline-error">{{ actionError }}</p>
-      <AdminTools v-if="['posts','stores','users','server'].includes(tab)" :tab="tab"/>
+      <template v-if="['posts','stores','users','server'].includes(tab)">
+        <AdminCommunityReports v-if="tab==='posts'"/>
+        <AdminTools :tab="tab"/>
+      </template>
       <AdminCatalog v-else-if="tab === 'catalog'" ref="catalogPanel" :games="games" @editing="catalogBusy=$event.busy" />
+      <AdminReleases v-else-if="tab==='releases'" ref="releasesPanel" @busy="catalogBusy=$event"/>
       <template v-else-if="tab !== 'review'">
+        <AdminProviders v-if="tab==='sources'"/>
         <AdminXSource v-if="tab==='sources'" :disabled="!!activeAction && activeAction!=='subscribe'"
           @saving="value=>{activeAction=value?'subscribe':''}" @saved="onSubscriptionSaved"/>
         <p v-if="snapshotError" role="alert" class="inline-error">{{ snapshotError }}</p>

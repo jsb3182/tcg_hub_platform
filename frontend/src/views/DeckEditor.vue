@@ -41,7 +41,7 @@ let retryPictures=null
 const content=computed(()=>JSON.stringify([name.value,nameJa.value,nameEn.value,game.value,shared.value,region.value,
   entries.value.map(e=>[e.cardId,e.section,e.quantity,e.variantId,e.neuronArtwork])]))
 const dirty=computed(()=>baseline.value!==null && (baseline.value!==content.value||reviewing.value||Object.keys(pictures.value).length>0))
-const preview=computed(()=>({name:name.value || uiText("이름 없는 덱"),nameJa:nameJa.value,nameEn:nameEn.value,gameCode:game.value,entries:entries.value,rule:rule.value,state:
+const preview=computed(()=>({ordinal:saved.value?.ordinal,regionalLimits:!dirty.value?saved.value?.regionalLimits:null,name:name.value || uiText("이름 없는 덱"),nameJa:nameJa.value,nameEn:nameEn.value,gameCode:game.value,entries:entries.value,rule:rule.value,state:
   saved.value && !dirty.value ? saved.value.state : 'DRAFT'}))
 let generation=0
 let approvedPractice=''
@@ -245,7 +245,7 @@ async function copyLink() {
       <section class="lib-panel"><fieldset :disabled="busy"><label>{{ $t("덱 이름") }}<input v-model="name" maxlength="100" :placeholder="$t('덱 이름')" /></label>
         <div class="deck-alias-fields"><label>{{ $t("일본어 이름") }}<input v-model="nameJa" maxlength="100" lang="ja"/></label><label>{{ $t("영어 이름") }}<input v-model="nameEn" maxlength="100" lang="en"/></label></div>
         <label>{{ $t("게임") }}<select :value="game" :disabled="!!id || entries.length>0 || reviewing" @change="switchGame"><option v-for="g in games" :key="g.code" :value="g.code">{{ gameName(g.code,g.name) }}</option></select></label>
-        <CaptureReview v-if="game==='YUGIOH'&&rule" @apply="importRows" @pending="reviewing=$event" @suggest="v=>{if(!name)name=v}"/>
+        <CaptureReview v-if="rule" :game="game" :zones="rule.sections.map(s=>s.section)" @apply="importRows" @pending="reviewing=$event" @suggest="v=>{if(!name)name=v}"/>
         <DeckPictures :id="id" :pictures="pictures" :disabled="busy" @pick="(slot,file)=>pictures={...pictures,[slot]:file}"/>
         <template v-if="rule"><p>{{ $t("기본 구성 규칙 · 버전") }} {{ rule.version }} <a v-if="rule.source" :href="rule.source" target="_blank" rel="noopener noreferrer">{{ $t("공식 규칙") }}</a></p>
           <p v-if="!region" class="muted">{{ $t("구역별 장수와 중복 수량을 검사합니다. 금지·제한 목록과 개별 카드 예외는 대회 규정을 확인해 주세요.") }}</p>
