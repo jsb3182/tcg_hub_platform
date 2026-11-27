@@ -16,7 +16,7 @@ from psycopg.types.json import Jsonb
 
 from .catalog_news import collect_pack_dates, finish_yugioh_scan
 from .catalog_sources.rift_editions import preserve_deferred
-from .catalog_sources.onepiece import preserve_partial_korean
+from .catalog_sources.onepiece import COLLECTOR, preserve_partial_korean
 from .feeds import FetchError, backoff, fetch_feed
 from .jobs import connect, process_once
 from . import supplements
@@ -122,19 +122,39 @@ def product_identity(code, name):
     return code, re.sub(r"\s*([&:·「」])\s*", r"\1", title)
 
 
+def catalog_product_key(prefix, identity):
+    encoded = json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode()
+    return prefix + "product:" + hashlib.sha256(encoded).hexdigest()
+
+
+def onepiece_numbered_sku(code):
+    return bool(code and re.fullmatch(r"(?:OP|ST|EB|PRB)-[0-9]{2}", code))
+
+
+def is_numbered_printing(card, code):
+    number = card.get("number") or ""
+    specs = card.get("specs") or {}
+    return (onepiece_numbered_sku(code) and COLLECTOR.fullmatch(number) is not None
+            and card["external_id"] == f"{code}:{number}" and specs.get("productCode", code) == code)
+
+
 def existing_product_keys(db, game, prefix, records):
     # Earlier imports keyed packs by code. Keep each numeric ID for the product that row represents.
     codes = {card.get("pack_code") for card in records}
-    pack_table = "visible_catalog_pack" if game == "NIVEL" else "pack"
+    include_hashed = game in ("NIVEL", "ONEPIECE")
+    pack_table = "visible_catalog_pack" if include_hashed else "pack"
     rows = db.execute(
         f"""SELECT legacy_key,code,name FROM {pack_table} WHERE game_code=%s AND starts_with(legacy_key,%s)
-           AND (game_code='NIVEL' OR NOT starts_with(legacy_key,%s))
+           AND (%s OR NOT starts_with(legacy_key,%s))
            AND (code=ANY(%s::text[]) OR (code IS NULL AND %s)) ORDER BY id""",
-        (game, prefix, prefix + "product:", [code for code in codes if code is not None], None in codes),
+        (game, prefix, include_hashed, prefix + "product:", [code for code in codes if code is not None], None in codes),
     )
     existing = {}
     for key, code, name in rows:
-        existing.setdefault(product_identity(code, name), {}).setdefault(name, key)
+        if game == "ONEPIECE" and onepiece_numbered_sku(code) and key in (prefix + code, catalog_product_key(prefix, (code, ""))):
+            existing.setdefault((code, ""), {})[key] = key
+        else:
+            existing.setdefault(product_identity(code, name), {}).setdefault(name, key)
     return existing
 
 
@@ -144,6 +164,14 @@ def save_cards(db, source, records):
     records = tuple(records)
     cards, packs = {}, {}
     existing = existing_product_keys(db, game, prefix, records)
+    placements = {}
+    if game == "ONEPIECE" and any(not name and len(keys) > 1 for (_, name), keys in existing.items()):
+        # The migration leaves conflicting editorial data visible. A replay keeps those cards where the owner put them.
+        placements = dict(db.execute("""
+            SELECT c.legacy_key,p.legacy_key FROM card c JOIN visible_catalog_pack p ON p.id=c.pack_id
+            WHERE c.game_code='ONEPIECE' AND c.legacy_key=ANY(%s::text[])
+            """, ([prefix + str(r["external_id"]) for r in records],)).fetchall())
+    labels = set()
     for card in records:
         external = str(card["external_id"])
         url = urlsplit(card["source_url"])
@@ -154,16 +182,20 @@ def save_cards(db, source, records):
         raw_name = card.get("pack_name") or code
         pack_key = None
         if raw_name:
-            # The regional catalog supplies one canonical product code; a newly verified
-            # Korean label for that product must not allocate another numeric pack ID.
-            identity = (code, "") if game == "ONEPIECE" and code else product_identity(code, raw_name)
+            # The regional source identifies the product independently of its collector number and translated name.
+            numbered = game == "ONEPIECE" and is_numbered_printing(card, code)
+            identity = (code, "") if numbered else product_identity(code, raw_name)
             aliases = existing.get(identity)
             if aliases:
-                pack_key = aliases.get(raw_name) or next(iter(aliases.values()))
+                preferred = aliases.get(raw_name)
+                if numbered:
+                    preferred = aliases.get(placements.get(key)) or aliases.get(prefix + code)
+                pack_key = preferred or next(iter(aliases.values()))
             else:
-                encoded = json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode()
-                pack_key = prefix + "product:" + hashlib.sha256(encoded).hexdigest()
+                pack_key = catalog_product_key(prefix, identity)
             name = " ".join(raw_name.split())
+            if numbered:
+                labels.add((pack_key, name))
             if pack_key not in packs or name < packs[pack_key]["name"]:
                 packs[pack_key] = {"key": pack_key, "code": code, "name": name}
         cards[key] = {**card, "key": key, "pack_key": pack_key}
@@ -179,6 +211,13 @@ def save_cards(db, source, records):
             ON CONFLICT(legacy_key) DO UPDATE SET name=EXCLUDED.name
               WHERE p.name COLLATE "C" > EXCLUDED.name COLLATE "C"
         """, (game, Jsonb(list(packs.values()))))
+        if labels:
+            db.execute("""
+                INSERT INTO onepiece_pack_label(pack_id,name)
+                SELECT p.id,v.name FROM jsonb_to_recordset(%s) AS v(key text,name text)
+                JOIN visible_catalog_pack p ON p.legacy_key=v.key
+                ON CONFLICT DO NOTHING
+                """, (Jsonb([{"key": key, "name": name} for key, name in sorted(labels)]),))
     keys = list(cards)
     before = db.execute("SELECT count(*) FROM card WHERE legacy_key=ANY(%s)", (keys,)).fetchone()[0]
     db.execute("""
