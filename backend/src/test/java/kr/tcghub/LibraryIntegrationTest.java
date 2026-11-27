@@ -50,6 +50,36 @@ class LibraryIntegrationTest {
     }
     String binder(long id){return "/api/v1/me/binder/"+id;}
 
+    @Test void screenshotRecipeKeepsNamesOrderAndIllustrationsAcrossReloadAndDeckCode() throws Exception {
+        long variant=db.sql("insert into card_variant(card_id,position,rarity) values(?,1,'UR') returning id")
+                .param(first).query(Long.class).single();
+        var input=new DeckApi.Save("시험 덱","YUGIOH","DRAFT",0,false,List.of(
+                new DeckRules.Line(second,"SIDE",1), new DeckRules.Line(first,"MAIN",2,variant),
+                new DeckRules.Line(first,"MAIN",1)),"テスト","Test");
+        // Stable keys also distinguish the two otherwise identical fixture printings.
+        db.sql("update card set number=cast(id as text),original_name=concat('fixture ',id) where id in (:ids)")
+                .param("ids",List.of(first,second)).update();
+        var created=json.readTree(api.perform(write(post("/api/v1/me/decks"),alice,input)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nameJa").value("テスト")).andExpect(jsonPath("$.entries[0].variantId").value(variant))
+                .andReturn().getResponse().getContentAsByteArray());
+        long id=created.path("id").asLong();
+        api.perform(write(put(binder(first)),alice,new BinderApi.Quantity(2,0))).andExpect(status().isOk());
+        api.perform(as(get("/api/v1/me/decks/needed").param("deckId",String.valueOf(id)),alice))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].required").value(3))
+                .andExpect(jsonPath("$.items[0].owned").value(2));
+        api.perform(as(get("/api/v1/me/decks/needed").param("deckId",String.valueOf(id)),bob))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
+        api.perform(as(get("/api/v1/me/decks").param("q","テスト"),alice)).andExpect(jsonPath("$.totalCards").value(4))
+                .andExpect(jsonPath("$.items[0].mainCount").value(3));
+        api.perform(as(get("/api/v1/me/decks/export"),bob)).andExpect(jsonPath("$.items").isEmpty());
+        api.perform(as(get("/api/v1/me/decks/export"),alice)).andExpect(jsonPath("$.items[0].entries[0].illustration").value(1));
+        var code=json.readTree(api.perform(as(get("/api/v1/me/decks/"+id+"/code"),alice)).andReturn().getResponse().getContentAsByteArray());
+        api.perform(write(post("/api/v1/me/decks/import"),bob,code)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nameEn").value("Test")).andExpect(jsonPath("$.entries[0].variantId").value(variant));
+        var wrong=new DeckApi.Save("다른 카드 일러스트","YUGIOH","DRAFT",0,false,List.of(new DeckRules.Line(second,"MAIN",1,variant)));
+        api.perform(write(post("/api/v1/me/decks"),alice,wrong)).andExpect(status().isUnprocessableEntity());
+    }
+
     @Test void printedCurveValuesDistinguishAbsentCostsFromZero() throws Exception {
         record Sample(String game, String specs, Integer expected) {}
         for (Sample sample : List.of(

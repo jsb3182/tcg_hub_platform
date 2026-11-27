@@ -65,4 +65,35 @@ class LegacyCardEditionIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].name").value("?"))
                 .andExpect(jsonPath("$[0].language").value("und")).andExpect(jsonPath("$[0].effectLanguage").value("ja"));
     }
+
+    @Test void directOriginalRequiresImportedCardKindAndMatchingPrintRegion() throws Exception {
+        long id=db.sql("""
+             insert into card(legacy_key,game_code,number,name,original_name,effect,specs,status)
+             values(?,'YUGIOH','TST-JP001','참고 이름','日本語名','기존 효과','{"k":"마법"}','PUBLISHED') returning id
+             """).param("legacy:"+UUID.randomUUID()).query(Long.class).single();
+        api.perform(get("/api/v1/cards/"+id).param("lang","ja"))
+                .andExpect(jsonPath("$.name").value("日本語名")).andExpect(jsonPath("$.language").value("ja"))
+                .andExpect(jsonPath("$.nameBasis").value("IMPORTED_ORIGINAL")).andExpect(jsonPath("$.effectLanguage").value("ko"));
+        db.sql("update card set number='TST-EN001' where id=?").param(id).update();
+        api.perform(get("/api/v1/cards/"+id).param("lang","en"))
+                .andExpect(jsonPath("$.name").value("참고 이름")).andExpect(jsonPath("$.nameBasis").value("IMPORTED_LABEL"));
+    }
+
+    @Test void otherPokemonPrintingHasExplicitBasisAndCannotSupplyRulesOrArtwork() throws Exception {
+        String label="Pokemon "+UUID.randomUUID();
+        long id=db.sql("""
+             insert into card(game_code,name,effect,specs,status) values('POKEMON','한국 카드','한국어 효과',
+                jsonb_build_object('language','ko','referenceNames',jsonb_build_object('en',cast(? as text)),
+                'referenceNameUrls','{"en":"https://pkmncards.com/card/example/"}'::jsonb),'PUBLISHED') returning id
+             """).param(label).query(Long.class).single();
+        api.perform(get("/api/v1/play/cards").param("game","POKEMON").param("lang","en").param("q",label))
+                .andExpect(jsonPath("$[0].id").value(id)).andExpect(jsonPath("$[0].name").value(label))
+                .andExpect(jsonPath("$[0].language").value("en")).andExpect(jsonPath("$[0].nameBasis").value("RELATED_PRINTING"))
+                .andExpect(jsonPath("$[0].effectLanguage").value("ko")).andExpect(jsonPath("$[0].imageUrl").isEmpty())
+                .andExpect(jsonPath("$[0].nameReferenceUrl").value("https://pkmncards.com/card/example/"));
+        db.sql("update card set specs=specs || '{\"names\":{\"en\":\"Exact printing\"}}'::jsonb where id=?").param(id).update();
+        api.perform(get("/api/v1/cards/"+id).param("lang","en"))
+                .andExpect(jsonPath("$.name").value("Exact printing")).andExpect(jsonPath("$.nameBasis").isEmpty())
+                .andExpect(jsonPath("$.nameReferenceUrl").isEmpty());
+    }
 }

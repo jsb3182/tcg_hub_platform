@@ -9,7 +9,12 @@ import org.springframework.stereotype.Component;
 class DeckRules {
     record Section(String section, Integer minCards, Integer maxCards) {}
     record Rule(String gameCode, String format, int version, Integer maxCopiesPerCard, String source, List<Section> sections) {}
-    record Line(@Positive long cardId, @NotBlank @Size(max=64) String section, @Min(1) @Max(999) int quantity) {}
+    record Line(@Positive long cardId, @NotBlank @Size(max=64) String section,
+                @Min(1) @Max(999) int quantity, @Positive Long variantId,
+                @Positive @Max(32767) Integer neuronArtwork) {
+        Line(long cardId,String section,int quantity,Long variantId) { this(cardId,section,quantity,variantId,null); }
+        Line(long cardId,String section,int quantity) { this(cardId,section,quantity,null); }
+    }
     record CardInfo(long id, String name, String identity, String kind, String stage, boolean basicEnergy,
                     boolean triggerCard, String domains, String tags, String supertype, boolean unlimitedCopies) {
         Set<String> labels(String value) {
@@ -99,7 +104,10 @@ class DeckRules {
             var card = cards.get(line.cardId());
             String section=line.section();
             if (!allowed.contains(section)) throw new Invalid("선택한 게임에서 사용할 수 없는 구역입니다.");
-            if (!unique.add(section+"/"+line.cardId())) throw new Invalid("같은 구역의 중복 항목은 수량으로 합쳐 주세요.");
+            if (line.neuronArtwork()!=null && (!"YUGIOH".equals(rule.gameCode()) || line.variantId()!=null))
+                throw new Invalid("한 카드에는 일러스트 판본을 하나만 선택해 주세요.");
+            if (!unique.add(section+"/"+line.cardId()+"/"+line.variantId()+"/"+line.neuronArtwork()))
+                throw new Invalid("같은 구역의 같은 일러스트는 수량으로 합쳐 주세요.");
             quantities.merge(section,line.quantity(),Integer::sum);
             boolean unlimited = standard && (rule.gameCode().equals("POKEMON") && card.basicEnergy()
                     || rule.gameCode().equals("RIFTBOUND") && section.equals("RUNE")

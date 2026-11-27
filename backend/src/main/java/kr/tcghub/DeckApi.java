@@ -20,18 +20,24 @@ import org.springframework.web.server.ResponseStatusException;
 class DeckApi {
     record Save(@NotBlank @Size(max=100) String name, @NotBlank @Size(max=32) String gameCode,
                 @NotBlank @Pattern(regexp="DRAFT|COMPLETE") String state, @PositiveOrZero int revision,
-                boolean shared, @NotNull @Size(max=300) List<@NotNull @Valid Line> entries) {}
+                boolean shared, @NotNull @Size(max=300) List<@NotNull @Valid Line> entries,
+                @Size(max=100) String nameJa,@Size(max=100) String nameEn) {
+        Save(String name,String gameCode,String state,int revision,boolean shared,List<Line> entries) {
+            this(name,gameCode,state,revision,shared,entries,null,null);
+        }
+    }
     record Header(long id, String name, String gameCode, String format, int ruleVersion, String state,
-                  int revision, OffsetDateTime updatedAt, UUID shareToken) {}
+                  int revision, OffsetDateTime updatedAt, UUID shareToken,String nameJa,String nameEn) {}
     record Summary(long id, String name, String gameCode, String format, int ruleVersion, String state,
-                   int revision, OffsetDateTime updatedAt, UUID shareToken, long cards) {}
-    record Page(List<Summary> items, long total) {}
+                   int revision, OffsetDateTime updatedAt, UUID shareToken,String nameJa,String nameEn,
+                   long cards,long mainCount,long extraCount,long sideCount,boolean hasCover) {}
+    record Page(List<Summary> items, long total,long totalCards) {}
     record Entry(long cardId, String section, int quantity, String name, String number, String packName,
-                 Integer curveValue, CatalogApi.Image image) {}
+                 Integer curveValue, CatalogApi.Image image,Long variantId,String imageUrl,String type,Integer neuronArtwork) {}
     record Details(@com.fasterxml.jackson.annotation.JsonUnwrapped Header deck, DeckRules.Rule rule,List<Entry> entries) {}
     record History(int revision, OffsetDateTime savedAt, String name, String state, int cards) {}
     record HistoryPage(List<History> items,long total) {}
-    private static final String FIELDS="d.id,d.name,d.game_code,d.format,d.rule_version,d.state,d.revision,d.updated_at,d.share_token";
+    private static final String FIELDS="d.id,d.name,d.game_code,d.format,d.rule_version,d.state,d.revision,d.updated_at,d.share_token,d.name_ja,d.name_en";
     private final JdbcClient db;
     private final DeckRules rules;
     private final ObjectMapper json;
@@ -56,38 +62,62 @@ class DeckApi {
     DeckRules.Rule rule(@PathVariable @Size(max=32) String game) { return rules.current(game); }
 
     @GetMapping("/me/decks")
-    Page list(Principal user,@RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page) {
-        String from=" from deck d join app_user u on u.id=d.owner_id where u.email=? and u.enabled";
-        var items=db.sql("select "+FIELDS+",(select coalesce(sum(e.quantity),0) from deck_entry e where e.deck_id=d.id) as cards"+from+
-                " order by d.updated_at desc,d.id desc limit 24 offset ?").param(user.getName()).param(page*24)
+    Page list(Principal user,@RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
+              @RequestParam(defaultValue="") @Size(max=120) String q) {
+        String from="""
+             from deck d join app_user u on u.id=d.owner_id
+             where u.email=:email and u.enabled and (:q='' or
+                 strpos(lower(concat_ws(' ',d.name,d.name_ja,d.name_en)),lower(:q))>0 or exists (
+                 select 1 from deck_entry e join card c on c.id=e.card_id where e.deck_id=d.id and
+                 strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.specs->'names'->>'en',c.specs->'names'->>'ja',c.specs->'names'->>'ko')),lower(:q))>0))
+             """;
+        var items=db.sql("select "+FIELDS+"""
+              ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id) as cards
+              ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id and section='MAIN') as main_count
+              ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id and section='EXTRA') as extra_count
+              ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id and section='SIDE') as side_count
+              ,exists(select 1 from deck_decoration where deck_id=d.id and slot='cover') as has_cover
+             """+from+" order by d.updated_at desc,d.id desc limit 24 offset :offset")
+                .param("email",user.getName()).param("q",q.strip()).param("offset",page*24)
                 .query(Summary.class).list();
-        return new Page(items,db.sql("select count(*)"+from).param(user.getName()).query(Long.class).single());
+        return db.sql("select count(*),coalesce(sum((select sum(quantity) from deck_entry where deck_id=d.id)),0)"+from)
+                .param("email",user.getName()).param("q",q.strip()).query((r,n)->new Page(items,r.getLong(1),r.getLong(2))).single();
     }
 
     private Header owned(Principal user,long id, boolean lock) {
         String sql="select "+FIELDS+" from deck d join app_user u on u.id=d.owner_id where d.id=? and u.email=? and u.enabled";
         return db.sql(sql+(lock?" for update of d":"")).param(id).param(user.getName()).query(Header.class).optional().orElseThrow(DeckApi::missing);
     }
-    private Details details(Header header) {
-        var entries=db.sql("select e.card_id,e.section,e.quantity,c.name,c.number,p.name as pack_name,"+
+    private Details details(Header header) {return details(header,"ko");}
+    private Details details(Header header,String lang) {
+        var entries=db.sql("select e.card_id,e.section,e.quantity,e.variant_id,e.neuron_artwork,"+CardEdition.NAME+" as name,c.number,p.name as pack_name,"+
+                "coalesce('https://artworks-jp-n.ygoresources.com'||n.image_path,c.specs->'images'->>art.lang) as image_url,"+
+                "coalesce(c.specs->>'type',nullif(concat_ws(' · ',c.specs->>'k',c.specs->>'sub'),''),c.specs->>'card_type') as type,"+
                 "card_curve_value(c.game_code,c.specs) as curve_value"+LibraryImage.COLUMNS+
-                "from deck_entry e join card c on c.id=e.card_id left join pack p on p.id=c.pack_id "+LibraryImage.JOIN+
-                "where e.deck_id=? order by e.section,c.name,e.card_id").param(header.id()).query((r,n)->new Entry(
+                "from deck_entry e join card c on c.id=e.card_id left join pack p on p.id=c.pack_id "+
+                "left join neuron_artwork n on n.cid=e.neuron_cid and n.artwork=e.neuron_artwork "+CardEdition.JOIN+LibraryImage.DECK_JOIN+
+                "where e.deck_id=:deck order by e.section,e.display_order,c.name,e.card_id,e.variant_id")
+                .param("deck",header.id()).param("lang",lang).query((r,n)->new Entry(
                         r.getLong("card_id"),r.getString("section"),r.getInt("quantity"),r.getString("name"),
-                        r.getString("number"),r.getString("pack_name"),r.getObject("curve_value",Integer.class),LibraryImage.read(r))).list();
+                        r.getString("number"),r.getString("pack_name"),r.getObject("curve_value",Integer.class),
+                        r.getObject("neuron_artwork")==null ? LibraryImage.read(r) : null,
+                        r.getObject("variant_id",Long.class),r.getString("image_url"),r.getString("type"),
+                        r.getObject("neuron_artwork",Integer.class))).list();
         return new Details(header,rules.rule(header.gameCode(),header.format(),header.ruleVersion()),entries);
     }
     @GetMapping("/me/decks/{id}")
-    Details get(Principal user,@PathVariable @Positive long id) { return details(owned(user,id,false)); }
+    Details get(Principal user,@PathVariable @Positive long id,@RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) {
+        return details(owned(user,id,false),lang);
+    }
 
     @GetMapping("/shared/decks/{token}")
-    Details shared(@PathVariable UUID token) {
+    Details shared(@PathVariable UUID token,@RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) {
         var header=db.sql("select "+FIELDS+"""
              from deck d join app_user u on u.id=d.owner_id where d.share_token=? and u.enabled
                and not exists(select 1 from deck_entry e join card c on c.id=e.card_id
                               where e.deck_id=d.id and c.status<>'PUBLISHED')
             """).param(token).query(Header.class).optional().orElseThrow(DeckApi::missing);
-        return details(header);
+        return details(header,lang);
     }
 
     @PostMapping("/me/decks")
@@ -98,10 +128,10 @@ class DeckApi {
         var rule=rules.current(data.gameCode());
         rules.validate(rule,data.entries(),data.state().equals("COMPLETE"));
         long id=db.sql("""
-            insert into deck(owner_id,game_code,name,format,rule_version,state,share_token)
-            select id,?,?,'CONSTRUCTED',?,?,? from app_user where email=? and enabled returning id
+            insert into deck(owner_id,game_code,name,format,rule_version,state,share_token,name_ja,name_en)
+            select id,?,?,'CONSTRUCTED',?,?,?,coalesce(?,''),coalesce(?,'') from app_user where email=? and enabled returning id
             """).param(data.gameCode()).param(data.name().strip()).param(rule.version()).param(data.state())
-                .param(data.shared()?UUID.randomUUID():null).param(user.getName()).query(Long.class).optional().orElseThrow(DeckApi::missing);
+                .param(data.shared()?UUID.randomUUID():null).param(data.nameJa()).param(data.nameEn()).param(user.getName()).query(Long.class).optional().orElseThrow(DeckApi::missing);
         return writeEntries(user,id,rule,data.entries());
     }
 
@@ -117,16 +147,28 @@ class DeckApi {
         if(!db.sql("select exists(select 1 from deck_revision where deck_id=? and revision=?)")
                 .param(id).param(before.revision()).query(Boolean.class).single()) snapshot(details(before));
         UUID token=data.shared()?(before.shareToken()!=null?before.shareToken():UUID.randomUUID()):null;
-        db.sql("update deck set name=?,state=?,share_token=?,revision=revision+1,updated_at=clock_timestamp() where id=?")
-                .param(data.name().strip()).param(data.state()).param(token).param(id).update();
+        db.sql("update deck set name=?,state=?,share_token=?,name_ja=coalesce(?,name_ja),name_en=coalesce(?,name_en),revision=revision+1,updated_at=clock_timestamp() where id=?")
+                .param(data.name().strip()).param(data.state()).param(token).param(data.nameJa()).param(data.nameEn()).param(id).update();
         db.sql("delete from deck_entry where deck_id=?").param(id).update();
         return writeEntries(user,id,rule,data.entries());
     }
     private Details writeEntries(Principal user,long id,DeckRules.Rule rule,List<DeckRules.Line> entries) {
-        for(var line:entries) db.sql("""
-            insert into deck_entry(deck_id,game_code,format,rule_version,section,card_id,quantity) values(?,?,?,?,?,?,?)
-            """).param(id).param(rule.gameCode()).param(rule.format()).param(rule.version())
-                .param(line.section()).param(line.cardId()).param(line.quantity()).update();
+        int position=0;
+        for(var line:entries) {
+            int inserted=db.sql("""
+                insert into deck_entry(deck_id,game_code,format,rule_version,section,card_id,quantity,variant_id,display_order,neuron_cid,neuron_artwork)
+                select :id,:game,:format,:version,:section,c.id,:qty,:variant,:pos,n.cid,n.artwork from card c
+                """ + CardEdition.LEGACY_JOIN + """
+                left join neuron_artwork n on n.cid=coalesce(c.specs->>'konami_id',linked.konami_id::text)
+                    and n.artwork=cast(:artwork as integer)
+                where c.id=:card and c.status='PUBLISHED' and c.game_code=:game
+                  and (cast(:artwork as integer) is null or n.artwork is not null)
+                  and (cast(:variant as bigint) is null or exists(select 1 from card_variant where id=:variant and card_id=c.id))
+                """).param("id",id).param("game",rule.gameCode()).param("format",rule.format()).param("version",rule.version())
+                    .param("section",line.section()).param("card",line.cardId()).param("qty",line.quantity())
+                    .param("variant",line.variantId()).param("artwork",line.neuronArtwork()).param("pos",position++).update();
+            if(inserted!=1) throw new DeckRules.Invalid("이 카드에 등록된 일러스트를 선택해 주세요.");
+        }
         var result=details(owned(user,id,false));
         snapshot(result);
         return result;
@@ -137,6 +179,7 @@ class DeckApi {
             saved.put("name",details.deck().name()).put("state",details.deck().state()).put("gameCode",details.deck().gameCode())
                     .put("revision",details.deck().revision()).put("cards",details.entries().stream().mapToInt(Entry::quantity).sum());
             saved.set("entries",json.valueToTree(details.entries()));
+            saved.put("nameJa",details.deck().nameJa()).put("nameEn",details.deck().nameEn());
             db.sql("insert into deck_revision(deck_id,revision,saved_at,snapshot) values(?,?,?,cast(? as jsonb))")
                     .param(details.deck().id()).param(details.deck().revision()).param(details.deck().updatedAt())
                     .param(json.writeValueAsString(saved)).update();
