@@ -1,0 +1,1186 @@
+[
+  {
+    "game": "POKEMON",
+    "key": "kr-815",
+    "code": "M1S",
+    "name": "MEGA 확장팩 「메가심포니아」",
+    "names": {
+      "ko": "MEGA 확장팩 「메가심포니아」"
+    },
+    "region": "KR",
+    "date": "2025-09-26",
+    "url": "https://pokemoncard.co.kr/card/815",
+    "catalogCode": "M1S",
+    "catalogName": "MEGA 확장팩 「메가심포니아」"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-816",
+    "code": "M1L",
+    "name": "MEGA 확장팩 「메가브레이브」",
+    "names": {
+      "ko": "MEGA 확장팩 「메가브레이브」"
+    },
+    "region": "KR",
+    "date": "2025-09-26",
+    "url": "https://pokemoncard.co.kr/card/816",
+    "catalogCode": "M1L",
+    "catalogName": "MEGA 확장팩 「메가브레이브」"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-838",
+    "code": "M2",
+    "name": "MEGA 확장팩 「인페르노X」",
+    "names": {
+      "ko": "MEGA 확장팩 「인페르노X」"
+    },
+    "region": "KR",
+    "date": "2025-11-28",
+    "url": "https://pokemoncard.co.kr/card/838",
+    "catalogCode": "M2",
+    "catalogName": "MEGA 확장팩 「인페르노X」"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-859",
+    "code": "M2a",
+    "name": "MEGA 하이클래스팩 「MEGA 드림 ex」",
+    "names": {
+      "ko": "MEGA 하이클래스팩 「MEGA 드림 ex」"
+    },
+    "region": "KR",
+    "date": "2026-01-23",
+    "url": "https://pokemoncard.co.kr/card/859",
+    "catalogCode": "M2a",
+    "catalogName": "MEGA 하이클래스팩 「MEGA 드림 ex」"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-869",
+    "code": "M3",
+    "name": "MEGA 확장팩 「니힐제로」",
+    "names": {
+      "ko": "MEGA 확장팩 「니힐제로」"
+    },
+    "region": "KR",
+    "date": "2026-03-13",
+    "url": "https://pokemoncard.co.kr/card/869",
+    "catalogCode": "M3",
+    "catalogName": "MEGA 확장팩 「니힐제로」"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-887",
+    "code": "M4",
+    "name": "MEGA 확장팩 「닌자스피너」",
+    "names": {
+      "ko": "MEGA 확장팩 「닌자스피너」"
+    },
+    "region": "KR",
+    "date": "2026-05-01",
+    "url": "https://pokemoncard.co.kr/card/887",
+    "catalogCode": "M4",
+    "catalogName": "MEGA 확장팩 「닌자스피너」"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-907",
+    "code": "M5",
+    "name": "MEGA 확장팩 「어비스아이」",
+    "names": {
+      "ko": "MEGA 확장팩 「어비스아이」"
+    },
+    "region": "KR",
+    "date": "2026-06-26",
+    "url": "https://pokemoncard.co.kr/card/907",
+    "catalogCode": "M5",
+    "catalogName": "MEGA 확장팩 「어비스아이」"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-938",
+    "code": "M6",
+    "name": "MEGA 확장팩 「스톰에메랄다」",
+    "names": {
+      "ko": "MEGA 확장팩 「스톰에메랄다」"
+    },
+    "region": "KR",
+    "date": "2026-08-21",
+    "url": "https://pokemoncard.co.kr/card/938",
+    "catalogCode": "M6",
+    "catalogName": "MEGA 확장팩 「스톰에메랄다」"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-960",
+    "code": "M6a",
+    "name": "MEGA 확장팩 「30th CELEBRATION」",
+    "names": {
+      "ko": "MEGA 확장팩 「30th CELEBRATION」"
+    },
+    "region": "KR",
+    "date": "2026-09-16",
+    "url": "https://pokemoncard.co.kr/card/960",
+    "catalogCode": "M6a",
+    "catalogName": "MEGA 확장팩 「30th CELEBRATION」"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-991",
+    "code": null,
+    "name": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 나오하・뜨아거・꾸왁스」",
+    "names": {
+      "ko": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 나오하・뜨아거・꾸왁스」"
+    },
+    "region": "KR",
+    "date": "2026-11-27",
+    "url": "https://pokemoncard.co.kr/card/991"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-992",
+    "code": null,
+    "name": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 흥나숭・염버니・울머기」",
+    "names": {
+      "ko": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 흥나숭・염버니・울머기」"
+    },
+    "region": "KR",
+    "date": "2026-11-27",
+    "url": "https://pokemoncard.co.kr/card/992"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-993",
+    "code": null,
+    "name": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 나몰빼미・냐오불・누리공」",
+    "names": {
+      "ko": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 나몰빼미・냐오불・누리공」"
+    },
+    "region": "KR",
+    "date": "2026-11-27",
+    "url": "https://pokemoncard.co.kr/card/993"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-994",
+    "code": null,
+    "name": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 도치마론・푸호꼬・개구마르」",
+    "names": {
+      "ko": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 도치마론・푸호꼬・개구마르」"
+    },
+    "region": "KR",
+    "date": "2026-11-27",
+    "url": "https://pokemoncard.co.kr/card/994"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-995",
+    "code": null,
+    "name": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 주리비얀・뚜꾸리・수댕이」",
+    "names": {
+      "ko": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 주리비얀・뚜꾸리・수댕이」"
+    },
+    "region": "KR",
+    "date": "2026-11-27",
+    "url": "https://pokemoncard.co.kr/card/995"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-996",
+    "code": null,
+    "name": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 모부기・불꽃숭이・팽도리」",
+    "names": {
+      "ko": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 모부기・불꽃숭이・팽도리」"
+    },
+    "region": "KR",
+    "date": "2026-11-27",
+    "url": "https://pokemoncard.co.kr/card/996"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-997",
+    "code": null,
+    "name": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 나무지기・아차모・물짱이」",
+    "names": {
+      "ko": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 나무지기・아차모・물짱이」"
+    },
+    "region": "KR",
+    "date": "2026-11-27",
+    "url": "https://pokemoncard.co.kr/card/997"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-998",
+    "code": null,
+    "name": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 치코리타・브케인・리아코」",
+    "names": {
+      "ko": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 치코리타・브케인・리아코」"
+    },
+    "region": "KR",
+    "date": "2026-11-27",
+    "url": "https://pokemoncard.co.kr/card/998"
+  },
+  {
+    "game": "POKEMON",
+    "key": "kr-999",
+    "code": null,
+    "name": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 이상해씨・파이리・꼬부기」",
+    "names": {
+      "ko": "포켓몬 카드 게임 MEGA 「30th CELEBRATION 카드 세트 이상해씨・파이리・꼬부기」"
+    },
+    "region": "KR",
+    "date": "2026-11-27",
+    "url": "https://pokemoncard.co.kr/card/999"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-sword-shieldchilling-reign",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Sword & Shield—Chilling Reign",
+    "names": {
+      "en": "Pokémon TCG: Sword & Shield—Chilling Reign"
+    },
+    "date": "2021-06-18",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Sword-ShieldChilling-Reign"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-sword-shieldevolving-skies",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Sword & Shield—Evolving Skies",
+    "names": {
+      "en": "Pokémon TCG: Sword & Shield—Evolving Skies"
+    },
+    "date": "2021-08-27",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Sword-ShieldEvolving-Skies"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-25th-anniversary",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Celebrations",
+    "names": {
+      "en": "Pokémon TCG: Celebrations"
+    },
+    "date": "2021-10-08",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-25th-Anniversary"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-v-battle-decks-rayquaza-v-and-noivern-v",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: V Battle Decks (Rayquaza V or Noivern V)",
+    "names": {
+      "en": "Pokémon TCG: V Battle Decks (Rayquaza V or Noivern V)"
+    },
+    "date": "2021-10-08",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-V-Battle-Decks-Rayquaza-V-and-Noivern-V"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-sword-shieldfusion-strike",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Sword & Shield—Fusion Strike",
+    "names": {
+      "en": "Pokémon TCG: Sword & Shield—Fusion Strike"
+    },
+    "date": "2021-11-12",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Sword-ShieldFusion-Strike"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-sword-shieldbrilliant-stars",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Sword & Shield—Brilliant Stars",
+    "names": {
+      "en": "Pokémon TCG: Sword & Shield—Brilliant Stars"
+    },
+    "date": "2022-02-25",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Sword-ShieldBrilliant-Stars"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-trading-card-game-sword-shieldastral-radiance",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Sword & Shield—Astral Radiance",
+    "names": {
+      "en": "Pokémon TCG: Sword & Shield—Astral Radiance"
+    },
+    "date": "2022-05-27",
+    "url": "https://press.pokemon.com/en/products/Pokemon-Trading-Card-Game-Sword-ShieldAstral-Radiance"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-pokemon-go",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Pokémon GO",
+    "names": {
+      "en": "Pokémon TCG: Pokémon GO"
+    },
+    "date": "2022-07-01",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Pokemon-GO"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-trick-or-trade-booster-bundle",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Trick or Trade BOOster Bundle",
+    "names": {
+      "en": "Pokémon TCG: Trick or Trade BOOster Bundle"
+    },
+    "date": "2022-09-01",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Trick-or-Trade-BOOster-Bundle"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-sword-shieldlost-origin",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Sword & Shield—Lost Origin",
+    "names": {
+      "en": "Pokémon TCG: Sword & Shield—Lost Origin"
+    },
+    "date": "2022-09-09",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Sword-ShieldLost-Origin"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-sword-shield-silver-tempest",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Sword & Shield—Silver Tempest",
+    "names": {
+      "en": "Pokémon TCG: Sword & Shield—Silver Tempest"
+    },
+    "date": "2022-11-11",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Sword-Shield-Silver-Tempest"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-crown-zenith",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Crown Zenith",
+    "names": {
+      "en": "Pokémon TCG: Crown Zenith"
+    },
+    "date": "2023-01-20",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Crown-Zenith"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violet",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet"
+    },
+    "date": "2023-03-31",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-Violet"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetpaldea-evolved",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Paldea Evolved",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Paldea Evolved"
+    },
+    "date": "2023-06-09",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletPaldea-Evolved"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetobsidian-flames",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Obsidian Flames",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Obsidian Flames"
+    },
+    "date": "2023-08-11",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletObsidian-Flames"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-trick-or-trade-booster-bundle-2023",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Trick or Trade BOOster Bundle (2023)",
+    "names": {
+      "en": "Pokémon TCG: Trick or Trade BOOster Bundle (2023)"
+    },
+    "date": "2023-09-01",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Trick-or-Trade-BOOster-Bundle-2023"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violet151",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—151",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—151"
+    },
+    "date": "2023-09-22",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-Violet151"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetparadox-rift-36510",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Paradox Rift",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Paradox Rift"
+    },
+    "date": "2023-11-03",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletParadox-Rift-36510"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetpaldean-fates",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Paldean Fates",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Paldean Fates"
+    },
+    "date": "2024-01-26",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletPaldean-Fates"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violettemporal-forces",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Temporal Forces",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Temporal Forces"
+    },
+    "date": "2024-03-22",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletTemporal-Forces"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violettwilight-masquerade",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Twilight Masquerade",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Twilight Masquerade"
+    },
+    "date": "2024-05-24",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletTwilight-Masquerade"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetshrouded-fable",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Shrouded Fable",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Shrouded Fable"
+    },
+    "date": "2024-08-02",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletShrouded-Fable"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-trick-or-trade-booster-bundle-2024",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Trick or Trade BOOster Bundle (2024)",
+    "names": {
+      "en": "Pokémon TCG: Trick or Trade BOOster Bundle (2024)"
+    },
+    "date": "2024-08-30",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Trick-or-Trade-BOOster-Bundle-2024"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetstellar-crown",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Stellar Crown",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Stellar Crown"
+    },
+    "date": "2024-09-13",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletStellar-Crown"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetsurging-sparks",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Surging Sparks",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Surging Sparks"
+    },
+    "date": "2024-11-08",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletSurging-Sparks"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetprismatic-evolutions",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Prismatic Evolutions",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Prismatic Evolutions"
+    },
+    "date": "2025-01-17",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletPrismatic-Evolutions"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violet-journey-together",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Journey Together",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Journey Together"
+    },
+    "date": "2025-03-28",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-Violet-Journey-Together"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetdestined-rivals",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Destined Rivals",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Destined Rivals"
+    },
+    "date": "2025-05-30",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletDestined-Rivals"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-scarlet-violetblack-bolt-and-scarlet-violetwhite-flare",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Scarlet & Violet—Black Bolt and Scarlet & Violet—White Flare",
+    "names": {
+      "en": "Pokémon TCG: Scarlet & Violet—Black Bolt and Scarlet & Violet—White Flare"
+    },
+    "date": "2025-07-18",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Scarlet-VioletBlack-Bolt-and-Scarlet-VioletWhite-Flare"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-mega-evolution-49281",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Mega Evolution",
+    "names": {
+      "en": "Pokémon TCG: Mega Evolution"
+    },
+    "date": "2025-09-26",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Mega-Evolution-49281"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-mega-evolutionphantasmal-flames",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Mega Evolution—Phantasmal Flames",
+    "names": {
+      "en": "Pokémon TCG: Mega Evolution—Phantasmal Flames"
+    },
+    "date": "2025-11-14",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Mega-EvolutionPhantasmal-Flames"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-mega-evolutionascended-heroes",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Mega Evolution—Ascended Heroes",
+    "names": {
+      "en": "Pokémon TCG: Mega Evolution—Ascended Heroes"
+    },
+    "date": "2026-01-30",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Mega-EvolutionAscended-Heroes"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokkemon-tcg-mega-evolutionperfect-order",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Mega Evolution—Perfect Order",
+    "names": {
+      "en": "Pokémon TCG: Mega Evolution—Perfect Order"
+    },
+    "date": "2026-03-27",
+    "url": "https://press.pokemon.com/en/products/Pokkemon-TCG-Mega-EvolutionPerfect-Order"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-mega-evolutionchaos-rising",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Mega Evolution—Chaos Rising",
+    "names": {
+      "en": "Pokémon TCG: Mega Evolution—Chaos Rising"
+    },
+    "date": "2026-05-22",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Mega-EvolutionChaos-Rising"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-mega-evolutionpitch-black",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Mega Evolution—Pitch Black",
+    "names": {
+      "en": "Pokémon TCG: Mega Evolution—Pitch Black"
+    },
+    "date": "2026-07-17",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Mega-EvolutionPitch-Black"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-30th-celebration",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: 30th Celebration",
+    "names": {
+      "en": "Pokémon TCG: 30th Celebration"
+    },
+    "date": "2026-09-16",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-30th-Celebration"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-mega-evolutiondelta-reign",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Mega Evolution—Delta Reign",
+    "names": {
+      "en": "Pokémon TCG: Mega Evolution—Delta Reign"
+    },
+    "date": "2026-11-06",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Mega-EvolutionDelta-Reign"
+  },
+  {
+    "game": "POKEMON",
+    "key": "na-pokemon-tcg-mega-evolutionflowing-fists",
+    "code": null,
+    "region": "NA",
+    "name": "Pokémon TCG: Mega Evolution—Flowing Fists",
+    "names": {
+      "en": "Pokémon TCG: Mega Evolution—Flowing Fists"
+    },
+    "date": "2027-02-06",
+    "url": "https://press.pokemon.com/en/products/Pokemon-TCG-Mega-EvolutionFlowing-Fists"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-bava",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Blue Archive The Animation",
+    "names": {
+      "en": "Booster Pack Blue Archive The Animation"
+    },
+    "date": "2026-07-31",
+    "url": "https://en.ws-tcg.com/products/bp-bava/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-rzv3",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Re:ZERO -Starting Life in Another World- Vol.3",
+    "names": {
+      "en": "Booster Pack Re:ZERO -Starting Life in Another World- Vol.3"
+    },
+    "date": "2026-08-28",
+    "url": "https://en.ws-tcg.com/products/bp-rzv3/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-nik2",
+    "code": "NIK/S135",
+    "region": "EN",
+    "name": "Booster Pack GODDESS OF VICTORY: NIKKE Vol.2",
+    "names": {
+      "en": "Booster Pack GODDESS OF VICTORY: NIKKE Vol.2"
+    },
+    "date": "2026-09-25",
+    "url": "https://en.ws-tcg.com/products/bp-nik2/",
+    "catalogCode": "NIK/S135",
+    "catalogName": "GODDESS OF VICTORY: NIKKE Vol.2"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-sby4",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Rascal Does Not Dream Vol.4",
+    "names": {
+      "en": "Booster Pack Rascal Does Not Dream Vol.4"
+    },
+    "date": "2026-10-23",
+    "url": "https://en.ws-tcg.com/products/bp-sby4/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-uma2",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Umamusume: Pretty Derby - Beginning of a New Era",
+    "names": {
+      "en": "Booster Pack Umamusume: Pretty Derby - Beginning of a New Era"
+    },
+    "date": "2026-11-06",
+    "url": "https://en.ws-tcg.com/products/bp-uma2/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-fd",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Forbidden Door",
+    "names": {
+      "en": "Booster Pack Forbidden Door"
+    },
+    "date": "2026-12-04",
+    "url": "https://en.ws-tcg.com/products/bp-fd/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-td-fd-aew",
+    "code": null,
+    "region": "EN",
+    "name": "Trial Deck Forbidden Door (AEW)",
+    "names": {
+      "en": "Trial Deck Forbidden Door (AEW)"
+    },
+    "date": "2026-12-04",
+    "url": "https://en.ws-tcg.com/products/td-fd-aew/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-td-fd-njpw",
+    "code": null,
+    "region": "EN",
+    "name": "Trial Deck Forbidden Door (NJPW)",
+    "names": {
+      "en": "Trial Deck Forbidden Door (NJPW)"
+    },
+    "date": "2026-12-04",
+    "url": "https://en.ws-tcg.com/products/td-fd-njpw/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-p30",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Persona 30th Anniversary",
+    "names": {
+      "en": "Booster Pack Persona 30th Anniversary"
+    },
+    "date": "2026-12-23",
+    "url": "https://en.ws-tcg.com/products/bp-p30/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-kj8",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Kaiju No.8",
+    "names": {
+      "en": "Booster Pack Kaiju No.8"
+    },
+    "date": "2027-01-29",
+    "url": "https://en.ws-tcg.com/products/bp-kj8/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-knk2",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Rent-A-Girlfriend Vol. 2",
+    "names": {
+      "en": "Booster Pack Rent-A-Girlfriend Vol. 2"
+    },
+    "date": "2027-01-29",
+    "url": "https://en.ws-tcg.com/products/bp-knk2/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-td-kj8",
+    "code": null,
+    "region": "EN",
+    "name": "Trial Deck Kaiju No.8",
+    "names": {
+      "en": "Trial Deck Kaiju No.8"
+    },
+    "date": "2027-01-29",
+    "url": "https://en.ws-tcg.com/products/td-kj8/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-tal",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Tales of SERIES",
+    "names": {
+      "en": "Booster Pack Tales of SERIES"
+    },
+    "date": "2027-02-12",
+    "url": "https://en.ws-tcg.com/products/bp-tal/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-td-tal",
+    "code": null,
+    "region": "EN",
+    "name": "Trial Deck Tales of SERIES",
+    "names": {
+      "en": "Trial Deck Tales of SERIES"
+    },
+    "date": "2027-02-12",
+    "url": "https://en.ws-tcg.com/products/td-tal/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-mrf",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Metaphor: ReFantazio",
+    "names": {
+      "en": "Booster Pack Metaphor: ReFantazio"
+    },
+    "date": "2027-03-26",
+    "url": "https://en.ws-tcg.com/products/bp-mrf/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-td-mrf",
+    "code": null,
+    "region": "EN",
+    "name": "Trial Deck Metaphor: ReFantazio",
+    "names": {
+      "en": "Trial Deck Metaphor: ReFantazio"
+    },
+    "date": "2027-03-26",
+    "url": "https://en.ws-tcg.com/products/td-mrf/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-dal3",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack Date A Live Vol. 3",
+    "names": {
+      "en": "Booster Pack Date A Live Vol. 3"
+    },
+    "date": "2027-04-09",
+    "url": "https://en.ws-tcg.com/products/bp-dal3/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-bp-bbx",
+    "code": null,
+    "region": "EN",
+    "name": "Booster Pack BEYBLADE X",
+    "names": {
+      "en": "Booster Pack BEYBLADE X"
+    },
+    "date": "2027-05-07",
+    "url": "https://en.ws-tcg.com/products/bp-bbx/"
+  },
+  {
+    "game": "WEISS",
+    "key": "en-td-bbx",
+    "code": null,
+    "region": "EN",
+    "name": "Trial Deck BEYBLADE X",
+    "names": {
+      "en": "Trial Deck BEYBLADE X"
+    },
+    "date": "2027-05-07",
+    "url": "https://en.ws-tcg.com/products/td-bbx/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-gup_bp",
+    "code": null,
+    "region": "JP",
+    "name": "ブースターパック ガールズ＆パンツァー",
+    "names": {
+      "ja": "ブースターパック ガールズ＆パンツァー"
+    },
+    "date": "2026-10-30",
+    "url": "https://ws-tcg.com/products/gup_bp/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-gup_td_m",
+    "code": null,
+    "region": "JP",
+    "name": "トライアルデッキ ガールズ＆パンツァー 無限軌道杯",
+    "names": {
+      "ja": "トライアルデッキ ガールズ＆パンツァー 無限軌道杯"
+    },
+    "date": "2026-10-30",
+    "url": "https://ws-tcg.com/products/gup_td_m/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-gup_td_o",
+    "code": null,
+    "region": "JP",
+    "name": "トライアルデッキ ガールズ＆パンツァー 大洗女子学園",
+    "names": {
+      "ja": "トライアルデッキ ガールズ＆パンツァー 大洗女子学園"
+    },
+    "date": "2026-10-30",
+    "url": "https://ws-tcg.com/products/gup_td_o/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-bdy_bp",
+    "code": null,
+    "region": "JP",
+    "name": "ブースターパック BanG Dream! [夢限大みゅーたいぷ]",
+    "names": {
+      "ja": "ブースターパック BanG Dream! [夢限大みゅーたいぷ]"
+    },
+    "date": "2026-11-13",
+    "url": "https://ws-tcg.com/products/bdy_bp/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-p30_wsbp",
+    "code": null,
+    "region": "JP",
+    "name": "ブースターパック Persona 30th Anniversary",
+    "names": {
+      "ja": "ブースターパック Persona 30th Anniversary"
+    },
+    "date": "2026-11-27",
+    "url": "https://ws-tcg.com/products/p30_wsbp/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-mjs_td_ws",
+    "code": null,
+    "region": "JP",
+    "name": "トライアルデッキ 魔法少女ノ魔女裁判",
+    "names": {
+      "ja": "トライアルデッキ 魔法少女ノ魔女裁判"
+    },
+    "date": "2026-12-11",
+    "url": "https://ws-tcg.com/products/mjs_td_ws/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-cpk_pb",
+    "code": null,
+    "region": "JP",
+    "name": "プレミアムブースター 超かぐや姫！",
+    "names": {
+      "ja": "プレミアムブースター 超かぐや姫！"
+    },
+    "date": "2026-12-18",
+    "url": "https://ws-tcg.com/products/cpk_pb/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-azl_vol3_bp",
+    "code": null,
+    "region": "JP",
+    "name": "ブースターパック アズールレーン Vol.3",
+    "names": {
+      "ja": "ブースターパック アズールレーン Vol.3"
+    },
+    "date": "2026-12-25",
+    "url": "https://ws-tcg.com/products/azl_vol3_bp/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-bpfd",
+    "code": null,
+    "region": "JP",
+    "name": "ブースターパック 新日本プロレス×AEW：Forbidden Door",
+    "names": {
+      "ja": "ブースターパック 新日本プロレス×AEW：Forbidden Door"
+    },
+    "date": "2027-01-15",
+    "url": "https://ws-tcg.com/products/bpfd/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-tdfdaew",
+    "code": null,
+    "region": "JP",
+    "name": "トライアルデッキ AEW：Forbidden Door",
+    "names": {
+      "ja": "トライアルデッキ AEW：Forbidden Door"
+    },
+    "date": "2027-01-15",
+    "url": "https://ws-tcg.com/products/tdfdaew/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-tdfdnjpw",
+    "code": null,
+    "region": "JP",
+    "name": "トライアルデッキ 新日本プロレス：Forbidden Door",
+    "names": {
+      "ja": "トライアルデッキ 新日本プロレス：Forbidden Door"
+    },
+    "date": "2027-01-15",
+    "url": "https://ws-tcg.com/products/tdfdnjpw/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-ono_pb",
+    "code": null,
+    "region": "JP",
+    "name": "プレミアムブースター お兄ちゃんはおしまい！",
+    "names": {
+      "ja": "プレミアムブースター お兄ちゃんはおしまい！"
+    },
+    "date": "2027-01-22",
+    "url": "https://ws-tcg.com/products/ono_pb/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-ngb_bp",
+    "code": null,
+    "region": "JP",
+    "name": "ブースターパック 魔法少女リリカルなのは EXCEEDS Gun Blaze Vengeance",
+    "names": {
+      "ja": "ブースターパック 魔法少女リリカルなのは EXCEEDS Gun Blaze Vengeance"
+    },
+    "date": "2027-01-29",
+    "url": "https://ws-tcg.com/products/ngb_bp/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-mjs_bp_ws",
+    "code": null,
+    "region": "JP",
+    "name": "ブースターパック 魔法少女ノ魔女裁判",
+    "names": {
+      "ja": "ブースターパック 魔法少女ノ魔女裁判"
+    },
+    "date": "2027-02-12",
+    "url": "https://ws-tcg.com/products/mjs_bp_ws/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-bd_mmvol2_bp",
+    "code": null,
+    "region": "JP",
+    "name": "ブースターパック MyGO!!!!! × Ave Mujica Vol.2",
+    "names": {
+      "ja": "ブースターパック MyGO!!!!! × Ave Mujica Vol.2"
+    },
+    "date": "2027-02-26",
+    "url": "https://ws-tcg.com/products/bd_mmvol2_bp/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-ret_wsbp",
+    "code": null,
+    "region": "JP",
+    "name": "ブースターパック 楽園追放",
+    "names": {
+      "ja": "ブースターパック 楽園追放"
+    },
+    "date": "2027-03-26",
+    "url": "https://ws-tcg.com/products/ret_wsbp/"
+  },
+  {
+    "game": "WEISS",
+    "key": "jp-ret_wstd",
+    "code": null,
+    "region": "JP",
+    "name": "トライアルデッキ 楽園追放 心のレゾナンス",
+    "names": {
+      "ja": "トライアルデッキ 楽園追放 心のレゾナンス"
+    },
+    "date": "2027-03-26",
+    "url": "https://ws-tcg.com/products/ret_wstd/"
+  },
+  {
+    "game": "WEISS",
+    "key": "kr-bp-nik",
+    "code": null,
+    "name": "부스터 팩 승리의 여신: 니케",
+    "names": {
+      "ko": "부스터 팩 승리의 여신: 니케"
+    },
+    "region": "KR",
+    "date": "2024-12-13",
+    "url": "https://bushiroad.com/2024bushiroadexpo_korea"
+  },
+  {
+    "game": "WEISS",
+    "key": "kr-td-nik",
+    "code": null,
+    "name": "트라이얼 덱 승리의 여신: 니케",
+    "names": {
+      "ko": "트라이얼 덱 승리의 여신: 니케"
+    },
+    "region": "KR",
+    "date": "2024-12-13",
+    "url": "https://bushiroad.com/2024bushiroadexpo_korea"
+  },
+  {
+    "game": "WEISS",
+    "key": "kr-bp-brd",
+    "code": null,
+    "name": "부스터 팩 브라운더스트2",
+    "names": {
+      "ko": "부스터 팩 브라운더스트2"
+    },
+    "region": "KR",
+    "date": "2026-07-03",
+    "url": "https://prtimes.jp/main/html/rd/p/000009600.000014827.html"
+  },
+  {
+    "game": "WEISS",
+    "key": "kr-td-brd",
+    "code": null,
+    "name": "트라이얼 덱 브라운더스트2",
+    "names": {
+      "ko": "트라이얼 덱 브라운더스트2"
+    },
+    "region": "KR",
+    "date": "2026-07-03",
+    "url": "https://prtimes.jp/main/html/rd/p/000009600.000014827.html"
+  },
+  {
+    "game": "WEISS",
+    "key": "kr-bp-nik2",
+    "code": null,
+    "name": "부스터 팩 승리의 여신: 니케 Vol.2",
+    "names": {
+      "ko": "부스터 팩 승리의 여신: 니케 Vol.2"
+    },
+    "region": "KR",
+    "date": "2026-09-19",
+    "url": "https://prtimes.jp/main/html/rd/p/000009761.000014827.html"
+  }
+]

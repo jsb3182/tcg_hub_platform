@@ -40,6 +40,7 @@ def main():
     commands.add_parser("run")
     commands.add_parser("check-catalogs", help="Report completed imports and published cards for each game.")
     commands.add_parser("seed-ygo-kr-prints", help="Populate the empty Korean printing index from the existing local catalog cache.")
+    commands.add_parser("seed-release-calendar", help="Import the bundled regional release announcements without a network request.")
     probe = commands.add_parser("check-feed", help="Read a source without storing posts. A configured X worker shares its rate limit.")
     probe.add_argument("provider", choices=("OFFICIAL_NEWS", "X", "DCINSIDE"))
     probe.add_argument("key")
@@ -66,6 +67,12 @@ def main():
         return
 
     from .jobs import connect, enqueue, process_once
+
+    if args.command == "seed-release-calendar":
+        from .release_calendar import seed_calendar
+        with connect() as db:
+            print(json.dumps({"added":seed_calendar(db)}))
+        return
 
     if args.command == "seed-ygo-kr-prints":
         from .catalog_sources.transport import CatalogHTTP

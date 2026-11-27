@@ -17,6 +17,21 @@ A90의 로컬 설치에서는 `tcgctl start-local`, 공개 HTTPS 설치에서는
 
 카드의 언어와 수록 범위는 출처별로 다르다. 수집 대상은 카드와 팩 메타데이터이며, 카드 상세의 출처 링크에서 원문을 확인할 수 있다. Riftbound를 외부에 서비스할 때 Riot의 디지털 도구 정책에 따라 서면 라이선스 또는 앱 전용 API 키를 준비한다. [게임별 도감 출처](CARD_SOURCES.md) · [Riot 개발자 정책](https://developer.riotgames.com/docs/riftbound)
 
+### 여섯 종목의 상품 발매 일정
+
+**발매 일정**의 상품 날짜는 발행 지역별로 관리한다. 출처에서 제품 전체의 일반 발매일을 확인한 경우에 등재한다. 카드 공개일, 공인점 선행 발매일, 행사일은 별도로 취급한다. 날짜·지역·상품 조합에 해당하는 일정에는 원문 링크가 있다. 도감에 해당 상품이 한 개로 특정되면 수록 카드도 연결한다.
+
+| 종목 | 일정의 근거 |
+|---|---|
+| 유희왕 | 북미 발행사의 월드 프리미어 상품 페이지와 YGOPRODeck의 수록 팩 발매일. 국가가 특정되지 않은 날짜는 TCG로 표시한다. [북미 상품](https://www.yugioh-card.com/en/products/) · [YGOPRODeck API](https://ygoprodeck.com/api-guide/) |
+| 포켓몬 | 포켓몬코리아가 공지한 국내 상품의 일반 발매일과 북미 공식 실물 상품 일정. [포켓몬코리아](https://pokemoncard.co.kr/) · [북미 발매 일정](https://press.pokemon.com/en/Items/Schedule?period=All&types=3) |
+| 바이스 슈발츠 | 부시로드의 일본·영어판 상품 목록과 확인된 한국어판 공지. [일본 상품](https://ws-tcg.com/products/) · [영어판 상품](https://en.ws-tcg.com/products/products-archive/) |
+| 원피스 | 국내와 영어판 발행사가 게시한 카드 상품의 발매일. [한국 상품](https://www.onepiece-cardgame.kr/products.do) · [영어판 상품](https://en.onepiece-cardgame.com/products/) |
+| 리프트바운드 | 라이엇의 지역별 출시 공지에서 날짜와 해당 세트를 대조한다. [라이엇 상품 소식](https://playriftbound.com/en-us/news/) |
+| 니벨아레나 | 국내 발행사의 부스터 상품과 정식 발매 안내에서 날짜와 제품명을 확인한다. [니벨아레나 상품](http://nivelarena.co.kr/bbs/board.php?bo_table=booster) |
+
+워커는 시작할 때 배포본의 검증된 일정을 읽고, 관리 화면의 종목별 **상품 발매 일정** 출처에 설정된 주기에 따라 공개 자료를 다시 조회한다. 같은 지역 상품의 날짜가 정정되면 같은 일정에 반영한다. 조회 실패 시 기존 일정을 보존한다. 발행사의 실시간 목록에서 확인할 수 없는 국내 자료는 검수한 배포 자료를 사용한다.
+
 ### 유희왕 도감 등록 소식과 기존 북미 공지
 
 YGOPRODeck은 공개 API로 카드·수록 팩 정보를 제공하며 응답을 로컬에 보관하도록 안내한다. 유희왕 도감 등록 소식은 이미 내려받은 자료에서 새로 확인한 공개 카드 항목과 팩을 센다. 카드 번호나 레어도가 다른 판본은 별도 항목으로 셀 수 있다. 출처에서 팩을 특정할 수 없으면 팩 수에서 제외한다. 기본 한국어와 선택 가능한 영어·일본어는 자체 서식으로 동시에 작성한다. 소식에는 도감에서 확인한 시점과 최대 세 개씩의 카드·팩 예시가 표시된다. 실제 발매 일자는 개별 카드 상세에서 확인한다. [YGOPRODeck API 가이드](https://ygoprodeck.com/api-guide/)

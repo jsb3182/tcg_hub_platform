@@ -1,0 +1,381 @@
+[
+  {
+    "game": "NIVEL",
+    "key": "kr-bt07",
+    "region": "KR",
+    "code": "BT07",
+    "name": "스텔라 블레이드 니벨아레나 부스터 팩 BT07 <이브 프로토콜>",
+    "names": {
+      "ko": "스텔라 블레이드 니벨아레나 부스터 팩 BT07 <이브 프로토콜>"
+    },
+    "date": "2026-05-29",
+    "url": "http://nivelarena.co.kr/bbs/board.php?bo_table=booster&wr_id=10",
+    "catalogName": "스텔라 블레이드 니벨아레나 부스터 팩 BT07 <이브 프로토콜>"
+  },
+  {
+    "game": "NIVEL",
+    "key": "kr-sb02",
+    "region": "KR",
+    "code": "SB02",
+    "name": "이터널 리턴 니벨아레나 스페셜 부스터 팩 2026 SB02",
+    "names": {
+      "ko": "이터널 리턴 니벨아레나 스페셜 부스터 팩 2026 SB02"
+    },
+    "date": "2026-06-24",
+    "url": "http://nivelarena.co.kr/bbs/board.php?bo_table=booster&wr_id=11",
+    "catalogName": "이터널 리턴 니벨아레나 스페셜 부스터 팩 2026 SB02"
+  },
+  {
+    "game": "NIVEL",
+    "key": "kr-bt08",
+    "region": "KR",
+    "code": "BT08",
+    "name": "승리의 여신: 니케 니벨아레나 부스터 팩 BT08 <웨이브 투 유>",
+    "names": {
+      "ko": "승리의 여신: 니케 니벨아레나 부스터 팩 BT08 <웨이브 투 유>"
+    },
+    "date": "2026-08-21",
+    "url": "http://nivelarena.co.kr/bbs/board.php?bo_table=booster&wr_id=12",
+    "catalogName": "승리의 여신: 니케 니벨아레나 부스터 팩 BT08 <웨이브 투 유>"
+  },
+  {
+    "game": "NIVEL",
+    "key": "kr-bt09",
+    "region": "KR",
+    "code": "BT09",
+    "name": "블루 아카이브 니벨아레나 부스터 팩 BT09 <람과천청>",
+    "names": {
+      "ko": "블루 아카이브 니벨아레나 부스터 팩 BT09 <람과천청>"
+    },
+    "date": "2026-11-20",
+    "url": "http://nivelarena.co.kr/bbs/board.php?bo_table=booster&wr_id=13",
+    "catalogName": "블루 아카이브 니벨아레나 부스터 팩 BT09 <람과천청>"
+  },
+  {
+    "game": "NIVEL",
+    "key": "kr-sb03",
+    "region": "KR",
+    "code": "SB03",
+    "name": "브라운더스트2 스페셜 부스터 팩 SB03",
+    "names": {
+      "ko": "브라운더스트2 스페셜 부스터 팩 SB03"
+    },
+    "date": "2026-12-18",
+    "url": "http://nivelarena.co.kr/bbs/board.php?bo_table=notice&wr_id=198"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-prb-02",
+    "region": "EN",
+    "code": "PRB-02",
+    "name": "ONE PIECE CARD THE BEST vol.2",
+    "names": {
+      "en": "ONE PIECE CARD THE BEST vol.2"
+    },
+    "date": "2025-10-03",
+    "url": "https://en.onepiece-cardgame.com/products/boosters/prb02.php"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-op-13",
+    "region": "EN",
+    "code": "OP-13",
+    "name": "CARRYING ON HIS WILL",
+    "names": {
+      "en": "CARRYING ON HIS WILL"
+    },
+    "date": "2025-11-07",
+    "url": "https://en.onepiece-cardgame.com/products/boosters/op13/"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-op14-eb04",
+    "region": "EN",
+    "code": "OP14-EB04",
+    "name": "THE AZURE SEA’S SEVEN",
+    "names": {
+      "en": "THE AZURE SEA’S SEVEN"
+    },
+    "date": "2026-01-16",
+    "url": "https://en.onepiece-cardgame.com/products/boosters/op14-eb04.php"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-eb-03",
+    "region": "EN",
+    "code": "EB-03",
+    "name": "ONE PIECE HEROINES EDITION",
+    "names": {
+      "en": "ONE PIECE HEROINES EDITION"
+    },
+    "date": "2026-02-20",
+    "url": "https://en.onepiece-cardgame.com/products/boosters/eb03.php"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-op15-eb04",
+    "region": "EN",
+    "code": "OP15-EB04",
+    "name": "ADVENTURE ON KAMI’S ISLAND",
+    "names": {
+      "en": "ADVENTURE ON KAMI’S ISLAND"
+    },
+    "date": "2026-04-03",
+    "url": "https://en.onepiece-cardgame.com/products/boosters/op15-eb04.php"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-op-16",
+    "region": "EN",
+    "code": "OP-16",
+    "name": "THE TIME OF BATTLE",
+    "names": {
+      "en": "THE TIME OF BATTLE"
+    },
+    "date": "2026-06-12",
+    "url": "https://en.onepiece-cardgame.com/products/op16.html",
+    "catalogName": "The Time of Battle"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-op-17",
+    "region": "EN",
+    "code": "OP-17",
+    "name": "THE WORLD’S STRONGEST WARRIORS",
+    "names": {
+      "en": "THE WORLD’S STRONGEST WARRIORS"
+    },
+    "date": "2026-08-28",
+    "url": "https://en.onepiece-cardgame.com/products/boosters/op17/",
+    "catalogName": "The World's Strongest Warriors"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-eb-05",
+    "region": "EN",
+    "code": "EB-05",
+    "name": "ONE PIECE HEROINES EDITION vol.2",
+    "names": {
+      "en": "ONE PIECE HEROINES EDITION vol.2"
+    },
+    "date": "2026-10-30",
+    "url": "https://en.onepiece-cardgame.com/products/eb05.html",
+    "catalogName": "Extra Booster: One Piece Heroines Edition Vol. 2"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-op-18",
+    "region": "EN",
+    "code": "OP-18",
+    "name": "THE DOMINANCE OF GOD",
+    "names": {
+      "en": "THE DOMINANCE OF GOD"
+    },
+    "date": "2026-11-20",
+    "url": "https://en.onepiece-cardgame.com/products/op18.html"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-eb-06",
+    "region": "EN",
+    "code": "EB-06",
+    "name": "EAST BLUE",
+    "names": {
+      "en": "EAST BLUE"
+    },
+    "date": "2027-01-29",
+    "url": "https://en.onepiece-cardgame.com/products/eb06.html"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-op-19",
+    "region": "EN",
+    "code": "OP-19",
+    "name": "COME IN, WORLD",
+    "names": {
+      "en": "COME IN, WORLD"
+    },
+    "date": "2027-03-05",
+    "url": "https://en.onepiece-cardgame.com/products/op19.html"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "en-peb-01",
+    "region": "EN",
+    "code": "PEB-01",
+    "name": "THE DRAWING OF YOUR DREAMS",
+    "names": {
+      "en": "THE DRAWING OF YOUR DREAMS"
+    },
+    "date": "2027-04-23",
+    "url": "https://en.onepiece-cardgame.com/products/peb01.html"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "kr-stk-26",
+    "region": "KR",
+    "code": "STK-26",
+    "name": "스타트 덱 자흑 몽키 D. 루피",
+    "names": {
+      "ko": "스타트 덱 자흑 몽키 D. 루피"
+    },
+    "date": "2026-05-22",
+    "url": "https://www.onepiece-cardgame.kr/products/view.do?brdno=5629"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "kr-stk-27",
+    "region": "KR",
+    "code": "STK-27",
+    "name": "스타트 덱 흑 마샬 D. 티치",
+    "names": {
+      "ko": "스타트 덱 흑 마샬 D. 티치"
+    },
+    "date": "2026-05-22",
+    "url": "https://www.onepiece-cardgame.kr/products/view.do?brdno=5630"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "kr-stk-28",
+    "region": "KR",
+    "code": "STK-28",
+    "name": "스타트 덱 녹황 야마토",
+    "names": {
+      "ko": "스타트 덱 녹황 야마토"
+    },
+    "date": "2026-05-22",
+    "url": "https://www.onepiece-cardgame.kr/products/view.do?brdno=5631"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "kr-opk-13",
+    "region": "KR",
+    "code": "OPK-13",
+    "name": "부스터 팩 계승되는 의지",
+    "names": {
+      "ko": "부스터 팩 계승되는 의지"
+    },
+    "date": "2026-06-26",
+    "url": "https://www.onepiece-cardgame.kr/products/view.do?brdno=5777"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "kr-ebk-03",
+    "region": "KR",
+    "code": "EBK-03",
+    "name": "엑스트라 부스터 팩 ONE PIECE Heroines Edition",
+    "names": {
+      "ko": "엑스트라 부스터 팩 ONE PIECE Heroines Edition"
+    },
+    "date": "2026-07-24",
+    "url": "https://www.onepiece-cardgame.kr/products/view.do?brdno=6057"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "kr-opk-14",
+    "region": "KR",
+    "code": "OPK-14",
+    "name": "부스터 팩 창해의 칠걸",
+    "names": {
+      "ko": "부스터 팩 창해의 칠걸"
+    },
+    "date": "2026-08-21",
+    "url": "https://www.onepiece-cardgame.kr/products/view.do?brdno=6231"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "kr-stk-29",
+    "region": "KR",
+    "code": "STK-29",
+    "name": "스타트 덱 EGGHEAD",
+    "names": {
+      "ko": "스타트 덱 EGGHEAD"
+    },
+    "date": "2026-09-18",
+    "url": "https://www.onepiece-cardgame.kr/products/view.do?brdno=6536"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "kr-ebk-04",
+    "region": "KR",
+    "code": "EBK-04",
+    "name": "엑스트라 부스터 팩 EGGHEAD CRISIS",
+    "names": {
+      "ko": "엑스트라 부스터 팩 EGGHEAD CRISIS"
+    },
+    "date": "2026-10-23",
+    "url": "https://www.onepiece-cardgame.kr/products/view.do?brdno=6599"
+  },
+  {
+    "game": "ONEPIECE",
+    "key": "kr-opk-15",
+    "region": "KR",
+    "code": "OPK-15",
+    "name": "부스터 팩 신의 섬 모험",
+    "names": {
+      "ko": "부스터 팩 신의 섬 모험"
+    },
+    "date": "2026-11-27",
+    "url": "https://www.onepiece-cardgame.kr/products/view.do?brdno=6749"
+  },
+  {
+    "game": "RIFTBOUND",
+    "key": "en-legacy",
+    "region": "EN",
+    "code": null,
+    "name": "Legacy",
+    "names": {
+      "en": "Legacy"
+    },
+    "date": "2027-01-29",
+    "url": "https://playriftbound.com/en-us/news/announcements/august-2026-roadmap/"
+  },
+  {
+    "game": "RIFTBOUND",
+    "key": "en-proving-grounds-2nd-edition",
+    "region": "EN",
+    "code": null,
+    "name": "Proving Grounds, 2nd Edition",
+    "names": {
+      "en": "Proving Grounds, 2nd Edition"
+    },
+    "date": "2027-02-19",
+    "url": "https://playriftbound.com/en-us/news/announcements/august-2026-roadmap/"
+  },
+  {
+    "game": "RIFTBOUND",
+    "key": "en-the-reckoning",
+    "region": "EN",
+    "code": null,
+    "name": "The Reckoning",
+    "names": {
+      "en": "The Reckoning"
+    },
+    "date": "2027-06-30",
+    "url": "https://playriftbound.com/en-us/news/announcements/august-2026-roadmap/"
+  },
+  {
+    "game": "RIFTBOUND",
+    "key": "kr-koreas-rift-opens-on-september-18",
+    "code": "OGN",
+    "name": "오리진",
+    "names": {
+      "ko": "오리진"
+    },
+    "region": "KR",
+    "date": "2026-09-18",
+    "url": "https://playriftbound.com/ko-kr/news/announcements/koreas-rift-opens-on-september-18/"
+  },
+  {
+    "game": "RIFTBOUND",
+    "key": "kr-spiritforged-kr-launch-reveal",
+    "region": "KR",
+    "code": "SFD",
+    "name": "스피릿포지드",
+    "names": {
+      "ko": "스피릿포지드"
+    },
+    "date": "2026-12-11",
+    "url": "https://playriftbound.com/ko-kr/news/announcements/spiritforged-kr-launch-reveal/"
+  }
+]

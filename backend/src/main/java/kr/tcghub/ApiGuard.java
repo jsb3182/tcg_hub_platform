@@ -47,7 +47,7 @@ class ApiGuard extends OncePerRequestFilter {
                     key -> budget(login ? 10 : 180, Duration.ofMinutes(1)));
             if (!consume(bucket, res)) return;
         }
-        if ("GET".equals(req.getMethod()) && req.getServletPath().matches("/api/v1/(games|packs|cards(/[0-9]+)?)")) {
+        if ("GET".equals(req.getMethod()) && req.getServletPath().matches("/api/v1/(games|release-calendar|packs|cards(/[0-9]+)?)")) {
             res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
         }
         chain.doFilter(req,res);
