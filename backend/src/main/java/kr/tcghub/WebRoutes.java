@@ -20,7 +20,7 @@ class WebRoutes {
     }
 
     @GetMapping({"/","/cards","/cards/{id:[0-9]+}","/releases","/releases/{id:[0-9]+}","/news","/play","/stores","/binder","/decks",
-                 "/decks/new","/decks/{id:[0-9]+}","/shared/decks/{token}","/login","/admin","/admin/"})
+                 "/decks/new","/decks/{id:[0-9]+}","/shared/decks/{token}","/community","/community/{id:[0-9]+}","/login","/admin","/admin/"})
     String app() { return "forward:/index.html"; }
 
     @GetMapping("/internal/ready")

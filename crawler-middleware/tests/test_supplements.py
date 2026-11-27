@@ -2,9 +2,10 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+from urllib.parse import quote
 
-from tcg_worker.supplements import fetch
+from tcg_worker.supplements import fetch, korean_yugioh
 
 
 class SupplementalCatalogTests(unittest.TestCase):
@@ -27,6 +28,16 @@ class SupplementalCatalogTests(unittest.TestCase):
         rows,cursor=fetch("TCGDEX","POKEMON",None,http)
         self.assertEqual((rows[0]["effect"],rows[0]["packName"],rows[0]["lang"]),("확인된 효과","검증 팩","ko"))
         self.assertEqual(cursor,"en:0")
+
+    def test_korean_reference_requires_matching_name_and_both_stats(self):
+        db=MagicMock()
+        db.execute.return_value.fetchall.return_value=[(5,"QA-1","QA","참고 카드","4444","3000","2500")]
+        url="https://api.yugiohcard.kr/card/"+quote("참고 카드",safe="")
+        response={"cardName":"참고 카드","cardAtk":"공격력 3000","cardDef":"수비력 2500","cardText":"참고할 효과"}
+        rows,_=korean_yugioh(db,None,self.fixture({url:response}))
+        self.assertEqual(rows[0]["facts"]["konamiId"],"4444")
+        rejected,_=korean_yugioh(db,None,self.fixture({url:{**response,"cardDef":"수비력 200"}}))
+        self.assertEqual(rejected,[])
 
     @patch.dict("os.environ",{"POKEWALLET_API_KEY":"test"})
     def test_wallet_page_excludes_sealed_products_and_retains_observed_finish(self):

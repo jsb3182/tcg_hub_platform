@@ -24,7 +24,18 @@
       "def": 2500
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4007&request_locale=ko",
-    "printingNumber": "20AP-KR000"
+    "printingNumber": "20AP-KR000",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ],
+      "packs": [
+        "크로니클 팩 (20AP-KR000)"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -52,7 +63,15 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4008&request_locale=ko",
-    "printingNumber": "BP1-KR120"
+    "printingNumber": "BP1-KR120",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "마법사족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -79,7 +98,15 @@
       "def": 1200
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4013&request_locale=ko",
-    "printingNumber": "BP1-KR141"
+    "printingNumber": "BP1-KR141",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -105,7 +132,15 @@
       "atk": 1500,
       "def": 800
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4016&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4016&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -132,7 +167,15 @@
       "def": 1200
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4028&request_locale=ko",
-    "printingNumber": "BP1-KR142"
+    "printingNumber": "BP1-KR142",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -160,7 +203,15 @@
       "def": 1500
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4045&request_locale=ko",
-    "printingNumber": "BP1-KR123"
+    "printingNumber": "BP1-KR123",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -187,7 +238,15 @@
       "atk": 1300,
       "def": 2000
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4080&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4080&request_locale=ko",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "암석족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -214,7 +273,18 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4088&request_locale=ko",
-    "printingNumber": "LOB-K070"
+    "printingNumber": "LOB-K070",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ],
+      "packs": [
+        "푸른 눈의 백룡의 전설 (LOB-K070)"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -241,7 +311,15 @@
       "atk": 2500,
       "def": 2300
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4364&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4364&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -267,7 +345,14 @@
       "atk": 4500,
       "def": 3800
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4386&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4386&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족",
+        "융합"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -293,7 +378,17 @@
       "atk": 300,
       "def": 400
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4434&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4434&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "마법사족"
+      ],
+      "rulings": [
+        "묘지의 마법 카드 한 장을 패에 넣는 효과가 있다."
+      ]
+    },
+    "textKo": "묘지의 마법 카드 한 장을 패에 넣는 효과가 있다."
   },
   {
     "game": "YUGIOH",
@@ -320,7 +415,13 @@
       "atk": 550,
       "def": 500
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4530&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4530&request_locale=ko",
+    "details": {
+      "traits": [
+        "물 속성",
+        "물족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -346,7 +447,13 @@
       "atk": 2100,
       "def": 1700
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4578&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4578&request_locale=ko",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "전사족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -374,7 +481,18 @@
       "def": 2350
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4711&request_locale=ko",
-    "printingNumber": "LOB-K000"
+    "printingNumber": "LOB-K000",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ],
+      "packs": [
+        "푸른 눈의 백룡의 전설 (LOB-K000)"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -402,7 +520,13 @@
       "def": 2600
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4764&request_locale=ko",
-    "printingNumber": "BP1-KR097"
+    "printingNumber": "BP1-KR097",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "전사족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -430,7 +554,13 @@
       "def": 1700
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4766&request_locale=ko",
-    "printingNumber": "DP00-KR005"
+    "printingNumber": "DP00-KR005",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "마법사족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -456,7 +586,13 @@
       "atk": 1500,
       "def": 1300
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5067&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5067&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "전사족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -483,7 +619,16 @@
       "def": 1000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5655&request_locale=ko",
-    "printingNumber": "GS02-KR006"
+    "printingNumber": "GS02-KR006",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "마법사족"
+      ],
+      "packs": [
+        "골드 시리즈 2010 (GS02-KR006)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -511,7 +656,13 @@
       "def": 1800
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5869&request_locale=ko",
-    "printingNumber": "ESP2-KR063"
+    "printingNumber": "ESP2-KR063",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "마법사족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -537,7 +688,17 @@
       "atk": 2400,
       "def": 1000
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5965&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5965&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "번개족"
+      ],
+      "rulings": [
+        "필드의 몬스터 한 장을 대상으로 파괴하는 효과가 있다."
+      ]
+    },
+    "textKo": "필드의 몬스터 한 장을 대상으로 파괴하는 효과가 있다."
   },
   {
     "game": "YUGIOH",
@@ -565,7 +726,17 @@
       "def": 1800
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6001&request_locale=ko",
-    "printingNumber": "20AP-KR031"
+    "printingNumber": "20AP-KR031",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족"
+      ],
+      "rulings": [
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ]
+    },
+    "textKo": "효과에 발동 무효와 파괴 처리가 있다."
   },
   {
     "game": "YUGIOH",
@@ -592,7 +763,13 @@
       "def": 500
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6109&request_locale=ko",
-    "printingNumber": "HGP3-KR017"
+    "printingNumber": "HGP3-KR017",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -619,7 +796,20 @@
       "def": 1600
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6236&request_locale=ko",
-    "printingNumber": "FET-KR005"
+    "printingNumber": "FET-KR005",
+    "details": {
+      "traits": [
+        "화염 속성",
+        "비행야수족"
+      ],
+      "rulings": [
+        "이 카드 자신을 묘지에서 특수 소환하는 처리가 있다."
+      ],
+      "packs": [
+        "영원한 화염 (FET-KR005)"
+      ]
+    },
+    "textKo": "이 카드 자신을 묘지에서 특수 소환하는 처리가 있다."
   },
   {
     "game": "YUGIOH",
@@ -646,7 +836,15 @@
       "def": 1000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6310&request_locale=ko",
-    "printingNumber": "DP1-KR001"
+    "printingNumber": "DP1-KR001",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "전사족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -673,7 +871,15 @@
       "def": 800
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6311&request_locale=ko",
-    "printingNumber": "DP1-KR002"
+    "printingNumber": "DP1-KR002",
+    "details": {
+      "traits": [
+        "화염 속성",
+        "전사족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -701,7 +907,21 @@
       "def": 2100
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6396&request_locale=ko",
-    "printingNumber": "CRV-KR035"
+    "printingNumber": "CRV-KR035",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족",
+        "융합"
+      ],
+      "rulings": [
+        "한 배틀 페이즈에 두 번 공격할 수 있다."
+      ],
+      "packs": [
+        "사이버 혁명 (CRV-KR035)"
+      ]
+    },
+    "textKo": "한 배틀 페이즈에 두 번 공격할 수 있다."
   },
   {
     "game": "YUGIOH",
@@ -729,7 +949,14 @@
       "def": 2800
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6397&request_locale=ko",
-    "printingNumber": "DP04-KR012"
+    "printingNumber": "DP04-KR012",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족",
+        "융합"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -757,7 +984,17 @@
       "def": 1600
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6400&request_locale=ko",
-    "printingNumber": "PP01-KR006"
+    "printingNumber": "PP01-KR006",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "마법사족"
+      ],
+      "rulings": [
+        "패에서 마법 카드 한 장을 버려 덱에서 레벨 4 몬스터 한 장을 특수 소환할 수 있다."
+      ]
+    },
+    "textKo": "패에서 마법 카드 한 장을 버려 덱에서 레벨 4 몬스터 한 장을 특수 소환할 수 있다."
   },
   {
     "game": "YUGIOH",
@@ -785,7 +1022,13 @@
       "def": 2500
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6558&request_locale=ko",
-    "printingNumber": "DP00-KR000"
+    "printingNumber": "DP00-KR000",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -812,7 +1055,16 @@
       "def": 100
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6603&request_locale=ko",
-    "printingNumber": "SOI-KR025"
+    "printingNumber": "SOI-KR025",
+    "details": {
+      "traits": [
+        "물 속성",
+        "물족"
+      ],
+      "packs": [
+        "무한의 그림자 (SOI-KR025)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -839,7 +1091,17 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6612&request_locale=ko",
-    "printingNumber": "SOI-KR034"
+    "printingNumber": "SOI-KR034",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "천사족",
+        "의식"
+      ],
+      "packs": [
+        "무한의 그림자 (SOI-KR034)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -866,7 +1128,17 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6613&request_locale=ko",
-    "printingNumber": "SOI-KR035"
+    "printingNumber": "SOI-KR035",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족",
+        "의식"
+      ],
+      "packs": [
+        "무한의 그림자 (SOI-KR035)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -892,7 +1164,15 @@
       "atk": 2500,
       "def": 2000
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6653&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6653&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "전사족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
   },
   {
     "game": "YUGIOH",
@@ -920,7 +1200,17 @@
       "def": 300
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6654&request_locale=ko",
-    "printingNumber": "20AP-KR034"
+    "printingNumber": "20AP-KR034",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "식물족"
+      ],
+      "rulings": [
+        "자신 필드에 토큰 두 장을 특수 소환하는 효과가 있다."
+      ]
+    },
+    "textKo": "자신 필드에 토큰 두 장을 특수 소환하는 효과가 있다."
   },
   {
     "game": "YUGIOH",
@@ -948,7 +1238,17 @@
       "def": 400
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6939&request_locale=ko",
-    "printingNumber": "DP03-KR009"
+    "printingNumber": "DP03-KR009",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "기계족"
+      ],
+      "rulings": [
+        "한 장을 드로우하는 처리가 있다."
+      ]
+    },
+    "textKo": "한 장을 드로우하는 처리가 있다."
   },
   {
     "game": "YUGIOH",
@@ -975,7 +1275,17 @@
       "atk": 2400,
       "def": 1000
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7117&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7117&request_locale=ko",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "비행야수족"
+      ],
+      "rulings": [
+        "대상이 된 카드를 덱 맨 위로 보낼 수 있다."
+      ]
+    },
+    "textKo": "대상이 된 카드를 덱 맨 위로 보낼 수 있다."
   },
   {
     "game": "YUGIOH",
@@ -1002,7 +1312,13 @@
       "atk": 0,
       "def": 0
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7351&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7351&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1030,7 +1346,16 @@
       "def": 0
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7413&request_locale=ko",
-    "printingNumber": "PTDN-KR010"
+    "printingNumber": "PTDN-KR010",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족"
+      ],
+      "packs": [
+        "환영의 어둠 (PTDN-KR010)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1058,7 +1383,16 @@
       "def": 1000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7421&request_locale=ko",
-    "printingNumber": "20AP-KR044"
+    "printingNumber": "20AP-KR044",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족"
+      ],
+      "packs": [
+        "크로니클 팩 1st WAVE (20AP-KR044)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1085,7 +1419,17 @@
       "atk": 2400,
       "def": 1000
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7516&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7516&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족"
+      ],
+      "rulings": [
+        "필드의 카드 한 장을 대상으로 제외하는 효과가 있다."
+      ]
+    },
+    "textKo": "필드의 카드 한 장을 대상으로 제외하는 효과가 있다."
   },
   {
     "game": "YUGIOH",
@@ -1113,7 +1457,14 @@
       "def": 1400
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7548&request_locale=ko",
-    "printingNumber": "EV09-KR005"
+    "printingNumber": "EV09-KR005",
+    "details": {
+      "traits": [
+        "물 속성",
+        "해룡족",
+        "싱크로"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1140,7 +1491,13 @@
       "atk": 400,
       "def": 400
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7575&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7575&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "전사족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1168,7 +1525,14 @@
       "def": 1500
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7679&request_locale=ko",
-    "printingNumber": "DP09-KR015"
+    "printingNumber": "DP09-KR015",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1196,7 +1560,14 @@
       "def": 500
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7687&request_locale=ko",
-    "printingNumber": "DP08-KR001"
+    "printingNumber": "DP08-KR001",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "전사족",
+        "튜너"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1223,7 +1594,14 @@
       "atk": 2300,
       "def": 1300
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7696&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7696&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1250,7 +1628,14 @@
       "atk": 2800,
       "def": 1800
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7733&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7733&request_locale=ko",
+    "details": {
+      "traits": [
+        "화염 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1278,7 +1663,19 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7734&request_locale=ko",
-    "printingNumber": "DP08-KR014"
+    "printingNumber": "DP08-KR014",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "이 카드 자신을 묘지에서 특수 소환하는 처리가 있다.",
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ]
+    },
+    "textKo": "이 카드 자신을 묘지에서 특수 소환하는 처리가 있다. 효과에 발동 무효와 파괴 처리가 있다."
   },
   {
     "game": "YUGIOH",
@@ -1306,7 +1703,17 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7735&request_locale=ko",
-    "printingNumber": "TDGS-KR041"
+    "printingNumber": "TDGS-KR041",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "packs": [
+        "듀얼리스트의 태동 (TDGS-KR041)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1334,7 +1741,14 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7736&request_locale=ko",
-    "printingNumber": "EV10-KR002"
+    "printingNumber": "EV10-KR002",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1361,7 +1775,14 @@
       "atk": 2500,
       "def": 1500
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7897&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7897&request_locale=ko",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1388,7 +1809,18 @@
       "atk": 2400,
       "def": 1800
     },
-    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7898&request_locale=ko"
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7898&request_locale=ko",
+    "details": {
+      "traits": [
+        "화염 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "필드의 여러 카드를 한꺼번에 파괴할 수 있다."
+      ]
+    },
+    "textKo": "필드의 여러 카드를 한꺼번에 파괴할 수 있다."
   },
   {
     "game": "YUGIOH",
@@ -1416,7 +1848,14 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8005&request_locale=ko",
-    "printingNumber": "AE05-KR007"
+    "printingNumber": "AE05-KR007",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "튜너"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1444,7 +1883,17 @@
       "def": 2500
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8137&request_locale=ko",
-    "printingNumber": "RGBT-KR042"
+    "printingNumber": "RGBT-KR042",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "기계족",
+        "싱크로"
+      ],
+      "packs": [
+        "장렬한 전투 (RGBT-KR042)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1471,7 +1920,17 @@
       "def": 2300
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8283&request_locale=ko",
-    "printingNumber": "PP05-KR007"
+    "printingNumber": "PP05-KR007",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "천사족"
+      ],
+      "rulings": [
+        "두 플레이어의 특수 소환을 막는 지속 효과가 있다."
+      ]
+    },
+    "textKo": "두 플레이어의 특수 소환을 막는 지속 효과가 있다."
   },
   {
     "game": "YUGIOH",
@@ -1498,7 +1957,17 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8732&request_locale=ko",
-    "printingNumber": "GS03-KR010"
+    "printingNumber": "GS03-KR010",
+    "details": {
+      "traits": [
+        "물 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "packs": [
+        "골드 시리즈 2011 (GS03-KR010)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1526,7 +1995,14 @@
       "def": 0
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8933&request_locale=ko",
-    "printingNumber": "DP10-KR007"
+    "printingNumber": "DP10-KR007",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "마법사족",
+        "튜너"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1554,7 +2030,17 @@
       "def": 100
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=9095&request_locale=ko",
-    "printingNumber": "EV10-KR015"
+    "printingNumber": "EV10-KR015",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "식물족",
+        "튜너"
+      ],
+      "packs": [
+        "WINTER FESTIVAL 2010 (EV10-KR015)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1582,7 +2068,18 @@
       "def": 2500
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=9117&request_locale=ko",
-    "printingNumber": "RC02-KR003"
+    "printingNumber": "RC02-KR003",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "공격을 무효로 하는 처리가 있다."
+      ]
+    },
+    "textKo": "공격을 무효로 하는 처리가 있다."
   },
   {
     "game": "YUGIOH",
@@ -1610,7 +2107,17 @@
       "def": 1000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=9597&request_locale=ko",
-    "printingNumber": "HA06-KR046"
+    "printingNumber": "HA06-KR046",
+    "details": {
+      "traits": [
+        "물 속성",
+        "물족",
+        "의식"
+      ],
+      "packs": [
+        "숨겨진 세력 6 (HA06-KR046)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1638,7 +2145,18 @@
       "def": 4000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=9709&request_locale=ko",
-    "printingNumber": "PME1-KR002"
+    "printingNumber": "PME1-KR002",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ]
+    },
+    "textKo": "효과에 발동 무효와 파괴 처리가 있다."
   },
   {
     "game": "YUGIOH",
@@ -1666,7 +2184,13 @@
       "def": 1600
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=10870&request_locale=ko",
-    "printingNumber": "SD26-KR038"
+    "printingNumber": "SD26-KR038",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1694,7 +2218,17 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=11213&request_locale=ko",
-    "printingNumber": "DUEA-KR004"
+    "printingNumber": "DUEA-KR004",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "펜듈럼"
+      ],
+      "packs": [
+        "더 듀얼리스트 어드벤트 (DUEA-KR004)"
+      ]
+    }
   },
   {
     "game": "YUGIOH",
@@ -1722,7 +2256,20 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=11385&request_locale=ko",
-    "printingNumber": "LVP2-KR077"
+    "printingNumber": "LVP2-KR077",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족"
+      ],
+      "rulings": [
+        "몬스터의 공격력을 절반으로 바꾸는 처리가 있다."
+      ],
+      "packs": [
+        "링크 브레인즈 팩 2 (LVP2-KR077)"
+      ]
+    },
+    "textKo": "몬스터의 공격력을 절반으로 바꾸는 처리가 있다."
   },
   {
     "game": "YUGIOH",
@@ -1750,7 +2297,21 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=11721&request_locale=ko",
-    "printingNumber": "CROS-KR046"
+    "printingNumber": "CROS-KR046",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ],
+      "packs": [
+        "크로스오버 소울즈 (CROS-KR046)"
+      ]
+    },
+    "textKo": "효과에 발동 무효와 파괴 처리가 있다."
   },
   {
     "game": "YUGIOH",
@@ -1778,7 +2339,20 @@
       "def": 1600
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=11765&request_locale=ko",
-    "printingNumber": "EP15-KR056"
+    "printingNumber": "EP15-KR056",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족"
+      ],
+      "rulings": [
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ],
+      "packs": [
+        "엑스트라 팩 2015 (EP15-KR056)"
+      ]
+    },
+    "textKo": "효과에 발동 무효와 파괴 처리가 있다."
   },
   {
     "game": "YUGIOH",
@@ -1805,7 +2379,17 @@
       "def": 2500
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=12253&request_locale=ko",
-    "printingNumber": "MVPC-KR000"
+    "printingNumber": "MVPC-KR000",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족"
+      ],
+      "rulings": [
+        "필드의 몬스터 한 장을 대상으로 파괴하는 효과가 있다."
+      ]
+    },
+    "textKo": "필드의 몬스터 한 장을 대상으로 파괴하는 효과가 있다."
   },
   {
     "game": "YUGIOH",
@@ -1833,7 +2417,14 @@
       "def": 2000
     },
     "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=12628&request_locale=ko",
-    "printingNumber": "DP22-KR052"
+    "printingNumber": "DP22-KR052",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "융합"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -1853,7 +2444,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501001",
-    "printingNumber": "001/060"
+    "printingNumber": "001/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (001/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -1873,7 +2473,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501002",
-    "printingNumber": "002/060"
+    "printingNumber": "002/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (002/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -1893,7 +2502,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501003",
-    "printingNumber": "003/060"
+    "printingNumber": "003/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (003/060)"
+      ],
+      "traits": [
+        "2진화 포켓몬",
+        "레어도 U"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -1913,7 +2531,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501004",
-    "printingNumber": "004/060"
+    "printingNumber": "004/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (004/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -1933,7 +2560,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501005",
-    "printingNumber": "005/060"
+    "printingNumber": "005/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (005/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 U"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -1953,7 +2589,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501006",
-    "printingNumber": "006/060"
+    "printingNumber": "006/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (006/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -1973,7 +2618,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501010",
-    "printingNumber": "010/060"
+    "printingNumber": "010/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (010/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -1993,7 +2647,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501020",
-    "printingNumber": "020/060"
+    "printingNumber": "020/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (020/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2013,7 +2676,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501030",
-    "printingNumber": "030/060"
+    "printingNumber": "030/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (030/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 U"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2033,7 +2705,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501040",
-    "printingNumber": "040/060"
+    "printingNumber": "040/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (040/060)"
+      ],
+      "traits": [
+        "2진화 포켓몬",
+        "레어도 U"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2053,7 +2734,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501050",
-    "printingNumber": "050/060"
+    "printingNumber": "050/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (050/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2073,7 +2763,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501060",
-    "printingNumber": "060/060"
+    "printingNumber": "060/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (060/060)"
+      ],
+      "traits": [
+        "특수 에너지",
+        "레어도 U"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2093,7 +2792,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001001",
-    "printingNumber": "001/060"
+    "printingNumber": "001/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (001/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 RR"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2113,7 +2821,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001002",
-    "printingNumber": "002/060"
+    "printingNumber": "002/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (002/060)"
+      ],
+      "traits": [
+        "M진화 포켓몬",
+        "레어도 RR"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2133,7 +2850,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001003",
-    "printingNumber": "003/060"
+    "printingNumber": "003/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (003/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2153,7 +2879,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001004",
-    "printingNumber": "004/060"
+    "printingNumber": "004/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (004/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2173,7 +2908,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001005",
-    "printingNumber": "005/060"
+    "printingNumber": "005/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (005/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2193,7 +2937,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001006",
-    "printingNumber": "006/060"
+    "printingNumber": "006/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (006/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2213,7 +2966,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001010",
-    "printingNumber": "010/060"
+    "printingNumber": "010/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (010/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 R"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2233,7 +2995,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001020",
-    "printingNumber": "020/060"
+    "printingNumber": "020/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (020/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 U"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2253,7 +3024,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001030",
-    "printingNumber": "030/060"
+    "printingNumber": "030/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (030/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2273,7 +3053,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001040",
-    "printingNumber": "040/060"
+    "printingNumber": "040/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (040/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2293,7 +3082,16 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001050",
-    "printingNumber": "050/060"
+    "printingNumber": "050/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (050/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 C"
+      ]
+    }
   },
   {
     "game": "POKEMON",
@@ -2313,6 +3111,15 @@
     },
     "facts": {},
     "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001060",
-    "printingNumber": "060/060"
+    "printingNumber": "060/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (060/060)"
+      ],
+      "traits": [
+        "특수 에너지",
+        "레어도 U"
+      ]
+    }
   }
 ]

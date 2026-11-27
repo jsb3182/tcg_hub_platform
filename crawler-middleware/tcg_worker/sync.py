@@ -270,7 +270,10 @@ def sync_source(source, stop):
                 db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s WHERE id=%s",
                            (cursor["documents"], cursor["changed"], sid))
             elif source["provider"] in supplements.KEYS:
-                observations, next_page = supplements.fetch(source["provider"],source["game_code"],cursor.get("page"))
+                if source["provider"]=="YUGIOHKR":
+                    observations, next_page=supplements.korean_yugioh(db,cursor.get("page"))
+                else:
+                    observations, next_page = supplements.fetch(source["provider"],source["game_code"],cursor.get("page"))
                 more = next_page is not None
                 cursor = {"page": next_page}
             elif source["provider"] == "STORE_SCHEDULE":

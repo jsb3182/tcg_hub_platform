@@ -35,6 +35,11 @@ class WikiCardIntegrationTest {
         db.sql("insert into card_translation(card_id,lang,name,basis,source_url,version) values (?,'ko','검수 이름','PRINTED_NAME','https://en.ws-tcg.com/',1)").param(id).update();
         api.perform(get("/api/v1/cards/"+id)).andExpect(jsonPath("$.name").value("검수 이름"))
                 .andExpect(jsonPath("$.nameBasis").value("PRINTED_NAME")).andExpect(jsonPath("$.effectBasis").value("MACHINE_TRANSLATION"));
+        org.junit.jupiter.api.Assertions.assertTrue(db.sql("""
+              select name_ko='검수 이름' and text_en='Draw 2 cards.' and name_ja is null
+                  and translation_source#>>'{ko,name}'='REVIEWED_PRINTING'
+                  from catalog_localized_printing where card_id=?
+              """).param(id).query(Boolean.class).single());
         db.sql("update card set effect='Draw 3 cards.' where id=?").param(id).update();
         api.perform(get("/api/v1/cards/"+id)).andExpect(jsonPath("$.effect").value("Draw 3 cards.")).andExpect(jsonPath("$.effectLanguage").value("en"));
     }

@@ -76,11 +76,18 @@ Riftcodex 보조 수집기는 인증 없는 `/cards`를 한 번에 100개씩 읽
 
 ## 나무위키 수록표와 카드 데이터
 
-워커가 시작되면 배포본의 검증 색인을 PostgreSQL의 `wiki_card_document`에 반영한다. 유희왕은 코나미 CID, 포켓몬은 한국판 고유 ID와 카드 번호가 일치할 때 도감에 연결한다. 카드 상세의 원문·출처에서 문서, 자료 배포일, 확인된 수치, 발행사 페이지를 볼 수 있다. 2021년 3월 1일 나무위키 배포본의 문서 행 번호와 SHA-256을 함께 기록했다. 나무위키 기여자가 작성한 문서와 Bingsu의 자료 배포본은 CC BY-NC-SA 2.0 KR로 표시돼 있다. 번들에는 교차 확인한 식별자·카드명·수치·출처를 담았다. [자료 배포본](https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f) · [푸른 눈의 백룡 공식 정보](https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4007&request_locale=ko) · [뿔충이 한국판](https://pokemoncard.co.kr/cards/detail/BS2014501001)
+워커는 배포본의 검증 색인을 PostgreSQL의 `wiki_card_document`에 반영한다. 유희왕은 코나미 CID와 카드 패스코드를 대조하고, 포켓몬은 한국판 고유 ID와 인쇄 번호로 연결한다. 기준 자료는 나무위키 기여자의 2021년 3월 1일 문서를 Bingsu가 재배포한 스냅샷이다. 자료 배포 페이지의 라이선스 표기는 CC BY-NC-SA 2.0 KR이다. 서비스는 출판사 자료와 함께 확인한 카드 사실 및 자체 작성한 설명을 배포한다. 카드 상세에서 위키 문서와 발행사 원문을 각각 열 수 있다. [고정된 자료 배포본](https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f) · [한국어판 푸른 눈의 백룡](https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4007&request_locale=ko) · [한국어판 뿔충이](https://pokemoncard.co.kr/cards/detail/BS2014501001)
 
-2026년 11월 28일에 공개 인쇄본 92,899건을 PC에서 대조했다. 유희왕 67개 카드가 재수록을 포함해 891건에 연결됐다. 포켓몬 X·Y컬렉션은 24개 인쇄본이 연결됐다. 이 날짜의 위키 자료에 없는 게임과 카드는 각 종목의 기존 도감 공급처에서 갱신된다.
+2026년 11월 28일 PC 검증에서 공개 인쇄본 92,899건 중 유희왕 67개 카드가 재수록을 포함해 891건에 연결됐고, 포켓몬 X·Y컬렉션의 한국판 24건이 연결됐다. 배포 색인의 범위는 다음과 같다.
 
-`tcgctl media import-wiki-cards`는 같은 색인을 다시 적용할 수 있다. PC에서는 `crawler-middleware/tools/build_namuwiki_yugioh.py --help`에 따라 공개 스냅샷과 공급자 데이터를 준비해 검증 범위를 넓힐 수 있다. `verify_namuwiki_yugioh.py`는 색인의 CID·인쇄 번호·수치를 원 출처에 다시 대조한다.
+| 종목 | 카드·수록 정보 | 한국어 규칙 정보 |
+| --- | --- | --- |
+| 유희왕 67개 카드 | 67개 모두 속성·종족을 확인했다. 49개에는 한국 인쇄 번호가 있으며, 이 중 20개는 같은 번호 앞에 적힌 수록 팩 이름까지 발행사 수록표와 일치했다. | 일반 몬스터 13개에는 자체 몬스터 효과가 없음을 표시한다. 효과 카드 19개는 같은 문서의 카드 표와 CID가 일치하는 한국어판 문구에서 함께 확인한 일부 처리만 짧게 서술한다. 세부 발동 조건·비용·최신 재정은 발행사 카드 페이지에서 확인한다. |
+| 포켓몬 24개 인쇄본 | X컬렉션 12개, Y컬렉션 12개의 수록 번호·팩·분류 또는 레어도를 발행사 정보와 대조했다. | 수록표에서 기술·효과를 확인할 수 없어 해당 필드는 비워 둔다. 도감의 발행사 기술 정보는 그대로 표시한다. |
+
+각 행에 스냅샷 배포일, 문서 제목, UTF-8 본문의 SHA-256 및 발행사 확인 링크를 보관한다. 현재 색인의 `snapshotRow`는 Dataset Viewer의 제목 필터가 돌려준 행 식별값이다. 전체 파일을 순서대로 읽은 번호와 다를 수 있어 재검증은 고정 커밋·제목·본문 해시로 수행한다.
+
+`tcgctl media import-wiki-cards`는 같은 색인을 다시 적용한다. PC 도구는 `crawler-middleware/tools/`에 있다. `build_namuwiki_yugioh.py`는 로컬 스냅샷에서 카드 식별자를 찾고, `verify_namuwiki_yugioh.py`는 배포본 식별자·인쇄 번호·수치를 재대조한다. `enrich_namuwiki_facts.py --help`는 도감의 한국어 포켓몬 인쇄본 JSONL, YGOPRODeck 원본 JSON 페이지, Yaml-Yugi 아카이브로 한국어 규칙 요약·팩 표기를 재현하는 방법을 안내한다. `--dump`로 같은 스냅샷의 로컬 JSONL·Parquet 파일을 지정하거나, 고정 스냅샷의 공개 뷰어에서 제목을 찾는다. 유희왕의 한국 발행사 페이지를 추가로 확인하고 별도 출력 경로에 결과를 저장한다. 스냅샷과 일치하는 문서가 없으면 출력 파일 생성을 중단한다. [한국어판 카드 자료](https://github.com/DawnbrandBots/yaml-yugi)
 
 ## 한국어 검색과 해외 인쇄본 읽기
 
@@ -89,3 +96,8 @@ Riftcodex 보조 수집기는 인증 없는 `/cards`를 한 번에 100개씩 읽
 도감에서 종목을 고른 뒤 상세 필터를 열면 실제 공개 카드에 있는 값으로 검색할 수 있다. 포켓몬은 진화 단계·타입·HP, 원피스는 색·코스트·특징, 바이스는 레벨·소울, 니벨은 히트·속성, 리프트바운드는 영역·에너지·위력, 유희왕은 속성·종족·랭크 등을 제공한다. 특성과 연도는 검색어·레어도·수록 팩과 함께 적용된다.
 
 검수한 바이스 번역은 영어판 카드 번호·출처·원문 해시를 대조한다. 로컬 모델은 발매 예정일이나 선공개 표시가 있는 인쇄본 중 한국어 문구가 비어 있는 자료를 한 주기에 최대 6장 처리한다. 종목별 용어와 숫자·부호가 유지된 결과에 자동 번역 표지를 붙인다. 카드명과 효과는 각각 공식 등록 문구·검수본과 출처가 확인된 나무위키 자료를 우선한다.
+### 선택 공급자와 판본 확인
+
+TCGdex는 한국어·영어·일본어 수록 목록을 별도 커서로 읽는다. PokéWallet은 지역이 확인되는 영어 세트에서 밀봉 상품을 제외하고 카드 인쇄본과 거래소 마감 종류별 관측 시세를 수집한다. API TCG와 Trading Card Studio는 팩·번호·카드명이 일치하는 인쇄본을 찾고, 여러 후보가 있으면 관측값을 별도로 보관한다. 모든 조회는 홈서버 DB에서 처리한다. [TCGdex API](https://tcgdex.dev/rest) · [PokéWallet API](https://pokewallet.io/api-docs) · [API TCG](https://docs.apitcg.com/) · [Trading Card Studio](https://tradingcardstudio.com/api-docs)
+
+한국어 유희왕 참고 API는 이름으로 조회하므로 코나미 ID가 있고 한국어 이름과 공격력·수비력을 대조할 수 있는 인쇄본의 빈 효과만 보강한다. 해당 서버가 응답하지 않으면 기존 판본을 보존하고 다음 예약에서 재시도한다. [한국어 API 문서](https://github.com/marsboy02/yugioh-card-data-api)

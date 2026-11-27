@@ -41,7 +41,8 @@ final class CardEdition {
             left join lateral (
                 select case when count(distinct s.name)=1 then min(s.name) end as name,
                        case when count(distinct s.effect)=1 then min(s.effect) end as effect,
-                       min(s.source_url) as name_url,min(s.source_url) filter(where s.effect is not null) as effect_url
+                       min(s.source_url) as name_url,min(s.source_url) filter(where s.effect is not null) as effect_url,
+                       bool_and(s.provider='YUGIOHKR') filter(where s.effect is not null) as related
                 from supplemental_printing s where s.card_id=c.id and s.lang=:lang and s.provider<>'RIFTCODEX'
             ) supplement on c.specs->>'language' is distinct from :lang or nullif(c.effect,'') is null
             cross join lateral (select case when :lang='ko'
@@ -127,7 +128,8 @@ final class CardEdition {
             case when correction.effect is not null then case when reviewed.basis='PRINTED_NAME'
                       then 'REVIEWED_PRINTING' else 'REVIEWED_TRANSLATION' end
                  when requested.effect is null and wiki_label.effect is not null then 'NAMUWIKI_KO'
-                 when requested.effect is null and supplement.effect is not null then 'SOURCE_LABEL'
+                 when requested.effect is null and supplement.effect is not null then case when supplement.related
+                       then 'RELATED_PRINTING' else 'SOURCE_LABEL' end
                  when requested.effect is null and :lang='ko' and kr_read.effect is not null then kr_read.basis
                  when c.game_code='ONEPIECE' and c.specs->'nameBasis'->>
                       (case when requested.effect is not null then :lang else c.specs->>'language' end)='RELATED_PRINTING'

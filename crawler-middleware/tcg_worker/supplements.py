@@ -2,14 +2,16 @@
 import json
 import math
 import os
+import re
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode,quote
+from urllib.error import HTTPError
 from bs4 import BeautifulSoup
 from psycopg.types.json import Jsonb
 from .catalog_sources.transport import CatalogHTTP
 
 KEYS={"APITCG":"APITCG_API_KEY","TCGSTUDIO":"TRADINGCARDSTUDIO_API_KEY","RIOT":"RIOT_API_KEY",
-      "POKEWALLET":"POKEWALLET_API_KEY","RIFTCODEX":None,"TCGDEX":None,"WIKI_INDEX":None}
+      "POKEWALLET":"POKEWALLET_API_KEY","RIFTCODEX":None,"TCGDEX":None,"YUGIOHKR":None,"WIKI_INDEX":None}
 GAMES={"YUGIOH":"yugioh","POKEMON":"pokemon","ONEPIECE":"one-piece-card-game",
        "WEISS":"weiss-schwarz","NIVEL":"nivel-arena","RIFTBOUND":"riftbound"}
 
@@ -32,6 +34,34 @@ def configure(db):
 def clean(text):
     if not isinstance(text,str):return None
     return BeautifulSoup(text,"html.parser").get_text(" ",strip=True)[:8000] if "<" in text else text.strip()[:8000]
+
+
+def korean_yugioh(db, after, http=None):
+    """The reference endpoint identifies cards by name. Require an official CID and both combat stats."""
+    http=http or CatalogHTTP()
+    targets=db.execute("""select c.id,c.number,p.code,c.specs->'names'->>'ko',c.specs->>'konami_id',
+                c.specs->>'atk',c.specs->>'def' from card c join pack p on p.id=c.pack_id
+            join feed_source f on f.id=c.source_id and f.provider='CATALOG' and f.source_key='YUGIOH'
+            where c.game_code='YUGIOH' and c.status='PUBLISHED' and c.id>%s and p.code is not null
+                and c.specs->>'konami_id' ~ '^[1-9][0-9]{0,9}$' and c.specs->>'atk' ~ '^[0-9]+$' and c.specs->>'def' ~ '^[0-9]+$'
+                and c.specs->'names'->>'ko' ~ '[가-힣]' and nullif(c.specs->'texts'->>'ko','') is null
+            order by c.id limit 4""",(int(after or 0),)).fetchall()
+    rows=[]
+    for cid,number,code,name,konami,atk,defense in targets:
+        url="https://api.yugiohcard.kr/card/"+quote(name,safe="")
+        try:
+            data=json.loads(http.get(url,ttl=604800,size=65536,delay=2).read_bytes())
+        except HTTPError as error:
+            if error.code!=404:raise
+            error.close()
+            continue
+        if (data.get("cardName")!=name or not re.fullmatch(r"공격력\s*"+atk,str(data.get("cardAtk","")))
+                or not re.fullmatch(r"수비력\s*"+defense,str(data.get("cardDef","")))):continue
+        effect=clean(data.get("cardText"))
+        if not effect or not re.search("[가-힣]",effect):continue
+        rows.append(dict(id=str(cid),number=number,packCode=code,name=name,lang="ko",effect=effect,
+                         sourceUrl=url,facts={"konamiId":konami,"atk":atk,"def":defense}))
+    return rows,str(targets[-1][0]) if len(targets)==4 else None
 
 
 def fetch(provider,game,cursor,http=None):
@@ -62,6 +92,12 @@ def fetch(provider,game,cursor,http=None):
             rows.append(dict(id=lang+":"+ident,number=item["localId"],packCode=item["set"]["id"],packName=item["set"].get("name"),
                              name=item["name"],lang=lang,
                              sourceUrl=url,effect="\n".join(text) or item.get("effect"),facts=facts))
+            art=item.get("image")
+            if isinstance(art,str) and art.startswith("https://assets.tcgdex.net/"+lang+"/"):
+                from .local_art import provider as accepted_image
+                full=art.rstrip("/")+"/high.webp"
+                if accepted_image(full):
+                    rows[-1]["image"]=full
         if start+len(chunk)<len(cards): return rows,lang+":"+str(start+len(chunk))
         index=languages.index(lang)+1
         return rows,languages[index]+":0" if index<len(languages) else None
@@ -152,12 +188,20 @@ def save(db,source,rows):
             exact=[r[0] for r in candidates if (r[2] or "").lower()==code.lower() and row["name"].casefold() in
                    {str(n).casefold() for n in (r[3],r[4],*(r[5] or {}).values()) if n}]
         cid=exact[0] if len(exact)==1 else None
+        if provider=="YUGIOHKR":
+            target=db.execute("""select id from card where id=%s and game_code='YUGIOH' and number=%s and status='PUBLISHED'
+                and specs->'names'->>'ko'=%s and specs->>'konami_id'=%s and specs->>'atk'=%s and specs->>'def'=%s""",
+                (int(row["id"]),number,row["name"],row["facts"]["konamiId"],row["facts"]["atk"],row["facts"]["def"])).fetchone()
+            if not target:continue
+            cid=target[0]
         # A secondary source can add a verified missing printing. An ambiguous match stays in observations for review.
-        if (not candidates or own_key in {r[1] for r in candidates}) and code and provider!="RIFTCODEX":
+        if (not candidates or own_key in {r[1] for r in candidates}) and code and provider not in ("RIFTCODEX","YUGIOHKR"):
             facts=row.get("facts") or {}
             fields=("hp","types","category","type","power","cost","color","life","level","stage","soul","energy","might","regulationMark")
             specs={k:facts[k] for k in fields if facts.get(k) is not None}
             specs.update(language=lang,names={lang:row["name"]},sources={lang:row["sourceUrl"]})
+            if provider=="TCGDEX" and row.get("image"):
+                specs.update(images={lang:row["image"]},imageSources={lang:row["sourceUrl"]},imageProducts={lang:code})
             if row.get("effect"):
                 specs["texts"]={lang:row["effect"]}
             card=dict(external_id=identity,pack_code=code,pack_name=row.get("packName") or code,number=number,name=row["name"],

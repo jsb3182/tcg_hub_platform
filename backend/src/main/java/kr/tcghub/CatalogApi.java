@@ -139,7 +139,8 @@ class CatalogApi {
                     jsonb_build_array(jsonb_strip_nulls(jsonb_build_object('title',wiki.title,'url',wiki.document_url,
                         'revision',wiki.revision,'snapshotDate',wiki.snapshot_date,'snapshotUrl',wiki.snapshot_url,
                         'snapshotRow',wiki.snapshot_row,'articleSha256',wiki.article_sha256,
-                        'verificationUrl',wiki.verification_url,'language','ko','facts',wiki.facts,'details',wiki.article_details)))) end
+                        'verificationUrl',wiki.verification_url,'language','ko','facts',wiki.facts,'details',wiki.article_details,
+                        'textKo',wiki.korean_text)))) end
                 || case when kr.konami_id is null then '{}'::jsonb
                   else jsonb_build_object('koreanPrinting',jsonb_strip_nulls(jsonb_build_object(
                     'number',kr.number,'productReleasedOn',kr.product_released_on,

@@ -12,6 +12,7 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
 sys.path.insert(0, str(TOOLS))
 from build_namuwiki_yugioh import articles, build, identities
+from enrich_namuwiki_facts import pokemon_metadata, ygo_metadata
 from verify_namuwiki_yugioh import confirm, publisher
 
 
@@ -74,3 +75,40 @@ class SnapshotTests(unittest.TestCase):
         self.assertFalse(confirm(row, self.article, {**self.api, "id": 234}, self.official, self.origin))
         html = "<title>예시 | 카드 상세 | 공식</title><div id='update_list'><b class='card_number'>ST-K100</b></div>"
         self.assertEqual(publisher(html), ("예시", {}, {"ST-K100"}))
+
+    def test_only_matching_rule_block_and_publisher_set_can_support_a_summary(self):
+        mechanic = "①: 그 발동을 무효로 하고 파괴한다."
+        other = "그 공격을 무효로 한다."
+        article = dict(self.article, text=self.article["text"].replace(
+            "랭크 속성", "엑시즈 / 효과 몬스터\n랭크 속성").replace(
+            "ST-K100\n해설용 문장", mechanic + "\n해설용 문장\n" + other + "\n검증 팩 ST-K100 레어 한국"))
+        row = self.outputs([article])[0]
+        both = ygo_metadata(row, article, self.official, mechanic + other, self.api, ["검증 팩 1st WAVE"])
+        self.assertEqual(both["details"]["traits"], ["빛 속성", "드래곤족", "엑시즈"])
+        self.assertEqual(both["details"]["packs"], ["검증 팩 (ST-K100)"])
+        self.assertEqual(both["textKo"], "효과에 발동 무효와 파괴 처리가 있다.")
+        self.assertNotIn("공격", str(both["details"]["rulings"]))
+        self.assertNotIn(mechanic, str(both))
+        for reference, packs in [(other, ["검증 팩의 다른 제품"]), ("", [])]:
+            single = ygo_metadata(row, article, self.official, reference, self.api, packs)
+            self.assertNotIn("textKo", single)
+            self.assertNotIn("packs", single["details"])
+        with self.assertRaises(ValueError):
+            ygo_metadata(row, dict(article, text=article["text"]+"!"), self.official, mechanic, self.api, [])
+        with self.assertRaises(ValueError):
+            ygo_metadata(row, article, self.official, mechanic, {**self.api,"misc_info":[]}, [])
+
+    def test_printed_collection_row_has_pack_and_rarity_without_invented_effect(self):
+        article = {"title":"예시컬렉션", "text":"컬렉션 넘버 카드명 종류 레어도\n002/060 예시 기본 포켓몬 C\n003/060 다른 예시 1진화 포켓몬 U"}
+        row = {"title":article["title"], "articleSha256":hashlib.sha256(article["text"].encode()).hexdigest(),
+               "names":{"ko":"예시"}, "match":{"catalogKey":"catalog:POKEMON:ko:2","number":"002"},
+               "printingNumber":"002/060", "verificationUrl":"https://pokemoncard.co.kr/cards/detail/2"}
+        product = {"external_id":"ko:2", "number":"002", "name":"예시", "rarity":"C", "pack_name":"제1탄 「예시컬렉션」",
+                   "source_url":row["verificationUrl"], "specs":{"set_total":"060", "card_type":"Pokémon", "stage":"기본"}}
+        result = pokemon_metadata(row, article, product)
+        self.assertEqual(result, {"details":{"packs":["제1탄 「예시컬렉션」 (002/060)"],"traits":["기본 포켓몬","레어도 C"]}})
+        self.assertNotIn("traits", pokemon_metadata(row, article, dict(product,rarity="U",specs={**product["specs"],"stage":"1진화"}))["details"])
+        with self.assertRaises(ValueError):
+            pokemon_metadata(row, article, dict(product,external_id="ko:3"))
+        with self.assertRaises(ValueError):
+            pokemon_metadata(row, article, dict(product,specs={**product["specs"], "set_total":"061"}))
