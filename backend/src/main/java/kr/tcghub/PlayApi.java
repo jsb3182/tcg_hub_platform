@@ -12,7 +12,8 @@ import org.springframework.web.bind.annotation.*;
 class PlayApi {
     record CardLabel(long id, String name, String language, String number, String effect, String effectLanguage,
                      String imageUrl, String imageLanguage, String productCode, String imageProduct, String imageSource,
-                     String type, List<String> colors, CatalogApi.Image image, String nameBasis, String nameReferenceUrl) {}
+                     String type, List<String> colors, CatalogApi.Image image, String nameBasis, String nameReferenceUrl,
+                     String imageBasis, String effectReferenceUrl, String effectBasis) {}
 
     private final JdbcClient db;
     PlayApi(JdbcClient db) { this.db = db; }
@@ -32,17 +33,14 @@ class PlayApi {
                 r.getString("language"),r.getString("number"),r.getString("effect"),r.getString("effectLanguage"),
                 r.getString("imageUrl"),r.getString("imageLanguage"),r.getString("productCode"),r.getString("imageProduct"),
                 r.getString("imageSource"),r.getString("type"),List.of((String[])r.getArray("colors").getArray()),LibraryImage.read(r),
-                r.getString("nameBasis"),r.getString("nameReferenceUrl"));
+                r.getString("nameBasis"),r.getString("nameReferenceUrl"),r.getString("imageBasis"),r.getString("effectReferenceUrl"),
+                r.getString("effectBasis"));
         if (ids != null) {
             return db.sql(select + " and c.id in (:ids) order by c.id").param("ids",ids)
                     .param("lang",lang).param("game",game).query(map).list();
         }
-        return db.sql(select + """
-                 and (:q='' or strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.specs->'names'->>'ko',
-                           c.specs->'names'->>'en',c.specs->'names'->>'ja',
-                           linked.names->>'ko',linked.names->>'en',linked.names->>'ja',
-                           c.specs->'referenceNames'->>'en',c.specs->'referenceNames'->>'ja')),lower(:q))>0)
-                 order by (requested.name is not null or coalesce(c.specs->>'language'=:lang,false)
+        return db.sql(select + " and (:q='' or "+CardEdition.MATCH_NAME+")" + """
+                 order by (correction.name is not null or requested.name is not null or coalesce(c.specs->>'language'=:lang,false)
                            or coalesce(original.lang=:lang,false)) desc,(requested.reference_name is not null) desc,c.id
                  limit 30
                 """)

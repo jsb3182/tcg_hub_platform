@@ -50,6 +50,38 @@ class LibraryIntegrationTest {
     }
     String binder(long id){return "/api/v1/me/binder/"+id;}
 
+    @Test void localizedLibrarySearchKeepsPhysicalEditionAndUsesTheSameCardAsTheCatalog() throws Exception {
+        String jp="日本語名"+UUID.randomUUID();
+        String provider="https://example.invalid/verified-printing";
+        long cardId=card("NIVEL","한국어 이름","PUBLISHED");
+        db.sql("""
+                update card set specs=jsonb_build_object('language','ko','names',jsonb_build_object('ja',cast(? as text)),
+                    'sources',jsonb_build_object('ja',cast(? as text)),'nameBasis',jsonb_build_object('ja','PRINTED_NAME'))
+                where id=?
+                """).param(jp).param(provider).param(cardId).update();
+        long hidden=card("NIVEL","검수 중","PENDING");
+        api.perform(get("/api/v1/cards").param("ids",cardId+","+hidden+","+cardId).param("lang","ja"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].name").value(jp))
+                .andExpect(jsonPath("$.items[0].nameReferenceUrl").value(provider));
+        api.perform(get("/api/v1/cards").param("ids",String.valueOf(cardId)).param("game","POKEMON"))
+                .andExpect(jsonPath("$.items").isEmpty());
+        api.perform(write(put(binder(cardId)).param("edition","ko"),alice,new BinderApi.Quantity(3,0))).andExpect(status().isOk());
+        api.perform(as(get("/api/v1/me/binder").param("lang","ja").param("q",jp),alice)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.copies").value(3)).andExpect(jsonPath("$.items[0].edition").value("ko"))
+                .andExpect(jsonPath("$.items[0].language").value("ja")).andExpect(jsonPath("$.items[0].name").value(jp))
+                .andExpect(jsonPath("$.items[0].nameBasis").value("PRINTED_NAME"));
+        api.perform(as(get("/api/v1/me/binder").param("lang","ja").param("q",jp),bob)).andExpect(jsonPath("$.total").value(0));
+        var draft=new DeckApi.Save("도감 대조","NIVEL","DRAFT",0,false,List.of(new DeckRules.Line(cardId,"MAIN",1)));
+        long id=json.readTree(api.perform(write(post("/api/v1/me/decks"),alice,draft)).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsByteArray()).path("id").asLong();
+        api.perform(as(get("/api/v1/me/decks").param("q",jp),alice)).andExpect(jsonPath("$.items[0].id").value(id));
+        for(String path:List.of("/api/v1/me/decks/"+id,"/api/v1/me/decks/export")){
+            String entry=path.endsWith("/export")?"$.items[0].entries[0]":"$.entries[0]";
+            api.perform(as(get(path).param("lang","ja"),alice)).andExpect(status().isOk())
+                    .andExpect(jsonPath(entry+".name").value(jp)).andExpect(jsonPath(entry+".nameReferenceUrl").value(provider));
+        }
+    }
+
     @Test void screenshotRecipeKeepsNamesOrderAndIllustrationsAcrossReloadAndDeckCode() throws Exception {
         long variant=db.sql("insert into card_variant(card_id,position,rarity) values(?,1,'UR') returning id")
                 .param(first).query(Long.class).single();

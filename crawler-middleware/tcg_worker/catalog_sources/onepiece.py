@@ -44,10 +44,12 @@ class Index:
         self.printings = defaultdict(dict)
         self.products = defaultdict(dict)
         self.rules = defaultdict(dict)
+        self.korean_incomplete = False
 
     def add(self, number, lang, value, priority, product=None, product_name=None, **facts):
         if not value.get("name"):
             return
+        value = {**value, "editionProduct": product}
         if value.get("image"):
             value = {**value, "imageSource": value.get("imageSource") or value["source"]}
             # PROMO groups several products without a known set code.
@@ -74,10 +76,14 @@ class Index:
             for key, plural in (("name", "names"), ("text", "texts"), ("image", "images"), ("source", "sources"),
                                 ("imageProduct", "imageProducts"), ("imageSource", "imageSources")):
                 fields[plural] = {language: value[key] for language, value in translations.items() if value.get(key)}
+            korean = translations.get("ko", {})
+            if korean.get("source", "").startswith(CARD_LIST) and korean.get("editionProduct") not in (None,"PROMO"):
+                fields["nameBasis"] = {"ko": "PRINTED_NAME" if korean["editionProduct"] == product else "RELATED_PRINTING"}
             product_names = self.products[product]
             name = next((product_names[k] for k in ("ko", "en", "ja") if k in product_names), product)
             info = self.rules[number]
             yield {"external_id": f"{product}:{number}", "pack_code": product, "pack_name": name,
+                   "korean_incomplete": self.korean_incomplete,
                    "number": number, "name": card["name"], "original_name": translations.get("en", card)["name"],
                    "effect": card.get("text"), "rarity": info.get("rarity"), "release_date": None,
                    "specs": {"language": lang, "productCode": product, **fields, **info}, "source_url": card["source"]}
@@ -229,8 +235,12 @@ def korean(index, http):
             page=parse(name,page,url,path.read_bytes())
     queue=missing+refresh
     budget=24
+    failed_products=set()
+    consecutive_failures=0
     while queue and budget:
         name,page,url,ttl=queue.pop(0)
+        if name in failed_products:
+            continue
         temp=checkpoint.with_suffix(".tmp")
         temp.write_text(name,"utf-8")
         os.replace(temp,checkpoint)
@@ -241,12 +251,18 @@ def korean(index, http):
             if isinstance(exc,HTTPError) and (exc.code<500 or exc.code==503):
                 raise   # Preserve authentication, rate limits and Retry-After for the scheduler.
             logging.getLogger(__name__).warning("Korean One Piece history deferred at %s page %s (%s)",pack_code(name),page,type(exc).__name__)
-            break
+            failed_products.add(name)
+            consecutive_failures+=1
+            if consecutive_failures>=3:
+                break
+            continue
+        consecutive_failures=0
         following=parse(name,page,url,body)
         if following is not None:
             nxt=target(name,following)
             if not (http.root/hashlib.sha256(nxt.encode()+b"\0").hexdigest()).exists():
                 queue.append((name,following,nxt,ttl))
+    index.korean_incomplete=bool(failed_products or queue)
 
 
 def onepiece(http):
@@ -257,3 +273,38 @@ def onepiece(http):
     if not index.printings or not all(any(lang in group for group in index.editions.values()) for lang in ("ko","en","ja")):
         raise ValueError("One Piece catalog is missing a regional edition")
     yield from index.records()
+
+
+def preserve_partial_korean(db, cards):
+    # A history scan can stop at its request budget before re-reading an older print.
+    # Keep the previous verified edition together with its source and artwork provenance.
+    partial = [key for key, row in cards.items() if row.get("korean_incomplete")]
+    if not partial:
+        return
+    rows = db.execute("""
+        SELECT legacy_key,number,specs FROM card WHERE game_code='ONEPIECE' AND legacy_key=ANY(%s)
+          AND nullif(specs->'names'->>'ko','') IS NOT NULL
+        """,(partial,)).fetchall()
+    for key, number, prior in rows:
+        row = cards[key]
+        current = row["specs"]
+        product = current.get("productCode")
+        if number != row["number"] or not product or product != prior.get("productCode"):
+            continue
+        source = (prior.get("sources") or {}).get("ko") or ""
+        url = urlsplit(source)
+        if (url.scheme,url.netloc,url.path) != ("https","www.onepiece-cardgame.kr","/cardlist.do"):
+            continue
+        old_exact = (prior.get("imageProducts") or {}).get("ko")==product or (prior.get("nameBasis") or {}).get("ko")=="PRINTED_NAME"
+        if (current.get("names") or {}).get("ko") and not (old_exact and (current.get("nameBasis") or {}).get("ko")=="RELATED_PRINTING"):
+            continue
+        merged = {**current}
+        for field in ("names","texts","sources","images","imageSources","imageProducts","nameBasis"):
+            languages = dict(current.get(field) or {})
+            languages.pop("ko",None)
+            if "ko" in (prior.get(field) or {}):
+                languages["ko"] = prior[field]["ko"]
+            if languages or field in current:
+                merged[field] = languages
+        row.update(specs={**merged,"language":"ko"},name=prior["names"]["ko"],
+                   effect=(prior.get("texts") or {}).get("ko"),source_url=source)
