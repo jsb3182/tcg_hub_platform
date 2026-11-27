@@ -74,5 +74,10 @@ export function artworkUrl(value) {
   const local = mediaPath(value)
   if (local) return local
   const external = sourceLink(value)
-  return external.startsWith('https://') ? external : ''
+  if(!external.startsWith('https://'))return ''
+  const url=new URL(external)
+  if(url.hostname==='cmsassets.rgpub.io' && (url.port || url.hash ||
+    !/^\/sanity\/images\/dsfx7636\/game_data_live\/[0-9a-f]{40}-[1-9][0-9]*x[1-9][0-9]*\.(?:png|jpe?g|webp)$/.test(url.pathname) ||
+    (url.search && url.search!=='?accountingTag=RB')))return ''
+  return external
 }

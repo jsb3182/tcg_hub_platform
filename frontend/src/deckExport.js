@@ -1,5 +1,5 @@
 import { strToU8,zipSync } from 'fflate'
-import { t } from './i18n'
+import { locale,t } from './i18n'
 import { sectionLabel } from './library'
 import { saveDocument } from './savePng'
 const spreadsheet='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -27,8 +27,9 @@ function xlsx(decks){
 export async function exportDecks(session,format,signal){
   const decks=[]
   let after=0
+  const lang=locale.value
   do{
-    const page=await session.authenticatedRequest('/me/decks/export?after='+after,{signal})
+    const page=await session.authenticatedRequest('/me/decks/export?after='+after+'&lang='+lang,{signal})
     decks.push(...page.items);after=page.next
   }while(after!=null)
   const blob=format==='xlsx'?xlsx(decks):new Blob([JSON.stringify({version:1,decks},null,2)],{type:'application/json'})

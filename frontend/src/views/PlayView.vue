@@ -2,8 +2,9 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
+import CardTextCredit from '../components/CardTextCredit.vue'
+import {deckName as localizedDeckName} from '../library'
 import { request, artworkUrl } from '../api'
-import { editionName } from '../i18n'
 import { useSession } from '../stores/session'
 import { newRound, playGames, playText, practiceLanguage, practiceOpening,
   rememberPracticeLanguage, rememberPracticeOpening, validOpeningSize } from '../play'
@@ -26,7 +27,8 @@ const error = ref(false)
 const deckError = ref(false)
 const deckBusy = ref(false)
 const labelError = ref(false)
-const deckName = ref('')
+const deckInfo = ref(null)
+const deckName = computed(()=>localizedDeckName(deckInfo.value,lang.value))
 const cards = ref([])
 const labels = ref({})
 const round = ref(null)
@@ -89,7 +91,7 @@ watch([game, deckId, identity, deckRetry], async ([currentGame, id, account], pr
   if (!previous || previous[0] !== currentGame || previous[1] !== id || id && previous[2] !== account) {
     cards.value = []
     round.value = null
-    deckName.value = ''
+    deckInfo.value = null
     search.value = query.value = ''
   }
   deckBusy.value = false
@@ -97,13 +99,19 @@ watch([game, deckId, identity, deckRetry], async ([currentGame, id, account], pr
   if (!id || !account) return
   try {
     deckBusy.value = true
-    const deck = await session.authenticatedRequest('/me/decks/' + id, { signal: controller.signal })
+    const deck = await session.authenticatedRequest('/me/decks/' + id+'?lang='+lang.value, { signal: controller.signal })
     if (controller.signal.aborted) return
     if (deck.gameCode !== currentGame) throw new Error()
     const entries = deck.entries.filter(card => card.section === 'MAIN')
     if (entries.reduce((n, e) => n + e.quantity, 0) > 150) throw new Error()
-    cards.value = entries.map(card => ({ id: card.cardId, name: card.name, quantity: card.quantity }))
-    deckName.value = deck.name
+    const grouped=new Map()
+    for(const card of entries){
+      const prior=grouped.get(card.cardId)
+      if(prior)prior.quantity+=card.quantity
+      else grouped.set(card.cardId,{id:card.cardId,name:card.name,language:card.language,quantity:card.quantity})
+    }
+    cards.value=[...grouped.values()]
+    deckInfo.value = deck
   } catch { if (!controller.signal.aborted) deckError.value = true }
   finally { if (!controller.signal.aborted) deckBusy.value = false }
 }, { immediate: true })
@@ -177,7 +185,7 @@ function move(from, index, to) {
         <p v-else-if="!hits.length">{{ t.noHits }}</p>
         <ul v-else class="play-hits">
           <li v-for="card in hits" :key="card.id"><div><strong :lang="card.language">{{ card.name }}</strong>
-            <small>{{ card.number }} <span v-if="card.language !== lang">· {{ t.fallback }} · {{ editionName(card.language) }}</span></small></div>
+            <small>{{ card.number }}</small><CardTextCredit :card="card" link/></div>
             <button class="secondary" :disabled="total >= 150" :aria-label="t.add + ' ' + card.name" @click="changeQuantity(card,1)">{{ t.add }}</button>
           </li>
         </ul>
@@ -185,7 +193,7 @@ function move(from, index, to) {
       <section class="panel">
         <h3>{{ t.selection }} · {{ total }}</h3><p v-if="!total">{{ t.empty }}</p>
         <ul class="play-list"><li v-for="card in cards" :key="card.id">
-          <span :lang="label(card.id)?.language">{{ label(card.id)?.name }} × {{ card.quantity }}</span>
+          <span><span :lang="label(card.id)?.language || ''">{{ label(card.id)?.name }}</span> × {{ card.quantity }}<CardTextCredit :card="label(card.id)"/></span>
           <button class="secondary" :aria-label="t.remove+' '+label(card.id)?.name" @click="changeQuantity(card,-1)">−</button>
         </li></ul>
         <p v-if="total >= 150">{{ t.limit }}</p>
@@ -212,12 +220,11 @@ function move(from, index, to) {
             <label v-if="zone==='hand'" class="exchange-card"><input type="checkbox" v-model="exchange" :value="i" :aria-label="$t('교환할 카드')+' '+label(id)?.name"></label>
             <figure v-if="artworkUrl(label(id)?.imageUrl) || label(id)?.image" class="practice-art">
               <LibraryThumbnail :src="label(id)?.imageUrl" :image="label(id)?.image" show-edition :language="label(id)?.imageLanguage"
-                :printing="game==='ONEPIECE' ? label(id) : null"/>
+                :printing="label(id)"/>
             </figure>
 
-            <span><strong :lang="label(id)?.language">{{ label(id)?.name }}</strong>
-              <small v-if="label(id)?.language && label(id).language !== lang"> · {{ t.fallback }} · {{ editionName(label(id).language) }}</small></span>
-            <details v-if="label(id)?.effect"><summary>{{ $t('효과') }}</summary><small v-if="label(id).effectLanguage!==lang">{{ editionName(label(id).effectLanguage) }}</small><p :lang="label(id).effectLanguage || ''">{{ label(id).effect }}</p></details>
+            <span><strong :lang="label(id)?.language">{{ label(id)?.name }}</strong><CardTextCredit :card="label(id)" detailed link/></span>
+            <details v-if="label(id)?.effect"><summary>{{ $t('효과') }}</summary><p :lang="label(id).effectLanguage || ''">{{ label(id).effect }}</p><CardTextCredit :card="label(id)" effect link/></details>
             <small v-if="zone==='table' && attached[i]">{{ game==='ONEPIECE'?'DON!!':$t('에너지') }} × {{ attached[i] }}</small>
             <button v-if="zone==='table' && game!=='YUGIOH'" class="secondary" :disabled="!stock" @click="attach(i)">{{ $t('부착') }}</button>
             <div><button v-if="zone === 'hand'" class="secondary" @click="move(zone,i,'table')">{{ t.place }}</button>

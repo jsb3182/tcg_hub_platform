@@ -1,9 +1,9 @@
 import { artworkUrl, mediaPath } from './api'
 
-export function cardArtworks(src, directLanguage, variants, failedUrl) {
+export function cardArtworks(src, directLanguage, variants, failedUrl, imageBasis) {
   const choices = []
   const url = artworkUrl(src)
-  if (url && url !== failedUrl) choices.push({ key:'direct', src:url, language:directLanguage })
+  if (url && url !== failedUrl) choices.push({ key:'direct', src:url, language:directLanguage, reference:imageBasis==='CARD_REFERENCE' })
 
   for (const [position,variant] of variants.entries()) {
     const tile = variant.image
@@ -28,5 +28,8 @@ export function cardArtworks(src, directLanguage, variants, failedUrl) {
 }
 
 export function preferredArtwork(choices, language) {
-  return choices.find(art => art.language === language) ?? choices.find(art => art.src || art.style) ?? choices[0]
+  return choices.find(art => !art.reference && art.language===language) ??
+    choices.find(art => art.language===language) ??
+    choices.find(art => !art.reference && (art.src || art.style)) ??
+    choices.find(art => art.src || art.style) ?? choices[0]
 }

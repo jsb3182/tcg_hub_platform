@@ -4,6 +4,7 @@ import { t as uiText, gameName, locale } from '../i18n'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { request } from '../api'
+import { localizedCards,nameFields } from '../cardLabels'
 import { useSession } from '../stores/session'
 import { sectionLabel, savedDate, stateLabel } from '../library'
 import { practiceLanguage } from '../play'
@@ -13,6 +14,7 @@ import DeckRecipe from '../components/DeckRecipe.vue'
 import CaptureReview from '../components/CaptureReview.vue'
 import DeckPictures from '../components/DeckPictures.vue'
 import DeckNeeds from '../components/DeckNeeds.vue'
+import CardTextCredit from '../components/CardTextCredit.vue'
 import {storeDeckPictures} from '../deckPictures'
 const route=useRoute(), router=useRouter(), session=useSession()
 const games=ref([]), game=ref(''), name=ref(''), section=ref('MAIN'), entries=ref([]), saved=ref(null), rule=ref(null)
@@ -61,11 +63,11 @@ onBeforeUnmount(()=>{
   window.removeEventListener('beforeunload',beforeUnload)
   window.removeEventListener('tcg-before-logout',beforeLogout)
 })
-function fill(deck) {
+function fill(deck, lang='ko') {
   undone.value=[];redone.value=[]
   saved.value=deck;rule.value=deck.rule;game.value=deck.gameCode;name.value=deck.name
   nameJa.value=deck.nameJa||'';nameEn.value=deck.nameEn||''
-  entries.value=deck.entries.map(e=>({...e}));shared.value=!!deck.shareToken
+  entries.value=deck.entries.map(e=>({...e,labelLocale:lang}));shared.value=!!deck.shareToken
   baseline.value=content.value
   if (!rule.value.sections.some(s=>s.section===section.value)) section.value=rule.value.sections[0]?.section
 }
@@ -84,8 +86,9 @@ watch([()=>session.account?.email,id,()=>route.name,reload,
     if(current!==generation)return
     games.value=options
     if(deckId){
-      const deck=await session.authenticatedRequest('/me/decks/'+deckId+'?lang='+locale.value,{signal:abort.signal})
-      if(current===generation)fill(deck)
+      const lang=locale.value
+      const deck=await session.authenticatedRequest('/me/decks/'+deckId+'?lang='+lang,{signal:abort.signal})
+      if(current===generation)fill(deck,lang)
     }else{
       const preferred=options.find(g=>g.code===route.query.game) || options.find(g=>g.code==='YUGIOH') || options[0]
       game.value=preferred.code
@@ -93,22 +96,35 @@ watch([()=>session.account?.email,id,()=>route.name,reload,
       if(current!==generation)return
       baseline.value=content.value
       if(current===generation && /^\d+$/.test(route.query.card || '')){
-        const card=await request('/cards/'+route.query.card+'?lang='+practiceLanguage(route.query.lang),{signal:abort.signal})
-        if(current===generation && card.gameCode===game.value)add(card)
+        const lang=locale.value
+        const card=await request('/cards/'+route.query.card+'?lang='+lang,{signal:abort.signal})
+        if(current===generation && card.gameCode===game.value)add(card,null,lang)
       }
     }
   }catch(cause){if(!abort.signal.aborted){error.value=cause.message;failedLoad.value=true}}
   finally{if(!abort.signal.aborted)loading.value=false}
 },{immediate:true})
-watch(locale,async(lang,_,cleanup)=>{
-  if(!id.value||!saved.value)return
+// Update display fields separately from the user's quantities, sections and selected illustrations.
+const missingLabels=computed(()=>[...new Set(entries.value.filter(e=>e.labelLocale!==locale.value).map(e=>e.cardId))].join(','))
+const labelsRetry=ref(0), labelError=ref('')
+watch([locale,missingLabels,labelsRetry],async([lang,ids],_,cleanup)=>{
+  labelError.value=''
+  if(!ids)return
   const abort=new AbortController(),current=generation;cleanup(()=>abort.abort())
   try{
-    const deck=await session.authenticatedRequest('/me/decks/'+id.value+'?lang='+lang,{signal:abort.signal})
+    const byId=await localizedCards(ids.split(','),game.value,lang,abort.signal)
     if(current!==generation||abort.signal.aborted)return
-    const names=new Map(deck.entries.map(entry=>[entry.cardId,entry.name]))
-    entries.value.forEach(entry=>{if(names.has(entry.cardId))entry.name=names.get(entry.cardId)})
-  }catch(cause){if(!abort.signal.aborted&&current===generation)error.value=cause.message}
+    for(const entry of entries.value){
+      const card=byId.get(entry.cardId)
+      if(card){
+        Object.assign(entry,nameFields(card))
+        if(entry.variantId==null && entry.neuronArtwork==null)Object.assign(entry,{
+          image:card.image,imageUrl:card.imageUrl,imageLanguage:card.imageLanguage,imageSource:card.imageSource,imageBasis:card.imageBasis,
+        })
+      }
+      entry.labelLocale=lang
+    }
+  }catch(cause){if(!abort.signal.aborted&&current===generation)labelError.value=cause.message}
 })
 async function loadRule(current,signal) {
   const result=await session.authenticatedRequest('/me/decks/rules/'+encodeURIComponent(game.value),{signal})
@@ -118,11 +134,12 @@ async function switchGame(e) {
   game.value=e.target.value;rule.value=null;error.value='';busy.value=true
   try{await loadRule(generation)}catch(cause){error.value=cause.message}finally{busy.value=false}
 }
-function add(card) {
+function add(card,trigger,lang=locale.value) {
   beforeCardEdit()
   const item=entries.value.find(e=>e.cardId===card.id && e.section===section.value && e.variantId==null&&e.neuronArtwork==null)
   if(item)item.quantity=Math.min(999,item.quantity+1)
-  else entries.value.push({cardId:card.id,name:card.name,number:card.number,packName:card.packName,section:section.value,quantity:1,
+  else entries.value.push({cardId:card.id,name:card.name,language:card.language,labelLocale:lang,nameBasis:card.nameBasis,nameReferenceUrl:card.nameReferenceUrl,number:card.number,packName:card.packName,section:section.value,quantity:1,
+    imageLanguage:card.imageLanguage,imageSource:card.imageSource,imageBasis:card.imageBasis,
     curveValue:card.curveValue ?? null,imageUrl:card.imageUrl,image:card.image ?? card.variants?.find(v=>v.image)?.image ?? null,
     type:card.type||card.specs?.type||[card.specs?.k,card.specs?.sub].filter(Boolean).join(' · ')})
   notice.value=sectionLabel(section.value)+uiText("에 ")+card.name+uiText(" 추가")
@@ -230,7 +247,7 @@ async function copyLink() {
           <section v-for="s in rule.sections" :key="s.section"><h2>{{ sectionLabel(s.section) }}
             <small>{{ entries.filter(e=>e.section===s.section).reduce((n,e)=>n+(Number(e.quantity)||0),0) }}{{ $t("장 · 규칙") }} {{ s.minCards ?? 0 }}{{ s.maxCards===s.minCards?'':'~'+(s.maxCards ?? $t("제한 없음")) }}{{ $t("장") }}</small>
           </h2>
-          <ul class="lib-list"><li v-for="e in entries.filter(e=>e.section===s.section)" :key="[e.cardId,e.variantId,e.neuronArtwork].join('-')"><div><strong>{{ e.name }}</strong><small>{{ [e.number,e.packName,e.neuronArtwork&&($t('일러스트')+' '+e.neuronArtwork)].filter(Boolean).join(' · ') }}</small></div>
+          <ul class="lib-list"><li v-for="e in entries.filter(e=>e.section===s.section)" :key="[e.cardId,e.variantId,e.neuronArtwork].join('-')"><div><strong :lang="e.language || ''">{{ e.name }}</strong><CardTextCredit :card="e"/><small>{{ [e.number,e.packName,e.neuronArtwork&&($t('일러스트')+' '+e.neuronArtwork)].filter(Boolean).join(' · ') }}</small></div>
             <div class="lib-controls"><input :value="e.quantity" @input="updateQuantity(e,$event)" type="number" min="1" max="999" :aria-label="e.name+$t(' 수량')" /><button type="button" class="text-button" :aria-label="e.name+$t(' 빼기')" @click="removeEntry(e)">{{ $t("빼기") }}</button></div>
           </li></ul></section>
           <label class="lib-check"><input type="checkbox" v-model="shared" />{{ $t("링크가 있는 사람에게 덱 공개") }}</label>
@@ -252,6 +269,7 @@ async function copyLink() {
       <div v-if="rule"><label class="lib-filter">{{ $t("카드를 넣을 구역") }}<select v-model="section"><option v-for="s in rule.sections" :value="s.section" :key="s.section">{{ sectionLabel(s.section) }}</option></select></label>
         <CatalogPicker :game="game" :disabled="busy" @pick="add" /></div>
     </div>
+    <p v-if="labelError" class="inline-error" role="alert">{{ labelError }} <button type="button" class="text-button" @click="labelsRetry++">{{ $t('다시 시도') }}</button></p>
     <DeckRecipe v-if="rule" :deck="preview" :game-name="selectedGameName" />
     <DeckNeeds v-if="saved" :deck-id="saved.id" :revision="saved.revision"/>
     <section v-if="saved" class="lib-panel"><div class="lib-heading"><h2>{{ $t("저장 내역") }}</h2><button class="secondary" :disabled="historyBusy" @click="loadHistory()">{{ $t("내역 조회") }}</button></div>

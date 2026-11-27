@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import LibraryThumbnail from './LibraryThumbnail.vue'
+import ArtworkCredit from './ArtworkCredit.vue'
+import CardTextCredit from './CardTextCredit.vue'
 import PngExport from './PngExport.vue'
 import { countLabel, facetLabel, facetValues, pt } from '../pack'
 import { pngSnapshot } from '../pngSnapshot'
@@ -65,8 +67,12 @@ onBeforeUnmount(restoreScroll)
         <p v-if="!shown.length && !loading" class="state">{{ pt('검색 결과가 없습니다.') }}</p>
         <div v-else ref="tiles" class="pack-tiles">
           <button type="button" class="pack-tile" v-for="card in shown" :key="card.id" @click="pick(card.id)">
-            <span class="tile-image"><LibraryThumbnail :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" v-slot="{art}"><span v-if="!art">{{ pt('이미지 없음') }}</span></LibraryThumbnail></span>
-            <small v-if="card.number">{{ card.number }}</small><strong :lang="card.language || ''">{{ card.name }}</strong>
+            <LibraryThumbnail :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card" v-slot="{art}">
+              <span v-if="!art" class="tile-image">{{ pt('이미지 없음') }}</span>
+              <small v-if="card.number">{{ card.number }}</small><strong :lang="card.language || ''">{{ card.name }}</strong>
+              <small v-if="art?.reference"><ArtworkCredit :language="art.language" :printing="card" disable-link/></small>
+              <CardTextCredit :card="card"/>
+            </LibraryThumbnail>
           </button>
         </div>
       </div>
@@ -90,3 +96,4 @@ onBeforeUnmount(restoreScroll)
 .gallery-bottom{flex-wrap:wrap;justify-content:flex-end;padding:10px 20px;border-top:1px solid var(--bd)}.gallery-bottom nav{display:flex;gap:8px;align-items:center;margin-right:auto}.gallery-bottom span{font-size:.8rem}
 @media(max-width:560px){.pack-gallery{width:100%;max-width:100%;max-height:94vh;margin:auto 0 0;border-radius:16px 16px 0 0}.gallery-frame{max-height:94vh}.gallery-top,.gallery-body,.gallery-bottom{padding-inline:14px}.gallery-bottom{padding-bottom:max(10px,env(safe-area-inset-bottom))}.pack-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.gallery-bottom .secondary{padding-inline:9px}.gallery-options span{min-height:40px}}
 </style>
+<style scoped>.pack-tile :deep(.lib-thumbnail){display:block;width:100%;aspect-ratio:300/438;object-fit:contain}</style>
