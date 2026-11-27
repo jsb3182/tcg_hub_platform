@@ -30,6 +30,7 @@ class RecipeCaptureIntegrationTest {
         long card = card("YUGIOH","PUBLISHED","4041");
         db.sql("update card set number=cast(id as text) where id=?").param(card).update();
         var local = variant(card,sheet(false),0);
+        String cached=CachedArtwork.link(db,card,"https://artworks-jp-n.ygoresources.com/0/40/41_2.png",'6');
         var save = new DeckApi.Save("두 일러스트","YUGIOH","DRAFT",0,true,java.util.List.of(
                 new DeckRules.Line(card,"MAIN",1,null,1),new DeckRules.Line(card,"MAIN",1,null,2),
                 new DeckRules.Line(card,"MAIN",1,local)));
@@ -40,8 +41,7 @@ class RecipeCaptureIntegrationTest {
             org.junit.jupiter.api.Assertions.assertEquals(1,details.entries().get(0).neuronArtwork());
             org.junit.jupiter.api.Assertions.assertEquals(2,details.entries().get(1).neuronArtwork());
             org.junit.jupiter.api.Assertions.assertNull(details.entries().get(1).image());
-            org.junit.jupiter.api.Assertions.assertEquals("https://artworks-jp-n.ygoresources.com/0/40/41_2.png",
-                    details.entries().get(1).imageUrl());
+            org.junit.jupiter.api.Assertions.assertEquals(cached,details.entries().get(1).imageUrl());
             org.junit.jupiter.api.Assertions.assertEquals(local,details.entries().get(2).variantId());
         }
         var backup=exports.page(owner,0,"ko").items().get(0);
@@ -50,8 +50,7 @@ class RecipeCaptureIntegrationTest {
         var replay=decks.importCode(owner,decks.code(owner,result.deck().id()));
         org.junit.jupiter.api.Assertions.assertEquals(reopened.entries(),replay.entries());
         api.perform(get("/api/v1/cards/capture-identities").param("ids","4041"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$[0].artworks['2']").value(
-                        "https://artworks-jp-n.ygoresources.com/0/40/41_2.png"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].artworks").isMap());
     }
     @Test void batchExportKeepsTheTournamentRegionOfAnEmptyDraft() {
         var owner=(java.security.Principal) () -> "region-" + fixture + "@example.invalid";

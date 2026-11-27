@@ -45,9 +45,14 @@ class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,"/api/v1/auth/local-admin").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET,"/api/v1/auth/admin-mode").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/auth/register","/api/v1/auth/login","/api/v1/auth/refresh","/api/v1/auth/logout").permitAll()
-                .requestMatchers(HttpMethod.GET,"/api/v1/games","/api/v1/packs","/api/v1/packs/*","/api/v1/releases","/api/v1/release-calendar","/api/v1/cards","/api/v1/cards/*",
+                .requestMatchers(HttpMethod.GET,"/api/v1/games","/api/v1/packs","/api/v1/packs/*","/api/v1/catalog-packs","/api/v1/releases","/api/v1/release-calendar","/api/v1/cards","/api/v1/cards/*",
                         "/api/v1/news","/api/v1/stores","/api/v1/config","/api/v1/shared/decks/*","/api/v1/play/cards").permitAll()
-                .requestMatchers("/api/v1/me/**").authenticated()
+                .requestMatchers(HttpMethod.GET,"/api/v1/community/posts","/api/v1/community/posts/*",
+                        "/api/v1/community/posts/*/comments").permitAll()
+                .requestMatchers(HttpMethod.POST,"/api/v1/community/posts","/api/v1/community/posts/*/comments",
+                        "/api/v1/community/reports").authenticated()
+                .requestMatchers(HttpMethod.PATCH,"/api/v1/community/posts/*/trade-status").authenticated()
+                .requestMatchers("/api/v1/me/**","/api/decks/import-capture").authenticated()
                 .requestMatchers("/api/**").denyAll()
                 .requestMatchers("/internal/ready").access((auth,ctx) -> {
                     var request = ctx.getRequest();

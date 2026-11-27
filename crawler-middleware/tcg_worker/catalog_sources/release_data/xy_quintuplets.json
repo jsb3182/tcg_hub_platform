@@ -1,0 +1,19 @@
+[
+  {
+    "game": "POKEMON", "key": "kr-xy1x", "region": "KR", "code": "xy1x",
+    "name": "XY 확장팩 제1탄 「X컬렉션」", "names": {"ko":"XY 확장팩 제1탄 「X컬렉션」"},
+    "date": "2014-03-01", "url": "https://pokemoncard.co.kr/card/31", "catalogCode": "xy1x", "catalogName": "XY 확장팩 제1탄 「X컬렉션」"
+  },
+  {
+    "game": "POKEMON", "key": "kr-xy1y", "region": "KR", "code": "xy1y",
+    "name": "XY 확장팩 제1탄 「Y컬렉션」", "names": {"ko":"XY 확장팩 제1탄 「Y컬렉션」"},
+    "date": "2014-03-01", "url": "https://pokemoncard.co.kr/card/31", "catalogCode": "xy1y", "catalogName": "XY 확장팩 제1탄 「Y컬렉션」"
+  },
+  {
+    "game": "WEISS", "key": "en-bp-5hy3", "region": "EN", "code": "5HY/W101",
+    "name": "Booster Pack The Quintessential Quintuplets Movie",
+    "names": {"en":"Booster Pack The Quintessential Quintuplets Movie","ko":"극장판 5등분의 신부 부스터 팩"},
+    "date": "2023-06-02", "url": "https://en.ws-tcg.com/products/bp-5hy3/",
+    "catalogCode": "5HY/W101", "catalogName": "The Quintessential Quintuplets Movie"
+  }
+]

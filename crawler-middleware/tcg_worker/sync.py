@@ -19,6 +19,7 @@ from .catalog_sources.rift_editions import preserve_deferred
 from .catalog_sources.onepiece import preserve_partial_korean
 from .feeds import FetchError, backoff, fetch_feed
 from .jobs import connect, process_once
+from . import supplements
 
 LOG = logging.getLogger(__name__)
 WORKER = "tcg-worker"
@@ -31,7 +32,7 @@ def claim(db, catalog):
         return cur.execute("""
             WITH due AS (
               SELECT id FROM feed_source
-               WHERE enabled AND state <> 'RUNNING' AND (provider='CATALOG')=%s
+               WHERE enabled AND state <> 'RUNNING' AND (provider = ANY(%s))=%s
                  AND policy_note IS NULL
                  AND EXISTS (SELECT FROM collection_control WHERE crawler_enabled
                      AND (requested_at IS NOT NULL OR (scheduler_enabled AND (schedule_ready OR NOT spring_managed))))
@@ -46,7 +47,7 @@ def claim(db, catalog):
             UPDATE feed_source s SET state='RUNNING',last_started_at=now(),requested_at=NULL,schedule_ready=false,
                                      last_seen=0,last_added=0
               FROM due WHERE s.id=due.id RETURNING s.*
-        """, (catalog,)).fetchone()
+        """, (["CATALOG", *supplements.KEYS], catalog)).fetchone()
 
 
 def fetch_x_with_limits(db, key, cursor):
@@ -196,6 +197,10 @@ def save_cards(db, source, records):
                 IS DISTINCT FROM (EXCLUDED.pack_id,EXCLUDED.name,EXCLUDED.original_name,EXCLUDED.number,
                  EXCLUDED.rarity,EXCLUDED.effect,EXCLUDED.release_date,EXCLUDED.specs,EXCLUDED.source_url,EXCLUDED.source_id)
     """, (game, source["id"], "PUBLISHED" if source["auto_publish"] else "PENDING", Jsonb(list(cards.values()))))
+    if game == "WEISS":
+        from .card_readings import curated_index, seed_curated_readings
+        if curated_index().keys() & cards.keys():
+            seed_curated_readings(db)
     db.execute("""
         INSERT INTO card_variant AS v(card_id,position,rarity)
           SELECT id,0,rarity FROM card WHERE legacy_key=ANY(%s)
@@ -227,6 +232,7 @@ def sync_source(source, stop):
             schedule = None
             calendar = None
             editions = None
+            observations = None
             if source["provider"] == "CATALOG":
                 from .catalog_sources import iter_catalog
                 total = 0
@@ -258,6 +264,18 @@ def sync_source(source, stop):
             elif source["provider"] == "RELEASE_CALENDAR":
                 from .release_calendar import fetch
                 calendar = fetch(source["game_code"])
+            elif source["provider"] == "WIKI_INDEX":
+                from .wiki_cards import refresh_index
+                cursor = refresh_index(db, cursor)
+                db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s WHERE id=%s",
+                           (cursor["documents"], cursor["changed"], sid))
+            elif source["provider"] in supplements.KEYS:
+                if source["provider"]=="YUGIOHKR":
+                    observations, next_page=supplements.korean_yugioh(db,cursor.get("page"))
+                else:
+                    observations, next_page = supplements.fetch(source["provider"],source["game_code"],cursor.get("page"))
+                more = next_page is not None
+                cursor = {"page": next_page}
             elif source["provider"] == "STORE_SCHEDULE":
                 from .store_schedules import fetch
                 schedule = fetch(source["source_key"], cursor)
@@ -270,6 +288,10 @@ def sync_source(source, stop):
                 cursor, more, floor = page.cursor, page.more, page.retry_after
             with db.transaction():
                 interrupted(db, sid, stop)
+                if observations is not None:
+                    added = supplements.save(db,source,observations)
+                    db.execute("UPDATE feed_source SET last_seen=%s,last_added=%s WHERE id=%s",
+                               (len(observations),added,sid))
                 if calendar is not None:
                     from .release_calendar import save
                     added = save(db, calendar)
@@ -336,8 +358,13 @@ def run(db, media, spool, stop, interval):
     if not db.execute("SELECT pg_try_advisory_lock(%s)", (LOCK,)).fetchone()[0]:
         raise RuntimeError("다른 수집 워커가 실행 중입니다.")
     from .release_calendar import seed_calendar
+    from .wiki_cards import import_wiki_cards
+    from .card_readings import seed_curated_readings
     with db.transaction():
         seed_calendar(db)
+        import_wiki_cards(db)
+        seed_curated_readings(db)
+        supplements.configure(db)
     db.execute("""
         INSERT INTO worker_heartbeat(id,started_at,seen_at) VALUES (%s,now(),now())
           ON CONFLICT(id) DO UPDATE SET started_at=now(),seen_at=now()
@@ -348,6 +375,8 @@ def run(db, media, spool, stop, interval):
     """)
     cancel = threading.Event()
     from .translation import model_directory, translate_pending
+    from .local_art import scheduled as cache_catalog_art
+    next_art_batch = 0
     next_translation_check = 0
     translating = None
     # Independent lanes keep slow imports and local inference out of the heartbeat loop.
@@ -374,6 +403,11 @@ def run(db, media, spool, stop, interval):
                         source = claim(db, catalog)
                         if source:
                             active[catalog] = pool.submit(sync_source, source, cancel)
+                if "artwork" in active and active["artwork"].done():
+                    active.pop("artwork").result()
+                if "artwork" not in active and time.monotonic() >= next_art_batch:
+                    next_art_batch = time.monotonic() + 90
+                    active["artwork"] = pool.submit(cache_catalog_art, media, cancel)
                 if translating is not None and translating.done():
                     translating.result()
                     translating = None
@@ -383,6 +417,7 @@ def run(db, media, spool, stop, interval):
                             SELECT EXISTS (SELECT 1 FROM feed_item i JOIN feed_source s ON s.id=i.source_id
                                            WHERE i.translation_due_at<=now() AND i.status <> 'REJECTED'
                                              AND s.policy_note IS NULL)
+                                OR EXISTS (SELECT 1 FROM pending_korean_card_reading WHERE due_at<=now())
                             """).fetchone()[0]:
                         translating = pool.submit(translate_pending, cancel)
                 media_count = process_once(db, media, spool)

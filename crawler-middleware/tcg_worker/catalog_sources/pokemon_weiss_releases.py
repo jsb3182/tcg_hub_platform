@@ -143,6 +143,9 @@ def weiss_schedule(body, region):
         if row and row["key"] == "en-bp-nik2" and name == "Booster Pack GODDESS OF VICTORY: NIKKE Vol.2":
             # The English printing catalog contains this exact expansion under one product code.
             row.update(code="NIK/S135", catalogCode="NIK/S135", catalogName="GODDESS OF VICTORY: NIKKE Vol.2")
+        if row and row["key"] == "en-bp-5hy3" and name == "Booster Pack The Quintessential Quintuplets Movie":
+            row.update(code="5HY/W101", catalogCode="5HY/W101", catalogName="The Quintessential Quintuplets Movie")
+            row["names"]["ko"] = "극장판 5등분의 신부 부스터 팩"
         rows.append(row)
     return _unique(rows)
 

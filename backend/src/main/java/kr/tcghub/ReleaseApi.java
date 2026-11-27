@@ -36,7 +36,10 @@ class ReleaseApi {
                     String effectLanguage, String imageUrl, String imageLanguage, CatalogApi.Image image,
                     int variantCount, String nameBasis, String nameReferenceUrl, String imageBasis,
                     String imageSource, String imageProduct, String productCode, String effectReferenceUrl, String effectBasis) {}
-    record PackDetail(@JsonUnwrapped Header header, List<Printing> cards, int page, int size, boolean hasMore) {}
+    record RarityCount(String rarity, long count) {}
+    record PackDetail(@JsonUnwrapped Header header, List<Printing> cards, int page, int size,
+                      boolean hasMore, String sort, List<RarityCount> rarityCounts, long unknownRarityCount,
+                      long unknownInclusionCount, String contentsStatus) {}
 
     private static final Set<String> PUBLIC_METADATA = Set.of("id","code","kind","jp","kr","cnt","note","sec","sx","wp","bgp");
 
@@ -46,13 +49,14 @@ class ReleaseApi {
                  when '신규 일러스트' then 'NEW_ART' end
             """;
     private static final String HEADER = """
-            select p.id,p.game_code,p.code,p.name,p.release_date,p.release_label,
+            select p.id,p.game_code,p.code,p.name,pd.release_date,p.release_label,
                    '/media/' || p.banner_key as banner_url,p.metadata::text as metadata,
                    case when p.metadata->>'sec' is distinct from 'true' then 'SCHEDULE'
                         when p.metadata->>'wp'='true' then 'PREMIERE'
                         when p.metadata->>'sx'='l' then 'ARCHIVE' else 'DISTRIBUTION' end as release_group,
                    n.english_name,n.launch_date,n.ots_date,n.set_size,n.source_url,totals.*
               from pack p
+              left join catalog_pack_date pd on pd.pack_id=p.id
               left join yugioh_na_product n on p.game_code='YUGIOH' and n.code=p.code
                     and p.metadata @> '{"sec":true,"wp":true}'
               cross join lateral (
@@ -84,7 +88,19 @@ class ReleaseApi {
               from card c
             """ + CardEdition.JOIN + LibraryImage.LOCALIZED_JOIN + """
              where c.pack_id=:id and c.status='PUBLISHED'
-             order by c.id limit :size offset :offset
+            """;
+
+    private static final String RARITY_COUNTS = """
+            select label as rarity, count(*) as count from card c
+            left join lateral (
+                select distinct btrim(code) as label from (
+                    select c.rarity union all select v.rarity from card_variant v where v.card_id=c.id
+                ) raw(rarity)
+                cross join lateral unnest(case when starts_with(c.legacy_key,'legacy:')
+                       then regexp_split_to_array(btrim(raw.rarity),'[[:space:]]+') else array[raw.rarity] end) codes(code)
+                where nullif(btrim(code),'') is not null
+            ) known on true
+            where c.pack_id=:id and c.status='PUBLISHED' group by label order by label collate "C"
             """;
 
     private final JdbcClient db;
@@ -99,6 +115,7 @@ class ReleaseApi {
         return db.sql(HEADER + """
                  where starts_with(p.legacy_key,'legacy:') or p.release_date is not null
                     or nullif(btrim(p.release_label),'') is not null
+                    or exists(select from product_release e where e.selected_pack_id=p.id)
                  order by p.id
                 """).query((r,n) -> header(r)).list();
     }
@@ -108,14 +125,32 @@ class ReleaseApi {
     PackDetail pack(@PathVariable @Positive long id,
                     @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang,
                     @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
-                    @RequestParam(defaultValue="200") @Min(1) @Max(200) int size) {
+                    @RequestParam(defaultValue="200") @Min(1) @Max(200) int size,
+                    @RequestParam(defaultValue="source") @Pattern(regexp="source|number|rarity|name") String sort) {
         Header pack = db.sql(HEADER + " where p.id=:id").param("id",id)
                 .query((r,n) -> header(r)).optional()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         long offset = (long) page * size;
-        var cards = db.sql(PRINTINGS).param("id",id).param("lang",lang).param("size",size).param("offset",offset)
+        String ordering = switch (sort) {
+            case "number" -> "catalog_collector_order(nullif(btrim(c.number),'')) collate \"C\" nulls last, c.id";
+            case "rarity" -> """
+                    lower(coalesce(nullif(btrim(c.rarity),''),
+                          (select btrim(v.rarity) from card_variant v
+                           where v.card_id=c.id and nullif(btrim(v.rarity),'') is not null
+                           order by v.position limit 1))) collate "C" nulls last, c.id
+                    """;
+            case "name" -> "lower(" + CardEdition.NAME + ") collate \"C\" nulls last, c.id";
+            default -> "c.id";
+        };
+        var cards = db.sql(PRINTINGS + " order by " + ordering + " limit :size offset :offset")
+                .param("id",id).param("lang",lang).param("size",size).param("offset",offset)
                 .query((r,n) -> printing(r)).list();
-        return new PackDetail(pack,cards,page,size,offset + cards.size() < pack.total());
+        var rarities=db.sql(RARITY_COUNTS).param("id",id).query(RarityCount.class).list();
+        long unknown=rarities.stream().filter(r -> r.rarity()==null).mapToLong(RarityCount::count).sum();
+        return new PackDetail(pack,cards,page,size,offset + cards.size() < pack.total(),sort,
+                rarities.stream().filter(r -> r.rarity()!=null).toList(),unknown,
+                pack.total()-pack.newCount()-pack.reprintCount()-pack.newArtCount(),
+                pack.total()==0 ? "NO_REGISTERED_CARDS" : "REGISTERED");
     }
 
     private Header header(ResultSet row) throws SQLException {

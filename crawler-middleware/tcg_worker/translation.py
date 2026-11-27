@@ -184,6 +184,8 @@ def translate_pending(stop, model_factory=OfflineTranslator):
         while not stop.is_set():
             rows = pending(db, 8)
             if not rows:
+                from .card_readings import fill_readings
+                fill_readings(db, get_model, stop, 6)
                 return
             for item in rows:
                 if stop.is_set():

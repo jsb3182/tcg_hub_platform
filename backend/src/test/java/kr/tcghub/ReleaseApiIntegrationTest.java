@@ -29,6 +29,66 @@ class ReleaseApiIntegrationTest {
                 .param(name).param(key).param(metadata).query(Long.class).single();
     }
 
+    @Test void allSixGamesExposeAllPagesAndOnlyDocumentedInclusionsAndRarities() throws Exception {
+        for (String game : new String[]{"YUGIOH","POKEMON","WEISS","NIVEL","RIFTBOUND","ONEPIECE"}) {
+            long pack = db.sql("insert into pack(game_code,name) values(?,'Pack coverage') returning id")
+                    .param(game).query(Long.class).single();
+            String url = "/api/v1/packs/"+pack;
+            api.perform(get(url)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contentsStatus").value("NO_REGISTERED_CARDS"))
+                    .andExpect(jsonPath("$.cards").isEmpty()).andExpect(jsonPath("$.rarityCounts").isEmpty());
+            long first = db.sql("""
+                    insert into card(game_code,pack_id,name,number,rarity,status,specs)
+                    values(?,?,'A','P-10','Super Rare','PUBLISHED','{"names":{"en":"Alpha","ja":"十番"}}') returning id
+                    """).param(game).param(pack).query(Long.class).single();
+            db.sql("insert into card_variant(card_id,position,rarity) values(?,0,'Super Rare'),(?,1,'Parallel')")
+                    .param(first).param(first).update();
+            db.sql("""
+                    insert into card(game_code,pack_id,name,number,status,specs)
+                    values(?,?,'B','P-2','PUBLISHED','{"nw":"신규","names":{"en":"Beta","ja":"二番"}}'),
+                          (?,?,'Draft','P-1','PENDING','{}')
+                    """).param(game).param(pack).param(game).param(pack).update();
+            for (String lang : new String[]{"en","ja","ko"}) {
+                api.perform(get(url).param("page","0").param("size","1").param("sort","number").param("lang",lang))
+                        .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2))
+                        .andExpect(jsonPath("$.contentsStatus").value("REGISTERED"))
+                        .andExpect(jsonPath("$.unknownInclusionCount").value(1)).andExpect(jsonPath("$.unknownRarityCount").value(1))
+                        .andExpect(jsonPath("$.rarityCounts[0].rarity").value("Parallel"))
+                        .andExpect(jsonPath("$.rarityCounts[1].rarity").value("Super Rare"))
+                        .andExpect(jsonPath("$.rarityCounts[1].count").value(1))
+                        .andExpect(jsonPath("$.hasMore").value(true)).andExpect(jsonPath("$.cards[0].number").value("P-2"))
+                        .andExpect(jsonPath("$.cards[0].name").value(lang.equals("en")?"Beta":lang.equals("ja")?"二番":"B"));
+                api.perform(get(url).param("page","1").param("size","1").param("sort","number").param("lang",lang))
+                        .andExpect(status().isOk()).andExpect(jsonPath("$.hasMore").value(false))
+                        .andExpect(jsonPath("$.cards[0].id").value(first));
+            }
+            for (String sort : new String[]{"source","name","rarity"}) {
+                api.perform(get(url).param("size","1").param("sort",sort).param("lang","en"))
+                        .andExpect(status().isOk()).andExpect(jsonPath("$.cards[0].id").value(first));
+            }
+            api.perform(get(url).param("page","2").param("size","1")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.hasMore").value(false))
+                    .andExpect(jsonPath("$.cards").isEmpty());
+            api.perform(get(url).param("sort","price")).andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test void editedDateFollowsOnlyTheChosenPack() throws Exception {
+        long selected = pack("Same product","catalog:date-test-picked","{}");
+        long other = pack("Same product","catalog:date-test-other","{}");
+        long event = db.sql("""
+                insert into product_release(game_code,product_key,name,region,release_date,source_url,selected_pack_id,manual)
+                values('YUGIOH','date-test','same date','KR','2027-01-22','https://example.test/date',?,true) returning id
+                """).param(selected).query(Long.class).single();
+        String url = "/api/v1/packs/";
+        api.perform(get(url+selected)).andExpect(jsonPath("$.releaseDate").value("2027-01-22"));
+        api.perform(get(url+other)).andExpect(jsonPath("$.releaseDate").isEmpty());
+        db.sql("update product_release set release_date='2027-01-28' where id=?").param(event).update();
+        api.perform(get(url+selected)).andExpect(jsonPath("$.releaseDate").value("2027-01-28"));
+        db.sql("update product_release set selected_pack_id=null where id=?").param(event).update();
+        api.perform(get(url+selected)).andExpect(jsonPath("$.releaseDate").isEmpty());
+    }
+
     @Test void calendarUsesPublishedPrintingsAndDistinguishesTheFourSections() throws Exception {
         long schedule = pack("Announced pack","legacy:release-test-schedule","{}");
         long section = pack("Test promos","legacy:release-test-distribution",

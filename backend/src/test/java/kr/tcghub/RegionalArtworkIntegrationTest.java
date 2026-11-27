@@ -31,16 +31,20 @@ class RegionalArtworkIntegrationTest {
             """).param(pack).query(Long.class).single();
         String kr="https://artworks-ko-db.ygoresources.com/0/40/41_1.png";
         http.perform(get("/api/v1/cards/"+card).param("lang","ko")).andExpect(status().isOk())
-                .andExpect(header().string("Content-Security-Policy",
-                        org.hamcrest.Matchers.matchesPattern(".*img-src [^;]*https://cmsassets\\.rgpub\\.io(?: [^;]*)?;.*")))
+                .andExpect(jsonPath("$.imageUrl").isEmpty()).andExpect(jsonPath("$.specs.images.en").doesNotExist());
+        String cachedKo=CachedArtwork.link(db,card,kr,'1');
+        String cachedJa=CachedArtwork.link(db,card,"https://artworks-jp-n.ygoresources.com/0/40/41_1.png",'2');
+        String cachedEn=CachedArtwork.link(db,card,"https://example.org/exact.png",'3');
+        http.perform(get("/api/v1/cards/"+card).param("lang","ko")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.imageBasis").value("CARD_REFERENCE")).andExpect(jsonPath("$.imageLanguage").value("ko"))
-                .andExpect(jsonPath("$.imageUrl").value(kr)).andExpect(jsonPath("$.imageSource").value(kr))
+                .andExpect(jsonPath("$.imageUrl").value(cachedKo)).andExpect(jsonPath("$.imageSource").value(kr))
+                .andExpect(jsonPath("$.specs.images.en").value(cachedEn))
                 .andExpect(jsonPath("$.imageProduct").isEmpty());
         http.perform(get("/api/v1/packs/"+pack).param("lang","ja")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.cards[0].imageUrl").value("https://artworks-jp-n.ygoresources.com/0/40/41_1.png"))
+                .andExpect(jsonPath("$.cards[0].imageUrl").value(cachedJa))
                 .andExpect(jsonPath("$.cards[0].imageBasis").value("CARD_REFERENCE"));
         http.perform(get("/api/v1/play/cards").param("game","YUGIOH").param("ids",Long.toString(card)).param("lang","en"))
-                .andExpect(jsonPath("$[0].imageUrl").value("https://example.org/exact.png"))
+                .andExpect(jsonPath("$[0].imageUrl").value(cachedEn))
                 .andExpect(jsonPath("$[0].imageProduct").value("TST")).andExpect(jsonPath("$[0].imageBasis").isEmpty());
     }
 
@@ -52,6 +56,8 @@ class RegionalArtworkIntegrationTest {
             insert into card(game_code,name,specs,status) values ('YUGIOH','Japanese reference',
                 jsonb_build_object('konami_id',cast(? as text)),'PUBLISHED') returning id
             """).param(cid).query(Long.class).single();
+        String jp=db.sql("select ja_path from yugioh_reference_art where cid=?").param(cid).query(String.class).single();
+        CachedArtwork.link(db,id,"https://artworks-jp-n.ygoresources.com"+jp,'4');
         http.perform(get("/api/v1/cards/"+id).param("lang","ko")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.imageLanguage").value("ja")).andExpect(jsonPath("$.imageBasis").value("CARD_REFERENCE"));
         db.sql("update card set game_code='POKEMON' where id=?").param(id).update();

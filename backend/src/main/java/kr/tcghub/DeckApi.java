@@ -31,13 +31,13 @@ class DeckApi {
     }
     record Header(long id, String name, String gameCode, String format, int ruleVersion, String state,
                   int revision, OffsetDateTime updatedAt, UUID shareToken,String nameJa,String nameEn,String region) {}
-    record Summary(long id, String name, String gameCode, String format, int ruleVersion, String state,
-                   int revision, OffsetDateTime updatedAt, UUID shareToken,String nameJa,String nameEn,String region,
-                   long cards,long mainCount,long extraCount,long sideCount,boolean hasCover) {}
-    record Page(List<Summary> items, long total,long totalCards) {}
+    record Summary(@com.fasterxml.jackson.annotation.JsonUnwrapped Header deck,long cards,long mainCount,long extraCount,
+                   long sideCount,boolean hasCover,long ordinal,Map<String,Long> sectionCounts,long cxCount) {}
+    record Page(List<Summary> items, long total,long totalCards,long allTotal) {}
     record Entry(long cardId, String section, int quantity, String name, String number, String packName,
                  Integer curveValue, CatalogApi.Image image,Long variantId,String imageUrl,String type,Integer neuronArtwork,
-                 String language,String nameBasis,String nameReferenceUrl,String imageLanguage,String imageBasis,String imageSource) {}
+                 String language,String nameBasis,String nameReferenceUrl,String imageLanguage,String imageBasis,String imageSource,
+                 String rarity,@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) Long ownedCopies) {}
     record Details(@com.fasterxml.jackson.annotation.JsonUnwrapped Header deck, DeckRules.Rule rule,List<Entry> entries,
                    YugiohLimits.Report regionalLimits) {}
     record Checking(@NotBlank @Pattern(regexp="OCG|TCG") String region, @NotNull @Size(max=300) List<@NotNull @Valid Line> entries) {}
@@ -75,39 +75,67 @@ class DeckApi {
 
     @GetMapping("/me/decks")
     Page list(Principal user,@RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
-              @RequestParam(defaultValue="") @Size(max=120) String q) {
+              @RequestParam(defaultValue="") @Size(max=120) String q,
+              @RequestParam(defaultValue="") @Pattern(regexp="|"+AdminCatalogApi.GAMES) String game) {
         String from="""
              from deck d join app_user u on u.id=d.owner_id
-             where u.email=:email and u.enabled and (:q='' or
+             where u.email=:email and u.enabled and (:game='' or d.game_code=:game) and (:q='' or
                  strpos(lower(concat_ws(' ',d.name,d.name_ja,d.name_en)),lower(:q))>0 or exists (
                  select 1 from deck_entry e join card c on c.id=e.card_id
              """+CardEdition.LEGACY_JOIN+" where e.deck_id=d.id and "+CardEdition.MATCH_NAME+")) ";
-        var items=db.sql("select "+FIELDS+"""
-              ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id) as cards
-              ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id and section='MAIN') as main_count
-              ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id and section='EXTRA') as extra_count
-              ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id and section='SIDE') as side_count
-              ,exists(select 1 from deck_decoration where deck_id=d.id and slot='cover') as has_cover
-             """+from+" order by d.updated_at desc,d.id desc limit 24 offset :offset")
-                .param("email",user.getName()).param("q",q.strip()).param("offset",page*24)
-                .query(Summary.class).list();
+        var args=Map.of("email",user.getName(),"q",q.strip(),"game",game);
+        var headers=db.sql("select "+FIELDS+" "+from+" order by d.updated_at desc,d.id desc limit 24 offset :offset")
+                .params(args).param("offset",page*24).query(Header.class).list();
+        var items=new ArrayList<Summary>();
+        if (!headers.isEmpty()) {
+            var ids=headers.stream().map(Header::id).toList();
+            var counts=new HashMap<Long,Map<String,Long>>();
+            var cx=new HashMap<Long,Long>();
+            db.sql("""
+                select e.deck_id,e.section,sum(e.quantity) as copies,sum(case when c.game_code='WEISS' and
+                       lower(coalesce(c.specs->>'type',c.specs->>'card_type','')) in ('cx','climax','클라이맥스','クライマックス')
+                       then e.quantity else 0 end) as climax from deck_entry e join card c on c.id=e.card_id
+                 where e.deck_id in (:ids) group by e.deck_id,e.section order by e.section
+                """).param("ids",ids).query((r,n)->{
+                    long id=r.getLong("deck_id");
+                    counts.computeIfAbsent(id,k->new LinkedHashMap<>()).put(r.getString("section"),r.getLong("copies"));
+                    return cx.merge(id,r.getLong("climax"),Long::sum);
+                }).list();
+            var ordinals=new HashMap<Long,Long>();
+            db.sql("""
+                select id,ordinal from (select d.id,row_number() over(order by d.id) ordinal from deck d join app_user u
+                on u.id=d.owner_id where u.email=:email and u.enabled) ranked where id in (:ids)
+                """).param("email",user.getName()).param("ids",ids).query((r,n)->ordinals.put(r.getLong(1),r.getLong(2))).list();
+            var covers=new HashSet<>(db.sql("select deck_id from deck_decoration where deck_id in (:ids) and slot='cover'")
+                .param("ids",ids).query(Long.class).list());
+            for (var h:headers) {
+                var sections=counts.getOrDefault(h.id(),Map.of());
+                long cards=sections.values().stream().mapToLong(Long::longValue).sum();
+                items.add(new Summary(h,cards,sections.getOrDefault("MAIN",0L),sections.getOrDefault("EXTRA",0L),
+                      sections.getOrDefault("SIDE",0L),covers.contains(h.id()),ordinals.get(h.id()),sections,cx.getOrDefault(h.id(),0L)));
+            }
+        }
+        var allTotal=db.sql("select count(*) from deck d join app_user u on u.id=d.owner_id where u.email=? and u.enabled")
+                .param(user.getName()).query(Long.class).single();
         return db.sql("select count(*),coalesce(sum((select sum(quantity) from deck_entry where deck_id=d.id)),0)"+from)
-                .param("email",user.getName()).param("q",q.strip()).query((r,n)->new Page(items,r.getLong(1),r.getLong(2))).single();
+                .params(args).query((r,n)->new Page(items,r.getLong(1),r.getLong(2),allTotal)).single();
     }
 
     private Header owned(Principal user,long id, boolean lock) {
         String sql="select "+FIELDS+" from deck d join app_user u on u.id=d.owner_id where d.id=? and u.email=? and u.enabled";
         return db.sql(sql+(lock?" for update of d":"")).param(id).param(user.getName()).query(Header.class).optional().orElseThrow(DeckApi::missing);
     }
-    private Details details(Header header) {return details(header,"ko");}
-    private Details details(Header header,String lang) {
+    private Details details(Header header) {return details(header,"ko",true);}
+    private Details details(Header header,String lang,boolean privateView) {
         var entries=db.sql("select e.card_id,e.section,e.quantity,e.variant_id,e.neuron_artwork,"+CardEdition.NAME_FIELDS+",c.number,p.name as pack_name,"+
-                "case when e.neuron_artwork is not null then 'https://artworks-jp-n.ygoresources.com'||n.image_path when e.variant_id is null then art.url end as image_url,"+
+                "case when e.neuron_artwork is not null then local_catalog_art(c.id,'https://artworks-jp-n.ygoresources.com'||n.image_path) when e.variant_id is null then art.url end as image_url,"+
                 "case when e.neuron_artwork is not null then 'ja' when e.variant_id is null then art.lang end as image_lang,"+
                 "case when e.neuron_artwork is not null then 'SELECTED_ARTWORK' when e.variant_id is null then art.basis end as image_basis,"+
                 "case when e.neuron_artwork is not null then 'https://artworks-jp-n.ygoresources.com'||n.image_path when e.variant_id is null then art.source end as image_source,"+
                 "coalesce(c.specs->>'type',nullif(concat_ws(' · ',c.specs->>'k',c.specs->>'sub'),''),c.specs->>'card_type') as type,"+
-                "card_curve_value(c.game_code,c.specs) as curve_value"+LibraryImage.COLUMNS+
+                "coalesce((select v.rarity from card_variant v where v.id=e.variant_id),c.rarity) as rarity,"+
+                (privateView ? "(select coalesce(sum(b.quantity),0) from binder_card b join deck d on d.owner_id=b.owner_id where d.id=e.deck_id and b.card_id=c.id)" : "cast(null as bigint)")+
+                " as owned_copies,card_curve_value(c.game_code,c.specs) as curve_value"+LibraryImage.COLUMNS+
                 "from deck_entry e join card c on c.id=e.card_id left join pack p on p.id=c.pack_id "+
                 "left join neuron_artwork n on n.cid=e.neuron_cid and n.artwork=e.neuron_artwork "+CardEdition.JOIN+LibraryImage.DECK_JOIN+
                 "where e.deck_id=:deck order by e.section,e.display_order,c.name,e.card_id,e.variant_id")
@@ -117,14 +145,15 @@ class DeckApi {
                         r.getObject("neuron_artwork")==null ? LibraryImage.read(r) : null,
                         r.getObject("variant_id",Long.class),r.getString("image_url"),r.getString("type"),
                         r.getObject("neuron_artwork",Integer.class),r.getString("language"),r.getString("nameBasis"),
-                        r.getString("nameReferenceUrl"),r.getString("image_lang"),r.getString("image_basis"),r.getString("image_source"))).list();
+                        r.getString("nameReferenceUrl"),r.getString("image_lang"),r.getString("image_basis"),r.getString("image_source"),
+                        r.getString("rarity"),r.getObject("owned_copies",Long.class))).list();
         var lines = entries.stream().map(e->new Line(e.cardId(),e.section(),e.quantity())).toList();
         return new Details(header,rules.rule(header.gameCode(),header.format(),header.ruleVersion()),entries,
                            limits.check(header.region(),lines));
     }
     @GetMapping("/me/decks/{id}")
     Details get(Principal user,@PathVariable @Positive long id,@RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) {
-        return details(owned(user,id,false),lang);
+        return details(owned(user,id,false),lang,true);
     }
 
     @GetMapping("/shared/decks/{token}")
@@ -134,7 +163,7 @@ class DeckApi {
                and not exists(select 1 from deck_entry e join card c on c.id=e.card_id
                               where e.deck_id=d.id and c.status<>'PUBLISHED')
             """).param(token).query(Header.class).optional().orElseThrow(DeckApi::missing);
-        return details(header,lang);
+        return details(header,lang,false);
     }
 
     @PostMapping("/me/decks")

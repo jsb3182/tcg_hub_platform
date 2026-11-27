@@ -39,7 +39,10 @@ def main():
     commands.add_parser("once")
     commands.add_parser("run")
     commands.add_parser("check-catalogs", help="Report completed imports and published cards for each game.")
+    artwork = commands.add_parser("cache-card-art", help="Run one bounded batch of local card image downloads.")
+    artwork.add_argument("--game", choices=("YUGIOH","POKEMON","WEISS","NIVEL","RIFTBOUND","ONEPIECE"))
     commands.add_parser("seed-ygo-kr-prints", help="Populate the empty Korean printing index from the existing local catalog cache.")
+    commands.add_parser("import-wiki-cards", help="Import verified card facts from a NamuWiki snapshot index.").add_argument("file", nargs="?", type=Path)
     commands.add_parser("seed-release-calendar", help="Import the bundled regional release announcements without a network request.")
     probe = commands.add_parser("check-feed", help="Read a source without storing posts. A configured X worker shares its rate limit.")
     probe.add_argument("provider", choices=("OFFICIAL_NEWS", "X", "DCINSIDE"))
@@ -67,6 +70,20 @@ def main():
         return
 
     from .jobs import connect, enqueue, process_once
+
+    if args.command == "cache-card-art":
+        from .local_art import batch, GAMES
+        with connect() as db:
+            db.autocommit = True
+            media = Path(os.environ.get("MEDIA_ROOT", "/var/lib/tcg-hub/media"))
+            print(json.dumps({"cached": batch(db, media, threading.Event(), (args.game,) if args.game else GAMES)}))
+        return
+
+    if args.command == "import-wiki-cards":
+        from .wiki_cards import SEED, import_wiki_cards
+        with connect() as db:
+            print(json.dumps(import_wiki_cards(db, args.file or SEED)))
+        return
 
     if args.command == "seed-release-calendar":
         from .release_calendar import seed_calendar

@@ -2,6 +2,7 @@
 from datetime import date
 import hashlib
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -53,6 +54,11 @@ def checked(rows, game=None):
                 or not 1 <= len(v.strip()) <= 400 for k,v in names.items()):
             raise ValueError("Invalid localized calendar names")
         item = {**row, "names":names}
+        if row["game"] == "ONEPIECE" and row["region"] == "KR":
+            code = row.get("code") or ""
+            product = re.fullmatch(r"(OP|ST|EB|PRB)K-(\d{2})", code)
+            if product:
+                item.update(catalogCode="-".join(product.groups()), catalogName=f"[{code}] {row['name']}")
         if identity in items and items[identity] != item:
             raise ValueError("Conflicting release dates or source identities")
         items[identity] = item
@@ -96,7 +102,7 @@ def save(db, rows, *, seed=False):
             ON CONFLICT(game_code,product_key,region) DO UPDATE SET code=excluded.code,name=excluded.name,
                 names=excluded.names,release_date=excluded.release_date,source_url=excluded.source_url,
                 catalog_code=excluded.catalog_code,catalog_name=excluded.catalog_name,from_seed=excluded.from_seed
-            WHERE (p.from_seed OR NOT excluded.from_seed) AND
+            WHERE NOT p.manual AND (p.from_seed OR NOT excluded.from_seed) AND
                 (p.code,p.name,p.names,p.release_date,p.source_url,p.catalog_code,p.catalog_name,p.from_seed)
                 IS DISTINCT FROM (excluded.code,excluded.name,excluded.names,excluded.release_date,
                                   excluded.source_url,excluded.catalog_code,excluded.catalog_name,excluded.from_seed)

@@ -1,0 +1,3125 @@
+[
+  {
+    "game": "YUGIOH",
+    "title": "푸른 눈의 백룡",
+    "url": "https://namu.wiki/w/%ED%91%B8%EB%A5%B8%20%EB%88%88%EC%9D%98%20%EB%B0%B1%EB%A3%A1",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 310493,
+    "articleSha256": "574c110fa1c7fc7cc32c9aee396c66092ac886119acee0ebcbe24ccdc5d2b0cc",
+    "language": "ko",
+    "names": {
+      "ko": "푸른 눈의 백룡",
+      "en": "Blue-Eyes White Dragon"
+    },
+    "match": {
+      "cid": 4007,
+      "passcode": "89631139"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "LIGHT",
+      "race": "Dragon",
+      "atk": 3000,
+      "def": 2500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4007&request_locale=ko",
+    "printingNumber": "20AP-KR000",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ],
+      "packs": [
+        "크로니클 팩 (20AP-KR000)"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "홀리 엘프",
+    "url": "https://namu.wiki/w/%ED%99%80%EB%A6%AC%20%EC%97%98%ED%94%84",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 346905,
+    "articleSha256": "175bf788fce0533f51061662272630a52511959ceaa508e9412ffe25a6971731",
+    "language": "ko",
+    "names": {
+      "ko": "홀리 엘프",
+      "en": "Mystical Elf",
+      "ja": "ホーリー・エルフ"
+    },
+    "match": {
+      "cid": 4008,
+      "passcode": "15025844"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "LIGHT",
+      "race": "Spellcaster",
+      "atk": 800,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4008&request_locale=ko",
+    "printingNumber": "BP1-KR120",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "마법사족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "요새를 지키는 익룡",
+    "url": "https://namu.wiki/w/%EC%9A%94%EC%83%88%EB%A5%BC%20%EC%A7%80%ED%82%A4%EB%8A%94%20%EC%9D%B5%EB%A3%A1",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 65638,
+    "articleSha256": "3c9d85724b1d4424b499df354c51bf39eb9e64b9d78f147a2d79d421a7dc39e9",
+    "language": "ko",
+    "names": {
+      "ko": "요새를 지키는 익룡",
+      "en": "Winged Dragon, Guardian of the Fortress #1"
+    },
+    "match": {
+      "cid": 4013,
+      "passcode": "87796900"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "WIND",
+      "race": "Dragon",
+      "atk": 1400,
+      "def": 1200
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4013&request_locale=ko",
+    "printingNumber": "BP1-KR141",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "암흑의 드래곤왕",
+    "url": "https://namu.wiki/w/%EC%95%94%ED%9D%91%EC%9D%98%20%EB%93%9C%EB%9E%98%EA%B3%A4%EC%99%95",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 71351,
+    "articleSha256": "1561c76d0206e6e09fe5597c477a089790732167cbceecfeb9cfa3a6ab655908",
+    "language": "ko",
+    "names": {
+      "ko": "암흑의 드래곤왕",
+      "en": "Blackland Fire Dragon"
+    },
+    "match": {
+      "cid": 4016,
+      "passcode": "87564352"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 1500,
+      "def": 800
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4016&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "데몬 소환",
+    "url": "https://namu.wiki/w/%EB%8D%B0%EB%AA%AC%20%EC%86%8C%ED%99%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 183447,
+    "articleSha256": "6de4d9465c1cb867c7aad121b2d31d2afb29fa3f24fce32e5e462ec07c8c0dc5",
+    "language": "ko",
+    "names": {
+      "ko": "데몬 소환",
+      "en": "Summoned Skull"
+    },
+    "match": {
+      "cid": 4028,
+      "passcode": "70781052"
+    },
+    "facts": {
+      "level": 6,
+      "attribute": "DARK",
+      "race": "Fiend",
+      "atk": 2500,
+      "def": 1200
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4028&request_locale=ko",
+    "printingNumber": "BP1-KR142",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "커스 오브 드래곤",
+    "url": "https://namu.wiki/w/%EC%BB%A4%EC%8A%A4%20%EC%98%A4%EB%B8%8C%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 227071,
+    "articleSha256": "de4443d1895a0cc67eccc5664e5ade9a89aff229b0350afe97e69224cbab3375",
+    "language": "ko",
+    "names": {
+      "ko": "커스 오브 드래곤",
+      "en": "Curse of Dragon",
+      "ja": "カース・オブ・ドラゴン"
+    },
+    "match": {
+      "cid": 4045,
+      "passcode": "28279543"
+    },
+    "facts": {
+      "level": 5,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 2000,
+      "def": 1500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4045&request_locale=ko",
+    "printingNumber": "BP1-KR123",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "암석 거인",
+    "url": "https://namu.wiki/w/%EC%95%94%EC%84%9D%20%EA%B1%B0%EC%9D%B8",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 2846,
+    "articleSha256": "a662c02c4089129ba15eea8a17059c1853c0a8f0093c863d746a77ae25617d52",
+    "language": "ko",
+    "names": {
+      "ko": "암석 거인",
+      "en": "Giant Soldier of Stone",
+      "ja": "岩石の巨兵"
+    },
+    "match": {
+      "cid": 4080,
+      "passcode": "13039848"
+    },
+    "facts": {
+      "level": 3,
+      "attribute": "EARTH",
+      "race": "Rock",
+      "atk": 1300,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4080&request_locale=ko",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "암석족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "붉은 눈의 흑룡",
+    "url": "https://namu.wiki/w/%EB%B6%89%EC%9D%80%20%EB%88%88%EC%9D%98%20%ED%9D%91%EB%A3%A1",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 322921,
+    "articleSha256": "0a87762fb883c710a7cc1465c6ede77213b9f66b5e2d17dea1868d2413635050",
+    "language": "ko",
+    "names": {
+      "ko": "붉은 눈의 흑룡",
+      "en": "Red-Eyes Black Dragon"
+    },
+    "match": {
+      "cid": 4088,
+      "passcode": "74677427"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 2400,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4088&request_locale=ko",
+    "printingNumber": "LOB-K070",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ],
+      "packs": [
+        "푸른 눈의 백룡의 전설 (LOB-K070)"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "홀리 나이트 드래곤",
+    "url": "https://namu.wiki/w/%ED%99%80%EB%A6%AC%20%EB%82%98%EC%9D%B4%ED%8A%B8%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 346891,
+    "articleSha256": "361506c8da4b99960872ba670e4e496e6be593880027e7f4f5e580b541efe11b",
+    "language": "ko",
+    "names": {
+      "ko": "홀리 나이트 드래곤",
+      "en": "Seiyaryu",
+      "ja": "ホーリー・ナイト・ドラゴン"
+    },
+    "match": {
+      "cid": 4364,
+      "passcode": "06740720"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "LIGHT",
+      "race": "Dragon",
+      "atk": 2500,
+      "def": 2300
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4364&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "궁극의 푸른 눈의 백룡",
+    "url": "https://namu.wiki/w/%EA%B6%81%EA%B7%B9%EC%9D%98%20%ED%91%B8%EB%A5%B8%20%EB%88%88%EC%9D%98%20%EB%B0%B1%EB%A3%A1",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 116616,
+    "articleSha256": "ec32b4dcdbb45e6ec39bd0d79411d54a42f89aad4b77831c6e7f89e37aa99ef9",
+    "language": "ko",
+    "names": {
+      "ko": "궁극의 푸른 눈의 백룡",
+      "en": "Blue-Eyes Ultimate Dragon"
+    },
+    "match": {
+      "cid": 4386,
+      "passcode": "23995348"
+    },
+    "facts": {
+      "level": 12,
+      "attribute": "LIGHT",
+      "race": "Dragon",
+      "atk": 4500,
+      "def": 3800
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4386&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족",
+        "융합"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "성스러운 마술사",
+    "url": "https://namu.wiki/w/%EC%84%B1%EC%8A%A4%EB%9F%AC%EC%9A%B4%20%EB%A7%88%EC%88%A0%EC%82%AC",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 355888,
+    "articleSha256": "6719084eaaa6f0c03d5205ba964923a82b7b14adf0824501bc344aaeef56e436",
+    "language": "ko",
+    "names": {
+      "ko": "성스러운 마술사",
+      "en": "Magician of Faith"
+    },
+    "match": {
+      "cid": 4434,
+      "passcode": "31560081"
+    },
+    "facts": {
+      "level": 1,
+      "attribute": "LIGHT",
+      "race": "Spellcaster",
+      "atk": 300,
+      "def": 400
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4434&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "마법사족"
+      ],
+      "rulings": [
+        "묘지의 마법 카드 한 장을 패에 넣는 효과가 있다."
+      ]
+    },
+    "textKo": "묘지의 마법 카드 한 장을 패에 넣는 효과가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "스타 보이",
+    "url": "https://namu.wiki/w/%EC%8A%A4%ED%83%80%20%EB%B3%B4%EC%9D%B4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 380778,
+    "articleSha256": "c96b0b127a11c51cea0c512ff9ae2270150488a5c0b95e2441384300891c5635",
+    "language": "ko",
+    "names": {
+      "ko": "스타 보이",
+      "en": "Star Boy",
+      "ja": "スター・ボーイ"
+    },
+    "match": {
+      "cid": 4530,
+      "passcode": "08201910"
+    },
+    "facts": {
+      "level": 2,
+      "attribute": "WATER",
+      "race": "Aqua",
+      "atk": 550,
+      "def": 500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4530&request_locale=ko",
+    "details": {
+      "traits": [
+        "물 속성",
+        "물족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "심판의 여왕",
+    "url": "https://namu.wiki/w/%EC%8B%AC%ED%8C%90%EC%9D%98%20%EC%97%AC%EC%99%95",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 48571,
+    "articleSha256": "a531a6afd4cc11eb6a249e9eaf68045d2851944a73f5126328808629ff07324d",
+    "language": "ko",
+    "names": {
+      "ko": "심판의 여왕",
+      "en": "Empress Judge"
+    },
+    "match": {
+      "cid": 4578,
+      "passcode": "15237615"
+    },
+    "facts": {
+      "level": 6,
+      "attribute": "EARTH",
+      "race": "Warrior",
+      "atk": 2100,
+      "def": 1700
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4578&request_locale=ko",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "전사족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "트라이혼 드래곤",
+    "url": "https://namu.wiki/w/%ED%8A%B8%EB%9D%BC%EC%9D%B4%ED%98%BC%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 286701,
+    "articleSha256": "da2b07015e7c9b341c03e7054b3cb13d238d629f16dae6b2ea63dae60e720923",
+    "language": "ko",
+    "names": {
+      "ko": "트라이혼 드래곤",
+      "en": "Tri-Horned Dragon",
+      "ja": "トライホーン・ドラゴン"
+    },
+    "match": {
+      "cid": 4711,
+      "passcode": "39111158"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 2850,
+      "def": 2350
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4711&request_locale=ko",
+    "printingNumber": "LOB-K000",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "일반 몬스터"
+      ],
+      "packs": [
+        "푸른 눈의 백룡의 전설 (LOB-K000)"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "빅 실드 가드너",
+    "url": "https://namu.wiki/w/%EB%B9%85%20%EC%8B%A4%EB%93%9C%20%EA%B0%80%EB%93%9C%EB%84%88",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 330600,
+    "articleSha256": "ce5b0967b56154a1da03dd8d629c1a4d9138fecc367fc79afe2a61578fda6357",
+    "language": "ko",
+    "names": {
+      "ko": "빅 실드 가드너",
+      "en": "Big Shield Gardna",
+      "ja": "ビッグ・シールド・ガードナー"
+    },
+    "match": {
+      "cid": 4764,
+      "passcode": "65240384"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "EARTH",
+      "race": "Warrior",
+      "atk": 100,
+      "def": 2600
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4764&request_locale=ko",
+    "printingNumber": "BP1-KR097",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "전사족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "블랙 매지션 걸",
+    "url": "https://namu.wiki/w/%EB%B8%94%EB%9E%99%20%EB%A7%A4%EC%A7%80%EC%85%98%20%EA%B1%B8",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 325795,
+    "articleSha256": "aafb0b439923f590ce587d7f9279e962b8df737dd01dc6818e71869d6bcff71a",
+    "language": "ko",
+    "names": {
+      "ko": "블랙 매지션 걸",
+      "en": "Dark Magician Girl",
+      "ja": "ブラック・マジシャン・ガール"
+    },
+    "match": {
+      "cid": 4766,
+      "passcode": "38033121"
+    },
+    "facts": {
+      "level": 6,
+      "attribute": "DARK",
+      "race": "Spellcaster",
+      "atk": 2000,
+      "def": 1700
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4766&request_locale=ko",
+    "printingNumber": "DP00-KR005",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "마법사족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "로켓 전사",
+    "url": "https://namu.wiki/w/%EB%A1%9C%EC%BC%93%20%EC%A0%84%EC%82%AC",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 227024,
+    "articleSha256": "45f873a1eff3a9bf8b0a519cdb4c0fb8f7d30fb6bcfa129bb8716bed6c0130ca",
+    "language": "ko",
+    "names": {
+      "ko": "로켓 전사",
+      "en": "Rocket Warrior"
+    },
+    "match": {
+      "cid": 5067,
+      "passcode": "30860696"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "LIGHT",
+      "race": "Warrior",
+      "atk": 1500,
+      "def": 1300
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5067&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "전사족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "마도전사 브레이커",
+    "url": "https://namu.wiki/w/%EB%A7%88%EB%8F%84%EC%A0%84%EC%82%AC%20%EB%B8%8C%EB%A0%88%EC%9D%B4%EC%BB%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 242169,
+    "articleSha256": "1b58f793a3eb53bf5d107384338f681d9d231f80267c535d54d328a04ebbf555",
+    "language": "ko",
+    "names": {
+      "ko": "마도전사 브레이커",
+      "en": "Breaker the Magical Warrior"
+    },
+    "match": {
+      "cid": 5655,
+      "passcode": "71413901"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "DARK",
+      "race": "Spellcaster",
+      "atk": 1600,
+      "def": 1000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5655&request_locale=ko",
+    "printingNumber": "GS02-KR006",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "마법사족"
+      ],
+      "packs": [
+        "골드 시리즈 2010 (GS02-KR006)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "매지션즈 발키리어",
+    "url": "https://namu.wiki/w/%EB%A7%A4%EC%A7%80%EC%85%98%EC%A6%88%20%EB%B0%9C%ED%82%A4%EB%A6%AC%EC%96%B4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 256282,
+    "articleSha256": "2d993870726cfa4d034c365dfeb945de978732019a8af992e59de9688468dd0d",
+    "language": "ko",
+    "names": {
+      "ko": "매지션즈 발키리어",
+      "en": "Magician's Valkyria",
+      "ja": "マジシャンズ・ヴァルキリア"
+    },
+    "match": {
+      "cid": 5869,
+      "passcode": "80304126"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "LIGHT",
+      "race": "Spellcaster",
+      "atk": 1600,
+      "def": 1800
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5869&request_locale=ko",
+    "printingNumber": "ESP2-KR063",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "마법사족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "번개 제왕 자보르그",
+    "url": "https://namu.wiki/w/%EB%B2%88%EA%B0%9C%20%EC%A0%9C%EC%99%95%20%EC%9E%90%EB%B3%B4%EB%A5%B4%EA%B7%B8",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 308541,
+    "articleSha256": "b208da16dcdd262086252a34e2bcf707de4f6058c63b6847167ff97f261e8d2a",
+    "language": "ko",
+    "names": {
+      "ko": "번개 제왕 자보르그",
+      "en": "Zaborg the Thunder Monarch"
+    },
+    "match": {
+      "cid": 5965,
+      "passcode": "51945556"
+    },
+    "facts": {
+      "level": 5,
+      "attribute": "LIGHT",
+      "race": "Thunder",
+      "atk": 2400,
+      "def": 1000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=5965&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "번개족"
+      ],
+      "rulings": [
+        "필드의 몬스터 한 장을 대상으로 파괴하는 효과가 있다."
+      ]
+    },
+    "textKo": "필드의 몬스터 한 장을 대상으로 파괴하는 효과가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "사령기사 데스커리버 나이트",
+    "url": "https://namu.wiki/w/%EC%82%AC%EB%A0%B9%EA%B8%B0%EC%82%AC%20%EB%8D%B0%EC%8A%A4%EC%BB%A4%EB%A6%AC%EB%B2%84%20%EB%82%98%EC%9D%B4%ED%8A%B8",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 334493,
+    "articleSha256": "cc8a1697bf2a4d4b683370e1b3e34b33b9920817e6851eaec2b67bdf9b573787",
+    "language": "ko",
+    "names": {
+      "ko": "사령기사 데스커리버 나이트",
+      "en": "Doomcaliber Knight",
+      "ja": "死霊騎士デスカリバー・ナイト"
+    },
+    "match": {
+      "cid": 6001,
+      "passcode": "78700060"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "DARK",
+      "race": "Fiend",
+      "atk": 1900,
+      "def": 1800
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6001&request_locale=ko",
+    "printingNumber": "20AP-KR031",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족"
+      ],
+      "rulings": [
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ]
+    },
+    "textKo": "효과에 발동 무효와 파괴 처리가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "아기 흑룡",
+    "url": "https://namu.wiki/w/%EC%95%84%EA%B8%B0%20%ED%9D%91%EB%A3%A1",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 401483,
+    "articleSha256": "ef09d6f9ee8fc707322514807b1730858519a7971be6fe9065e3b2b133e84081",
+    "language": "ko",
+    "names": {
+      "ko": "아기 흑룡",
+      "en": "Black Dragon's Chick"
+    },
+    "match": {
+      "cid": 6109,
+      "passcode": "36262024"
+    },
+    "facts": {
+      "level": 1,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 800,
+      "def": 500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6109&request_locale=ko",
+    "printingNumber": "HGP3-KR017",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "네프티스의 봉황신",
+    "url": "https://namu.wiki/w/%EB%84%A4%ED%94%84%ED%8B%B0%EC%8A%A4%EC%9D%98%20%EB%B4%89%ED%99%A9%EC%8B%A0",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 154288,
+    "articleSha256": "2d9876208d67948c7014471551382b73d153041db04c467eb3ff3e8c1ae8d7b0",
+    "language": "ko",
+    "names": {
+      "ko": "네프티스의 봉황신",
+      "en": "Sacred Phoenix of Nephthys"
+    },
+    "match": {
+      "cid": 6236,
+      "passcode": "61441708"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "FIRE",
+      "race": "Winged Beast",
+      "atk": 2400,
+      "def": 1600
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6236&request_locale=ko",
+    "printingNumber": "FET-KR005",
+    "details": {
+      "traits": [
+        "화염 속성",
+        "비행야수족"
+      ],
+      "rulings": [
+        "이 카드 자신을 묘지에서 특수 소환하는 처리가 있다."
+      ],
+      "packs": [
+        "영원한 화염 (FET-KR005)"
+      ]
+    },
+    "textKo": "이 카드 자신을 묘지에서 특수 소환하는 처리가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "엘리멘틀 히어로 페더맨",
+    "url": "https://namu.wiki/w/%EC%97%98%EB%A6%AC%EB%A9%98%ED%8B%80%20%ED%9E%88%EC%96%B4%EB%A1%9C%20%ED%8E%98%EB%8D%94%EB%A7%A8",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 31600,
+    "articleSha256": "075ffd8b1b3efc0c7d9d1728eac4eb8fe24c352f27c490802bc88d119b18c379",
+    "language": "ko",
+    "names": {
+      "ko": "엘리멘틀 히어로 페더맨",
+      "en": "Elemental HERO Avian"
+    },
+    "match": {
+      "cid": 6310,
+      "passcode": "21844576"
+    },
+    "facts": {
+      "level": 3,
+      "attribute": "WIND",
+      "race": "Warrior",
+      "atk": 1000,
+      "def": 1000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6310&request_locale=ko",
+    "printingNumber": "DP1-KR001",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "전사족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "엘리멘틀 히어로 버스트 레이디",
+    "url": "https://namu.wiki/w/%EC%97%98%EB%A6%AC%EB%A9%98%ED%8B%80%20%ED%9E%88%EC%96%B4%EB%A1%9C%20%EB%B2%84%EC%8A%A4%ED%8A%B8%20%EB%A0%88%EC%9D%B4%EB%94%94",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 31586,
+    "articleSha256": "1dd3457b561e10ad9454aa364bce6eca3eb98726faf9cc38d1d595652191ea74",
+    "language": "ko",
+    "names": {
+      "ko": "엘리멘틀 히어로 버스트 레이디",
+      "en": "Elemental HERO Burstinatrix"
+    },
+    "match": {
+      "cid": 6311,
+      "passcode": "58932615"
+    },
+    "facts": {
+      "level": 3,
+      "attribute": "FIRE",
+      "race": "Warrior",
+      "atk": 1200,
+      "def": 800
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6311&request_locale=ko",
+    "printingNumber": "DP1-KR002",
+    "details": {
+      "traits": [
+        "화염 속성",
+        "전사족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "사이버 트윈 드래곤",
+    "url": "https://namu.wiki/w/%EC%82%AC%EC%9D%B4%EB%B2%84%20%ED%8A%B8%EC%9C%88%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 337825,
+    "articleSha256": "b62511c03148ed441a5a538ca1cb6ee3dda9586860d1f2177fc34b2085ff581f",
+    "language": "ko",
+    "names": {
+      "ko": "사이버 트윈 드래곤",
+      "en": "Cyber Twin Dragon",
+      "ja": "サイバー・ツイン・ドラゴン"
+    },
+    "match": {
+      "cid": 6396,
+      "passcode": "74157028"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "LIGHT",
+      "race": "Machine",
+      "atk": 2800,
+      "def": 2100
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6396&request_locale=ko",
+    "printingNumber": "CRV-KR035",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족",
+        "융합"
+      ],
+      "rulings": [
+        "한 배틀 페이즈에 두 번 공격할 수 있다."
+      ],
+      "packs": [
+        "사이버 혁명 (CRV-KR035)"
+      ]
+    },
+    "textKo": "한 배틀 페이즈에 두 번 공격할 수 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "사이버 엔드 드래곤",
+    "url": "https://namu.wiki/w/%EC%82%AC%EC%9D%B4%EB%B2%84%20%EC%97%94%EB%93%9C%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 337813,
+    "articleSha256": "d599c0d1846cc045a44075f7acf9ae415fc955dded98233c70cc6c78dd964796",
+    "language": "ko",
+    "names": {
+      "ko": "사이버 엔드 드래곤",
+      "en": "Cyber End Dragon",
+      "ja": "サイバー・エンド・ドラゴン"
+    },
+    "match": {
+      "cid": 6397,
+      "passcode": "01546123"
+    },
+    "facts": {
+      "level": 10,
+      "attribute": "LIGHT",
+      "race": "Machine",
+      "atk": 4000,
+      "def": 2800
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6397&request_locale=ko",
+    "printingNumber": "DP04-KR012",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족",
+        "융합"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "소환승 서몬 프리스트",
+    "url": "https://namu.wiki/w/%EC%86%8C%ED%99%98%EC%8A%B9%20%EC%84%9C%EB%AA%AC%20%ED%94%84%EB%A6%AC%EC%8A%A4%ED%8A%B8",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 365960,
+    "articleSha256": "f308957a44b80affdfe1db1b13711e7d0bcb9241d6d45ab3101ac5378f06afa6",
+    "language": "ko",
+    "names": {
+      "ko": "소환승 서몬 프리스트",
+      "en": "Summoner Monk",
+      "ja": "召喚僧サモンプリースト"
+    },
+    "match": {
+      "cid": 6400,
+      "passcode": "00423585"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "DARK",
+      "race": "Spellcaster",
+      "atk": 800,
+      "def": 1600
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6400&request_locale=ko",
+    "printingNumber": "PP01-KR006",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "마법사족"
+      ],
+      "rulings": [
+        "패에서 마법 카드 한 장을 버려 덱에서 레벨 4 몬스터 한 장을 특수 소환할 수 있다."
+      ]
+    },
+    "textKo": "패에서 마법 카드 한 장을 버려 덱에서 레벨 4 몬스터 한 장을 특수 소환할 수 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "저승사자 고즈",
+    "url": "https://namu.wiki/w/%EC%A0%80%EC%8A%B9%EC%82%AC%EC%9E%90%20%EA%B3%A0%EC%A6%88",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 143266,
+    "articleSha256": "8895985fba99b66f5e987e8a4fdf3e79d9a150058e4c1a8c06ed7de746c43ac4",
+    "language": "ko",
+    "names": {
+      "ko": "저승사자 고즈",
+      "en": "Gorz the Emissary of Darkness",
+      "ja": "冥府の使者ゴーズ"
+    },
+    "match": {
+      "cid": 6558,
+      "passcode": "44330098"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "DARK",
+      "race": "Fiend",
+      "atk": 2700,
+      "def": 2500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6558&request_locale=ko",
+    "printingNumber": "DP00-KR000",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "황천 개구리",
+    "url": "https://namu.wiki/w/%ED%99%A9%EC%B2%9C%20%EA%B0%9C%EA%B5%AC%EB%A6%AC",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 351068,
+    "articleSha256": "4eb3fb77299e6bbbcca27a06fcaa782a52bcd078b0b66cbd4b11750ded001de2",
+    "language": "ko",
+    "names": {
+      "ko": "황천 개구리",
+      "en": "Treeborn Frog"
+    },
+    "match": {
+      "cid": 6603,
+      "passcode": "12538374"
+    },
+    "facts": {
+      "level": 1,
+      "attribute": "WATER",
+      "race": "Aqua",
+      "atk": 100,
+      "def": 100
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6603&request_locale=ko",
+    "printingNumber": "SOI-KR025",
+    "details": {
+      "traits": [
+        "물 속성",
+        "물족"
+      ],
+      "packs": [
+        "무한의 그림자 (SOI-KR025)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "파멸의 여신 루인",
+    "url": "https://namu.wiki/w/%ED%8C%8C%EB%A9%B8%EC%9D%98%20%EC%97%AC%EC%8B%A0%20%EB%A3%A8%EC%9D%B8",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 294319,
+    "articleSha256": "b56e4b4e2689e419f23a3602bd1f3f119f83bbe5e9b4902de470b9d0fb088e43",
+    "language": "ko",
+    "names": {
+      "ko": "파멸의 여신 루인",
+      "en": "Ruin, Queen of Oblivion"
+    },
+    "match": {
+      "cid": 6612,
+      "passcode": "46427957"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "LIGHT",
+      "race": "Fairy",
+      "atk": 2300,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6612&request_locale=ko",
+    "printingNumber": "SOI-KR034",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "천사족",
+        "의식"
+      ],
+      "packs": [
+        "무한의 그림자 (SOI-KR034)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "종언의 왕 데미스",
+    "url": "https://namu.wiki/w/%EC%A2%85%EC%96%B8%EC%9D%98%20%EC%99%95%20%EB%8D%B0%EB%AF%B8%EC%8A%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 167009,
+    "articleSha256": "f046baacec579ebe0120b27965bf3e85b9bbc72f6000464559fa16717ba432c4",
+    "language": "ko",
+    "names": {
+      "ko": "종언의 왕 데미스",
+      "en": "Demise, King of Armageddon"
+    },
+    "match": {
+      "cid": 6613,
+      "passcode": "72426662"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "DARK",
+      "race": "Fiend",
+      "atk": 2400,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6613&request_locale=ko",
+    "printingNumber": "SOI-KR035",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족",
+        "의식"
+      ],
+      "packs": [
+        "무한의 그림자 (SOI-KR035)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "엘리멘틀 히어로 네오스",
+    "url": "https://namu.wiki/w/%EC%97%98%EB%A6%AC%EB%A9%98%ED%8B%80%20%ED%9E%88%EC%96%B4%EB%A1%9C%20%EB%84%A4%EC%98%A4%EC%8A%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 31579,
+    "articleSha256": "7ad2e9d98b848260b2ce8ba30b970ed6f8a61cacc01dc897f9b4f8ecfa0a9ca5",
+    "language": "ko",
+    "names": {
+      "ko": "엘리멘틀 히어로 네오스",
+      "en": "Elemental HERO Neos"
+    },
+    "match": {
+      "cid": 6653,
+      "passcode": "89943723"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "LIGHT",
+      "race": "Warrior",
+      "atk": 2500,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6653&request_locale=ko",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "전사족",
+        "일반 몬스터"
+      ]
+    },
+    "textKo": "자체 몬스터 효과가 없는 일반 몬스터다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "댄디라이언",
+    "url": "https://namu.wiki/w/%EB%8C%84%EB%94%94%EB%9D%BC%EC%9D%B4%EC%96%B8",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 178815,
+    "articleSha256": "896b80f1656b0d6cdc5b6d67ddaaba474ff9d0e13c1dc9f6b4ddc7e417998d7c",
+    "language": "ko",
+    "names": {
+      "ko": "댄디라이언",
+      "en": "Dandylion",
+      "ja": "ダンディライオン"
+    },
+    "match": {
+      "cid": 6654,
+      "passcode": "15341821"
+    },
+    "facts": {
+      "level": 3,
+      "attribute": "EARTH",
+      "race": "Plant",
+      "atk": 300,
+      "def": 300
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6654&request_locale=ko",
+    "printingNumber": "20AP-KR034",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "식물족"
+      ],
+      "rulings": [
+        "자신 필드에 토큰 두 장을 특수 소환하는 효과가 있다."
+      ]
+    },
+    "textKo": "자신 필드에 토큰 두 장을 특수 소환하는 효과가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "카드 트루퍼",
+    "url": "https://namu.wiki/w/%EC%B9%B4%EB%93%9C%20%ED%8A%B8%EB%A3%A8%ED%8D%BC",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 210145,
+    "articleSha256": "5cbf652266724c8fb778b8aaddd0c6c59aa9dd0fca4aecb284f878be62287bb8",
+    "language": "ko",
+    "names": {
+      "ko": "카드 트루퍼",
+      "en": "Card Trooper",
+      "ja": "カードガンナー"
+    },
+    "match": {
+      "cid": 6939,
+      "passcode": "85087012"
+    },
+    "facts": {
+      "level": 3,
+      "attribute": "EARTH",
+      "race": "Machine",
+      "atk": 400,
+      "def": 400
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=6939&request_locale=ko",
+    "printingNumber": "DP03-KR009",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "기계족"
+      ],
+      "rulings": [
+        "한 장을 드로우하는 처리가 있다."
+      ]
+    },
+    "textKo": "한 장을 드로우하는 처리가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "바람 제왕 라이저",
+    "url": "https://namu.wiki/w/%EB%B0%94%EB%9E%8C%20%EC%A0%9C%EC%99%95%20%EB%9D%BC%EC%9D%B4%EC%A0%80",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 292329,
+    "articleSha256": "2daf8d55d32a005ca78be84e839479ea89d8b1dca45d7f06cfda9361106260b8",
+    "language": "ko",
+    "names": {
+      "ko": "바람 제왕 라이저",
+      "en": "Raiza the Storm Monarch",
+      "ja": "風帝ライザー"
+    },
+    "match": {
+      "cid": 7117,
+      "passcode": "73125233"
+    },
+    "facts": {
+      "level": 6,
+      "attribute": "WIND",
+      "race": "Winged Beast",
+      "atk": 2400,
+      "def": 1000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7117&request_locale=ko",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "비행야수족"
+      ],
+      "rulings": [
+        "대상이 된 카드를 덱 맨 위로 보낼 수 있다."
+      ]
+    },
+    "textKo": "대상이 된 카드를 덱 맨 위로 보낼 수 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "팬텀 오브 카오스",
+    "url": "https://namu.wiki/w/%ED%8C%AC%ED%85%80%20%EC%98%A4%EB%B8%8C%20%EC%B9%B4%EC%98%A4%EC%8A%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 300944,
+    "articleSha256": "e0f5642bdaac4ae66eb1eaa6387e7cd8ac1fb540e24a8657860782faf943fd88",
+    "language": "ko",
+    "names": {
+      "ko": "팬텀 오브 카오스",
+      "en": "Phantom of Chaos",
+      "ja": "ファントム・オブ・カオス"
+    },
+    "match": {
+      "cid": 7351,
+      "passcode": "30312361"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "DARK",
+      "race": "Fiend",
+      "atk": 0,
+      "def": 0
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7351&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "사이버 밸리",
+    "url": "https://namu.wiki/w/%EC%82%AC%EC%9D%B4%EB%B2%84%20%EB%B0%B8%EB%A6%AC",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 337802,
+    "articleSha256": "c9d1ff2dfd2870da60383399b25bc6dba29eab66960c510312a1575892eba107",
+    "language": "ko",
+    "names": {
+      "ko": "사이버 밸리",
+      "en": "Cyber Valley",
+      "ja": "サイバー・ヴァリー"
+    },
+    "match": {
+      "cid": 7413,
+      "passcode": "03657444"
+    },
+    "facts": {
+      "level": 1,
+      "attribute": "LIGHT",
+      "race": "Machine",
+      "atk": 0,
+      "def": 0
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7413&request_locale=ko",
+    "printingNumber": "PTDN-KR010",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족"
+      ],
+      "packs": [
+        "환영의 어둠 (PTDN-KR010)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "다크 암드 드래곤",
+    "url": "https://namu.wiki/w/%EB%8B%A4%ED%81%AC%20%EC%95%94%EB%93%9C%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 169307,
+    "articleSha256": "0bcd1f2ab78df4e2705c673ef8ed1b1fbf697c674d5804e95621ec45d7cbb105",
+    "language": "ko",
+    "names": {
+      "ko": "다크 암드 드래곤",
+      "en": "Dark Armed Dragon",
+      "ja": "ダーク・アームド・ドラゴン"
+    },
+    "match": {
+      "cid": 7421,
+      "passcode": "65192027"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 2800,
+      "def": 1000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7421&request_locale=ko",
+    "printingNumber": "20AP-KR044",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족"
+      ],
+      "packs": [
+        "크로니클 팩 1st WAVE (20AP-KR044)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "사 제왕 가이우스",
+    "url": "https://namu.wiki/w/%EC%82%AC%20%EC%A0%9C%EC%99%95%20%EA%B0%80%EC%9D%B4%EC%9A%B0%EC%8A%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 332437,
+    "articleSha256": "458fe44e0e9d6d957343fa1ffddb72fe8b80dae9e5757dc389f19539a5214bd0",
+    "language": "ko",
+    "names": {
+      "ko": "사 제왕 가이우스",
+      "en": "Caius the Shadow Monarch",
+      "ja": "邪帝ガイウス"
+    },
+    "match": {
+      "cid": 7516,
+      "passcode": "09748752"
+    },
+    "facts": {
+      "level": 6,
+      "attribute": "DARK",
+      "race": "Fiend",
+      "atk": 2400,
+      "def": 1000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7516&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "악마족"
+      ],
+      "rulings": [
+        "필드의 카드 한 장을 대상으로 제외하는 효과가 있다."
+      ]
+    },
+    "textKo": "필드의 카드 한 장을 대상으로 제외하는 효과가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "빙결계의 용 브류나크",
+    "url": "https://namu.wiki/w/%EB%B9%99%EA%B2%B0%EA%B3%84%EC%9D%98%20%EC%9A%A9%20%EB%B8%8C%EB%A5%98%EB%82%98%ED%81%AC",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 331690,
+    "articleSha256": "4b022051a69d91817d63e2e6f31831831b653714fe521b87403786bdd4af733d",
+    "language": "ko",
+    "names": {
+      "ko": "빙결계의 용 브류나크",
+      "en": "Brionac, Dragon of the Ice Barrier",
+      "ja": "氷結界の龍 ブリューナク"
+    },
+    "match": {
+      "cid": 7548,
+      "passcode": "50321796"
+    },
+    "facts": {
+      "level": 6,
+      "attribute": "WATER",
+      "race": "Sea Serpent",
+      "atk": 2300,
+      "def": 1400
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7548&request_locale=ko",
+    "printingNumber": "EV09-KR005",
+    "details": {
+      "traits": [
+        "물 속성",
+        "해룡족",
+        "싱크로"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "크로스 포터",
+    "url": "https://namu.wiki/w/%ED%81%AC%EB%A1%9C%EC%8A%A4%20%ED%8F%AC%ED%84%B0",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 250054,
+    "articleSha256": "42aa24bc822d8897daf04606e23ce5306e201a3083d9ab80151a57ebe30a3918",
+    "language": "ko",
+    "names": {
+      "ko": "크로스 포터",
+      "en": "Cross Porter",
+      "ja": "クロス・ポーター"
+    },
+    "match": {
+      "cid": 7575,
+      "passcode": "73146473"
+    },
+    "facts": {
+      "level": 2,
+      "attribute": "DARK",
+      "race": "Warrior",
+      "atk": 400,
+      "def": 400
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7575&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "전사족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "로드 워리어",
+    "url": "https://namu.wiki/w/%EB%A1%9C%EB%93%9C%20%EC%9B%8C%EB%A6%AC%EC%96%B4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 223794,
+    "articleSha256": "ef083fb1335f94d0e561cd48d0a246e242a07ea62a816fcb7b5c500b6486644a",
+    "language": "ko",
+    "names": {
+      "ko": "로드 워리어",
+      "en": "Road Warrior",
+      "ja": "ロード・ウォリアー"
+    },
+    "match": {
+      "cid": 7679,
+      "passcode": "02322421"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "LIGHT",
+      "race": "Warrior",
+      "atk": 3000,
+      "def": 1500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7679&request_locale=ko",
+    "printingNumber": "DP09-KR015",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "정크 싱크론",
+    "url": "https://namu.wiki/w/%EC%A0%95%ED%81%AC%20%EC%8B%B1%ED%81%AC%EB%A1%A0",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 154052,
+    "articleSha256": "f6b477e8b740633325f05235d270901a2738db707ddca564f5a318cd1af66447",
+    "language": "ko",
+    "names": {
+      "ko": "정크 싱크론",
+      "en": "Junk Synchron",
+      "ja": "ジャンク・シンクロン"
+    },
+    "match": {
+      "cid": 7687,
+      "passcode": "63977008"
+    },
+    "facts": {
+      "level": 3,
+      "attribute": "DARK",
+      "race": "Warrior",
+      "atk": 1300,
+      "def": 500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7687&request_locale=ko",
+    "printingNumber": "DP08-KR001",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "전사족",
+        "튜너"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "정크 워리어",
+    "url": "https://namu.wiki/w/%EC%A0%95%ED%81%AC%20%EC%9B%8C%EB%A6%AC%EC%96%B4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 154056,
+    "articleSha256": "5b0320309f27f658555ee18795149709e47c6f9b9fd6eb6d135232385e761448",
+    "language": "ko",
+    "names": {
+      "ko": "정크 워리어",
+      "en": "Junk Warrior",
+      "ja": "ジャンク・ウォリアー"
+    },
+    "match": {
+      "cid": 7696,
+      "passcode": "60800381"
+    },
+    "facts": {
+      "level": 5,
+      "attribute": "DARK",
+      "race": "Warrior",
+      "atk": 2300,
+      "def": 1300
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7696&request_locale=ko",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "니트로 워리어",
+    "url": "https://namu.wiki/w/%EB%8B%88%ED%8A%B8%EB%A1%9C%20%EC%9B%8C%EB%A6%AC%EC%96%B4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 164124,
+    "articleSha256": "c26b2f6032073b00e091a6b12324deeec56d532e4ba020fb82f7ea2162515415",
+    "language": "ko",
+    "names": {
+      "ko": "니트로 워리어",
+      "en": "Nitro Warrior",
+      "ja": "ニトロ・ウォリアー"
+    },
+    "match": {
+      "cid": 7733,
+      "passcode": "18013090"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "FIRE",
+      "race": "Warrior",
+      "atk": 2800,
+      "def": 1800
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7733&request_locale=ko",
+    "details": {
+      "traits": [
+        "화염 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "스타더스트 드래곤",
+    "url": "https://namu.wiki/w/%EC%8A%A4%ED%83%80%EB%8D%94%EC%8A%A4%ED%8A%B8%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 380833,
+    "articleSha256": "ded1ba2d80511f03c39f41c4bcfbe71493eae69ac388fe01d96bede988088017",
+    "language": "ko",
+    "names": {
+      "ko": "스타더스트 드래곤",
+      "en": "Stardust Dragon",
+      "ja": "スターダスト・ドラゴン"
+    },
+    "match": {
+      "cid": 7734,
+      "passcode": "44508094"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "WIND",
+      "race": "Dragon",
+      "atk": 2500,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7734&request_locale=ko",
+    "printingNumber": "DP08-KR014",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "이 카드 자신을 묘지에서 특수 소환하는 처리가 있다.",
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ]
+    },
+    "textKo": "이 카드 자신을 묘지에서 특수 소환하는 처리가 있다. 효과에 발동 무효와 파괴 처리가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "레드 데몬즈 드래곤",
+    "url": "https://namu.wiki/w/%EB%A0%88%EB%93%9C%20%EB%8D%B0%EB%AA%AC%EC%A6%88%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 217374,
+    "articleSha256": "48ffee2f25a5b8d485856c22333e65a3f3f5e93c8de5a7334ac910b4ad256038",
+    "language": "ko",
+    "names": {
+      "ko": "레드 데몬즈 드래곤",
+      "en": "Red Dragon Archfiend",
+      "ja": "レッド・デーモンズ・ドラゴン"
+    },
+    "match": {
+      "cid": 7735,
+      "passcode": "70902743"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 3000,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7735&request_locale=ko",
+    "printingNumber": "TDGS-KR041",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "packs": [
+        "듀얼리스트의 태동 (TDGS-KR041)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "고요우 가디언",
+    "url": "https://namu.wiki/w/%EA%B3%A0%EC%9A%94%EC%9A%B0%20%EA%B0%80%EB%94%94%EC%96%B8",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 102414,
+    "articleSha256": "e5567e471deaea53f4fbe01255ab156d1193564e638d3e5c3cf12fc743de87e9",
+    "language": "ko",
+    "names": {
+      "ko": "고요우 가디언",
+      "en": "Goyo Guardian",
+      "ja": "ゴヨウ・ガーディアン"
+    },
+    "match": {
+      "cid": 7736,
+      "passcode": "07391448"
+    },
+    "facts": {
+      "level": 6,
+      "attribute": "EARTH",
+      "race": "Warrior",
+      "atk": 2800,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7736&request_locale=ko",
+    "printingNumber": "EV10-KR002",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "터보 워리어",
+    "url": "https://namu.wiki/w/%ED%84%B0%EB%B3%B4%20%EC%9B%8C%EB%A6%AC%EC%96%B4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 272865,
+    "articleSha256": "e7c3e854663ad958b6eb51b07968fa8a53d4e29b978864685c424204e9ebb332",
+    "language": "ko",
+    "names": {
+      "ko": "터보 워리어",
+      "en": "Turbo Warrior",
+      "ja": "ターボ・ウォリアー"
+    },
+    "match": {
+      "cid": 7897,
+      "passcode": "46195773"
+    },
+    "facts": {
+      "level": 6,
+      "attribute": "WIND",
+      "race": "Warrior",
+      "atk": 2500,
+      "def": 1500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7897&request_locale=ko",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "전사족",
+        "싱크로"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "블랙 로즈 드래곤",
+    "url": "https://namu.wiki/w/%EB%B8%94%EB%9E%99%20%EB%A1%9C%EC%A6%88%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 325782,
+    "articleSha256": "1e973fe3427aad69b74a74b761282a5b44314f2ceee2c825fbb41707db3a52b6",
+    "language": "ko",
+    "names": {
+      "ko": "블랙 로즈 드래곤",
+      "en": "Black Rose Dragon",
+      "ja": "ブラック・ローズ・ドラゴン"
+    },
+    "match": {
+      "cid": 7898,
+      "passcode": "73580471"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "FIRE",
+      "race": "Dragon",
+      "atk": 2400,
+      "def": 1800
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=7898&request_locale=ko",
+    "details": {
+      "traits": [
+        "화염 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "필드의 여러 카드를 한꺼번에 파괴할 수 있다."
+      ]
+    },
+    "textKo": "필드의 여러 카드를 한꺼번에 파괴할 수 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "데브리 드래곤",
+    "url": "https://namu.wiki/w/%EB%8D%B0%EB%B8%8C%EB%A6%AC%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 184161,
+    "articleSha256": "ef65720cc42ac6fd8e70b5785f33a32b469b53e357298d89de3c245da7651f41",
+    "language": "ko",
+    "names": {
+      "ko": "데브리 드래곤",
+      "en": "Debris Dragon",
+      "ja": "デブリ・ドラゴン"
+    },
+    "match": {
+      "cid": 8005,
+      "passcode": "14943837"
+    },
+    "facts": {
+      "level": 4,
+      "attribute": "WIND",
+      "race": "Dragon",
+      "atk": 1000,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8005&request_locale=ko",
+    "printingNumber": "AE05-KR007",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "튜너"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "파워 툴 드래곤",
+    "url": "https://namu.wiki/w/%ED%8C%8C%EC%9B%8C%20%ED%88%B4%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 295195,
+    "articleSha256": "b4ceda5751877ef2f16bd0a82761b811ce40af64e0f885d73726bf84986b1a62",
+    "language": "ko",
+    "names": {
+      "ko": "파워 툴 드래곤",
+      "en": "Power Tool Dragon",
+      "ja": "パワー・ツール・ドラゴン"
+    },
+    "match": {
+      "cid": 8137,
+      "passcode": "02403771"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "EARTH",
+      "race": "Machine",
+      "atk": 2300,
+      "def": 2500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8137&request_locale=ko",
+    "printingNumber": "RGBT-KR042",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "기계족",
+        "싱크로"
+      ],
+      "packs": [
+        "장렬한 전투 (RGBT-KR042)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "대천사 크리스티아",
+    "url": "https://namu.wiki/w/%EB%8C%80%EC%B2%9C%EC%82%AC%20%ED%81%AC%EB%A6%AC%EC%8A%A4%ED%8B%B0%EC%95%84",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 177305,
+    "articleSha256": "0ec7189e6a5f0ee38bea9c1cf952a826d1a95c0ffae30b79142722fb2109bf3e",
+    "language": "ko",
+    "names": {
+      "ko": "대천사 크리스티아",
+      "en": "Archlord Kristya"
+    },
+    "match": {
+      "cid": 8283,
+      "passcode": "59509952"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "LIGHT",
+      "race": "Fairy",
+      "atk": 2800,
+      "def": 2300
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8283&request_locale=ko",
+    "printingNumber": "PP05-KR007",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "천사족"
+      ],
+      "rulings": [
+        "두 플레이어의 특수 소환을 막는 지속 효과가 있다."
+      ]
+    },
+    "textKo": "두 플레이어의 특수 소환을 막는 지속 효과가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "빙결계의 용 트리슈라",
+    "url": "https://namu.wiki/w/%EB%B9%99%EA%B2%B0%EA%B3%84%EC%9D%98%20%EC%9A%A9%20%ED%8A%B8%EB%A6%AC%EC%8A%88%EB%9D%BC",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 331691,
+    "articleSha256": "7e69a9e54659c963724f4f5c61758b79efe9dcc94d476abde4e6d657083e648f",
+    "language": "ko",
+    "names": {
+      "ko": "빙결계의 용 트리슈라",
+      "en": "Trishula, Dragon of the Ice Barrier"
+    },
+    "match": {
+      "cid": 8732,
+      "passcode": "52687916"
+    },
+    "facts": {
+      "level": 9,
+      "attribute": "WATER",
+      "race": "Dragon",
+      "atk": 2700,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8732&request_locale=ko",
+    "printingNumber": "GS03-KR010",
+    "details": {
+      "traits": [
+        "물 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "packs": [
+        "골드 시리즈 2011 (GS03-KR010)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "이펙트 뵐러",
+    "url": "https://namu.wiki/w/%EC%9D%B4%ED%8E%99%ED%8A%B8%20%EB%B5%90%EB%9F%AC",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 124042,
+    "articleSha256": "6f4ca59e61430342e5c09ae3c70d737fa65637efaba18106c5c2886bfe0915ac",
+    "language": "ko",
+    "names": {
+      "ko": "이펙트 뵐러",
+      "en": "Effect Veiler",
+      "ja": "エフェクト・ヴェーラー"
+    },
+    "match": {
+      "cid": 8933,
+      "passcode": "97268402"
+    },
+    "facts": {
+      "level": 1,
+      "attribute": "LIGHT",
+      "race": "Spellcaster",
+      "atk": 0,
+      "def": 0
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=8933&request_locale=ko",
+    "printingNumber": "DP10-KR007",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "마법사족",
+        "튜너"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "그로우업 벌브",
+    "url": "https://namu.wiki/w/%EA%B7%B8%EB%A1%9C%EC%9A%B0%EC%97%85%20%EB%B2%8C%EB%B8%8C",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 120202,
+    "articleSha256": "443ae5a3f2a02c484e0f3621eac35ed45b2abaf005411ffaa666956f01958836",
+    "language": "ko",
+    "names": {
+      "ko": "그로우업 벌브",
+      "en": "Glow-Up Bulb",
+      "ja": "グローアップ・バルブ"
+    },
+    "match": {
+      "cid": 9095,
+      "passcode": "67441435"
+    },
+    "facts": {
+      "level": 1,
+      "attribute": "EARTH",
+      "race": "Plant",
+      "atk": 100,
+      "def": 100
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=9095&request_locale=ko",
+    "printingNumber": "EV10-KR015",
+    "details": {
+      "traits": [
+        "땅 속성",
+        "식물족",
+        "튜너"
+      ],
+      "packs": [
+        "WINTER FESTIVAL 2010 (EV10-KR015)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "슈팅 스타 드래곤",
+    "url": "https://namu.wiki/w/%EC%8A%88%ED%8C%85%20%EC%8A%A4%ED%83%80%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 375484,
+    "articleSha256": "a12b924698edd9b722d26560c392836f8f6e673d463556c83152daa3a6f14d8f",
+    "language": "ko",
+    "names": {
+      "ko": "슈팅 스타 드래곤",
+      "en": "Shooting Star Dragon",
+      "ja": "シューティング・スター・ドラゴン"
+    },
+    "match": {
+      "cid": 9117,
+      "passcode": "24696097"
+    },
+    "facts": {
+      "level": 10,
+      "attribute": "WIND",
+      "race": "Dragon",
+      "atk": 3300,
+      "def": 2500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=9117&request_locale=ko",
+    "printingNumber": "RC02-KR003",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "공격을 무효로 하는 처리가 있다."
+      ]
+    },
+    "textKo": "공격을 무효로 하는 처리가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "이비리추어 거스트크라케",
+    "url": "https://namu.wiki/w/%EC%9D%B4%EB%B9%84%EB%A6%AC%EC%B6%94%EC%96%B4%20%EA%B1%B0%EC%8A%A4%ED%8A%B8%ED%81%AC%EB%9D%BC%EC%BC%80",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 110695,
+    "articleSha256": "39f00c2c030ae1de1a0d4ba8535d9777bba61d76aad44e6919ea23334cea11d6",
+    "language": "ko",
+    "names": {
+      "ko": "이비리추어 거스트크라케",
+      "en": "Evigishki Gustkraken",
+      "ja": "イビリチュア・ガストクラーケ"
+    },
+    "match": {
+      "cid": 9597,
+      "passcode": "45222299"
+    },
+    "facts": {
+      "level": 6,
+      "attribute": "WATER",
+      "race": "Aqua",
+      "atk": 2400,
+      "def": 1000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=9597&request_locale=ko",
+    "printingNumber": "HA06-KR046",
+    "details": {
+      "traits": [
+        "물 속성",
+        "물족",
+        "의식"
+      ],
+      "packs": [
+        "숨겨진 세력 6 (HA06-KR046)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "슈팅 퀘이사 드래곤",
+    "url": "https://namu.wiki/w/%EC%8A%88%ED%8C%85%20%ED%80%98%EC%9D%B4%EC%82%AC%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 375486,
+    "articleSha256": "14a65470b9ea19be1a0b2a4f06c7f585a86a768b5f6a54225a4e693430b8e7b4",
+    "language": "ko",
+    "names": {
+      "ko": "슈팅 퀘이사 드래곤",
+      "en": "Shooting Quasar Dragon",
+      "ja": "シューティング・クェーサー・ドラゴン"
+    },
+    "match": {
+      "cid": 9709,
+      "passcode": "35952884"
+    },
+    "facts": {
+      "level": 12,
+      "attribute": "LIGHT",
+      "race": "Dragon",
+      "atk": 4000,
+      "def": 4000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=9709&request_locale=ko",
+    "printingNumber": "PME1-KR002",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ]
+    },
+    "textKo": "효과에 발동 무효와 파괴 처리가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "사이버 드래곤 노바",
+    "url": "https://namu.wiki/w/%EC%82%AC%EC%9D%B4%EB%B2%84%20%EB%93%9C%EB%9E%98%EA%B3%A4%20%EB%85%B8%EB%B0%94",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 337790,
+    "articleSha256": "c56fb6a626eab745cba9143aab9c857bf48bf292af76e2f858dc5ea002edee82",
+    "language": "ko",
+    "names": {
+      "ko": "사이버 드래곤 노바",
+      "en": "Cyber Dragon Nova",
+      "ja": "サイバー・ドラゴン・ノヴァ"
+    },
+    "match": {
+      "cid": 10870,
+      "passcode": "58069384"
+    },
+    "facts": {
+      "rank": 5,
+      "attribute": "LIGHT",
+      "race": "Machine",
+      "atk": 2100,
+      "def": 1600
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=10870&request_locale=ko",
+    "printingNumber": "SD26-KR038",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "오드아이즈 펜듈럼 드래곤",
+    "url": "https://namu.wiki/w/%EC%98%A4%EB%93%9C%EC%95%84%EC%9D%B4%EC%A6%88%20%ED%8E%9C%EB%93%88%EB%9F%BC%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 44685,
+    "articleSha256": "40d8a820a205218a4c316a2ff581304ba8e005a4a968af03b1c40e910ccc9967",
+    "language": "ko",
+    "names": {
+      "ko": "오드아이즈 펜듈럼 드래곤",
+      "en": "Odd-Eyes Pendulum Dragon",
+      "ja": "オッドアイズ・ペンデュラム・ドラゴン"
+    },
+    "match": {
+      "cid": 11213,
+      "passcode": "16178683"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 2500,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=11213&request_locale=ko",
+    "printingNumber": "DUEA-KR004",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "펜듈럼"
+      ],
+      "packs": [
+        "더 듀얼리스트 어드벤트 (DUEA-KR004)"
+      ]
+    }
+  },
+  {
+    "game": "YUGIOH",
+    "title": "다크 리벨리온 엑시즈 드래곤",
+    "url": "https://namu.wiki/w/%EB%8B%A4%ED%81%AC%20%EB%A6%AC%EB%B2%A8%EB%A6%AC%EC%98%A8%20%EC%97%91%EC%8B%9C%EC%A6%88%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 169077,
+    "articleSha256": "5702c84a50171249719ee253ab05bb51e82ae790d8410d841c7d89e85d91041e",
+    "language": "ko",
+    "names": {
+      "ko": "다크 리벨리온 엑시즈 드래곤",
+      "en": "Dark Rebellion Xyz Dragon",
+      "ja": "ダーク・リベリオン・エクシーズ・ドラゴン"
+    },
+    "match": {
+      "cid": 11385,
+      "passcode": "16195942"
+    },
+    "facts": {
+      "rank": 4,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 2500,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=11385&request_locale=ko",
+    "printingNumber": "LVP2-KR077",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족"
+      ],
+      "rulings": [
+        "몬스터의 공격력을 절반으로 바꾸는 처리가 있다."
+      ],
+      "packs": [
+        "링크 브레인즈 팩 2 (LVP2-KR077)"
+      ]
+    },
+    "textKo": "몬스터의 공격력을 절반으로 바꾸는 처리가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "클리어윙 싱크로 드래곤",
+    "url": "https://namu.wiki/w/%ED%81%B4%EB%A6%AC%EC%96%B4%EC%9C%99%20%EC%8B%B1%ED%81%AC%EB%A1%9C%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 254337,
+    "articleSha256": "632be4f6ed2352ad60d7591bf57e90837cb3bcdb4ec26ceec270657cf5a08d6d",
+    "language": "ko",
+    "names": {
+      "ko": "클리어윙 싱크로 드래곤",
+      "en": "Clear Wing Synchro Dragon",
+      "ja": "クリアウィング・シンクロ・ドラゴン"
+    },
+    "match": {
+      "cid": 11721,
+      "passcode": "82044280"
+    },
+    "facts": {
+      "level": 7,
+      "attribute": "WIND",
+      "race": "Dragon",
+      "atk": 2500,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=11721&request_locale=ko",
+    "printingNumber": "CROS-KR046",
+    "details": {
+      "traits": [
+        "바람 속성",
+        "드래곤족",
+        "싱크로"
+      ],
+      "rulings": [
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ],
+      "packs": [
+        "크로스오버 소울즈 (CROS-KR046)"
+      ]
+    },
+    "textKo": "효과에 발동 무효와 파괴 처리가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "사이버 드래곤 인피니티",
+    "url": "https://namu.wiki/w/%EC%82%AC%EC%9D%B4%EB%B2%84%20%EB%93%9C%EB%9E%98%EA%B3%A4%20%EC%9D%B8%ED%94%BC%EB%8B%88%ED%8B%B0",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 337793,
+    "articleSha256": "4b876cd97c2f399af7b1d40d6d6df9abe1b32b9ab0e09c3a42ba23c211368804",
+    "language": "ko",
+    "names": {
+      "ko": "사이버 드래곤 인피니티",
+      "en": "Cyber Dragon Infinity",
+      "ja": "サイバー・ドラゴン・インフィニティ"
+    },
+    "match": {
+      "cid": 11765,
+      "passcode": "10443958"
+    },
+    "facts": {
+      "rank": 6,
+      "attribute": "LIGHT",
+      "race": "Machine",
+      "atk": 2100,
+      "def": 1600
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=11765&request_locale=ko",
+    "printingNumber": "EP15-KR056",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "기계족"
+      ],
+      "rulings": [
+        "효과에 발동 무효와 파괴 처리가 있다."
+      ],
+      "packs": [
+        "엑스트라 팩 2015 (EP15-KR056)"
+      ]
+    },
+    "textKo": "효과에 발동 무효와 파괴 처리가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "푸른 눈의 아백룡",
+    "url": "https://namu.wiki/w/%ED%91%B8%EB%A5%B8%20%EB%88%88%EC%9D%98%20%EC%95%84%EB%B0%B1%EB%A3%A1",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 15410,
+    "articleSha256": "b9cdc20af63706b7239b58aada15e6b33ff613361c4c9a4dfa68c35cfa640053",
+    "language": "ko",
+    "names": {
+      "ko": "푸른 눈의 아백룡",
+      "en": "Blue-Eyes Alternative White Dragon"
+    },
+    "match": {
+      "cid": 12253,
+      "passcode": "38517737"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "LIGHT",
+      "race": "Dragon",
+      "atk": 3000,
+      "def": 2500
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=12253&request_locale=ko",
+    "printingNumber": "MVPC-KR000",
+    "details": {
+      "traits": [
+        "빛 속성",
+        "드래곤족"
+      ],
+      "rulings": [
+        "필드의 몬스터 한 장을 대상으로 파괴하는 효과가 있다."
+      ]
+    },
+    "textKo": "필드의 몬스터 한 장을 대상으로 파괴하는 효과가 있다."
+  },
+  {
+    "game": "YUGIOH",
+    "title": "스타브 베놈 퓨전 드래곤",
+    "url": "https://namu.wiki/w/%EC%8A%A4%ED%83%80%EB%B8%8C%20%EB%B2%A0%EB%86%88%20%ED%93%A8%EC%A0%84%20%EB%93%9C%EB%9E%98%EA%B3%A4",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 37968,
+    "articleSha256": "f9ef5803e3aa28d63b4e2b9a300b8201b225fd0a5a9fc2cf4fe051c314123c94",
+    "language": "ko",
+    "names": {
+      "ko": "스타브 베놈 퓨전 드래곤",
+      "en": "Starving Venom Fusion Dragon",
+      "ja": "スターヴ・ヴェノム・フュージョン・ドラゴン"
+    },
+    "match": {
+      "cid": 12628,
+      "passcode": "41209827"
+    },
+    "facts": {
+      "level": 8,
+      "attribute": "DARK",
+      "race": "Dragon",
+      "atk": 2800,
+      "def": 2000
+    },
+    "verificationUrl": "https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=12628&request_locale=ko",
+    "printingNumber": "DP22-KR052",
+    "details": {
+      "traits": [
+        "어둠 속성",
+        "드래곤족",
+        "융합"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "뿔충이"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501001",
+      "number": "001"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501001",
+    "printingNumber": "001/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (001/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "딱충이"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501002",
+      "number": "002"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501002",
+    "printingNumber": "002/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (002/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "독침붕"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501003",
+      "number": "003"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501003",
+    "printingNumber": "003/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (003/060)"
+      ],
+      "traits": [
+        "2진화 포켓몬",
+        "레어도 U"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "레디바"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501004",
+      "number": "004"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501004",
+    "printingNumber": "004/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (004/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "레디안"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501005",
+      "number": "005"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501005",
+    "printingNumber": "005/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (005/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 U"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "네오비트"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501006",
+      "number": "006"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501006",
+    "printingNumber": "006/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (006/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "바오프"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501010",
+      "number": "010"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501010",
+    "printingNumber": "010/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (010/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "앗차키"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501020",
+      "number": "020"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501020",
+    "printingNumber": "020/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (020/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "닥트리오"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501030",
+      "number": "030"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501030",
+    "printingNumber": "030/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (030/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 U"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "킬가르도"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501040",
+      "number": "040"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501040",
+    "printingNumber": "040/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (040/060)"
+      ],
+      "traits": [
+        "2진화 포켓몬",
+        "레어도 U"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "비버니"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501050",
+      "number": "050"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501050",
+    "printingNumber": "050/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (050/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "Y컬렉션",
+    "url": "https://namu.wiki/w/Y%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75348,
+    "articleSha256": "948cb10f68a3e47e95cf077817d50bdbb88ae6d4e5d1ec834f6165948877090d",
+    "language": "ko",
+    "names": {
+      "ko": "더블 무색 에너지"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014501060",
+      "number": "060"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014501060",
+    "printingNumber": "060/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「Y컬렉션」 (060/060)"
+      ],
+      "traits": [
+        "특수 에너지",
+        "레어도 U"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "이상해꽃 EX"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001001",
+      "number": "001"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001001",
+    "printingNumber": "001/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (001/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 RR"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "M이상해꽃 EX"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001002",
+      "number": "002"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001002",
+    "printingNumber": "002/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (002/060)"
+      ],
+      "traits": [
+        "M진화 포켓몬",
+        "레어도 RR"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "볼비트"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001003",
+      "number": "003"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001003",
+    "printingNumber": "003/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (003/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "야나프"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001004",
+      "number": "004"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001004",
+    "printingNumber": "004/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (004/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "야나키"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001005",
+      "number": "005"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001005",
+    "printingNumber": "005/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (005/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "분이벌레"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001006",
+      "number": "006"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001006",
+    "printingNumber": "006/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (006/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "고고트"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001010",
+      "number": "010"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001010",
+    "printingNumber": "010/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (010/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 R"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "개굴반장"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001020",
+      "number": "020"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001020",
+    "printingNumber": "020/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (020/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 U"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "루나톤"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001030",
+      "number": "030"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001030",
+    "printingNumber": "030/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (030/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "자망칼"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001040",
+      "number": "040"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001040",
+    "printingNumber": "040/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (040/060)"
+      ],
+      "traits": [
+        "기본 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "하데리어"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001050",
+      "number": "050"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001050",
+    "printingNumber": "050/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (050/060)"
+      ],
+      "traits": [
+        "1진화 포켓몬",
+        "레어도 C"
+      ]
+    }
+  },
+  {
+    "game": "POKEMON",
+    "title": "X컬렉션",
+    "url": "https://namu.wiki/w/X%EC%BB%AC%EB%A0%89%EC%85%98",
+    "snapshotDate": "2021-03-01",
+    "snapshotUrl": "https://huggingface.co/datasets/Bingsu/namuwiki_20210301_filtered/tree/bb6b2ea9bac5837836d38dc524d0b987d2a1fc0f",
+    "snapshotRow": 75354,
+    "articleSha256": "e7e067ed47ecfc04e83ddaea407195bfe71800a4cf18250677aed339cd38246c",
+    "language": "ko",
+    "names": {
+      "ko": "레인보우 에너지"
+    },
+    "match": {
+      "catalogKey": "catalog:POKEMON:ko:BS2014001060",
+      "number": "060"
+    },
+    "facts": {},
+    "verificationUrl": "https://pokemoncard.co.kr/cards/detail/BS2014001060",
+    "printingNumber": "060/060",
+    "details": {
+      "packs": [
+        "XY 확장팩 제1탄 「X컬렉션」 (060/060)"
+      ],
+      "traits": [
+        "특수 에너지",
+        "레어도 U"
+      ]
+    }
+  }
+]
