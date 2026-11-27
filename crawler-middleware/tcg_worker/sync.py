@@ -16,7 +16,7 @@ from psycopg.types.json import Jsonb
 
 from .catalog_news import collect_pack_dates, finish_yugioh_scan
 from .catalog_sources.rift_editions import preserve_deferred
-from .catalog_sources.onepiece import COLLECTOR, SINGLE_PRODUCT, preserve_partial_korean
+from .catalog_sources.onepiece import COLLECTOR, OPTCG, SINGLE_PRODUCT, preserve_partial_korean
 from .feeds import FetchError, backoff, fetch_feed
 from .jobs import connect, process_once
 from . import supplements
@@ -134,8 +134,13 @@ def onepiece_numbered_sku(code):
 def is_numbered_printing(card, code):
     number = card.get("number") or ""
     specs = card.get("specs") or {}
-    return (onepiece_numbered_sku(code) and COLLECTOR.fullmatch(number) is not None
-            and card["external_id"] == f"{code}:{number}" and specs.get("productCode", code) == code)
+    if not onepiece_numbered_sku(code) or card["external_id"] != f"{code}:{number}" or specs.get("productCode", code) != code:
+        return False
+    if COLLECTOR.fullmatch(number):
+        return True
+    # OPTCG's DON!! cards have a stable source image ID in place of a collector number.
+    return (re.fullmatch(r"DON:don_[0-9]+", number) is not None and specs.get("type") == "don"
+            and specs.get("productCode") == code and card["source_url"] == OPTCG + "allDonCards/")
 
 
 def existing_product_keys(db, game, prefix, records):
