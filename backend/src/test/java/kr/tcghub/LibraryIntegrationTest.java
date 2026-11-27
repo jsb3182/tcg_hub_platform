@@ -308,6 +308,62 @@ class LibraryIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.revision").value(1))
                 .andExpect(jsonPath("$.entries.length()").value(main.size()));
     }
+    @Test void yugiohDefaultCopyLimitCombinesVerifiedJapaneseAndEnglishPrintings() throws Exception {
+        String path="/api/v1/me/decks";
+        long english=card("YUGIOH","Tri-Horned Dragon","PUBLISHED");
+        long japanese=card("YUGIOH","트라이혼 드래곤","PUBLISHED");
+        long source=db.sql("select id from feed_source where provider='CATALOG' and source_key='YUGIOH'")
+                .query(Long.class).single();
+        db.sql("""
+                update card set number='LOB-EN000',original_name='Tri-Horned Dragon',source_id=?,
+                    legacy_key=?,specs='{"konami_id":4711,"type":"Normal Monster"}' where id=?
+                """).param(source).param("catalog:YUGIOH:"+UUID.randomUUID()).param(english).update();
+        db.sql("""
+                update card set number='DBGV-JP012',original_name='トライホーン・ドラゴン',
+                    legacy_key=?,specs='{"k":"몬스터"}' where id=?
+                """).param("legacy:"+UUID.randomUUID()).param(japanese).update();
+        db.sql("""
+                insert into legacy_card_edition(card_id,matched_number,matched_name,names,texts,source_url,konami_id)
+                values(?,'DBGV-JP012','トライホーン・ドラゴン','{}','{}',
+                    'https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4711',4711)
+                """).param(japanese).update();
+        var main=new DeckRules.Line(english,"MAIN",2);
+        var one=new DeckRules.Line(japanese,"SIDE",1);
+        var two=new DeckRules.Line(japanese,"SIDE",2);
+        var created=api.perform(write(post(path),alice,save(0,true,"DRAFT",main,one)))
+                .andExpect(status().isCreated()).andReturn().getResponse();
+        var saved=json.readTree(created.getContentAsByteArray());
+        String owner=path+"/"+saved.path("id").asLong();
+        for(var request:List.of(write(post(path),alice,save(0,false,"DRAFT",main,two)),
+                               write(put(owner),alice,save(1,true,"DRAFT",main,two)))) {
+            api.perform(request).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.detail").value("트라이혼 드래곤 카드는 합계 3장까지 넣을 수 있습니다."));
+        }
+        api.perform(get("/api/v1/shared/decks/"+saved.path("shareToken").asText()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.revision").value(1));
+
+        var complete=new ArrayList<DeckRules.Line>();
+        complete.add(main);
+        for(int i=0;i<13;i++)complete.add(new DeckRules.Line(card("YUGIOH","수량 검증 "+i,"PUBLISHED"),"MAIN",i==12?2:3));
+        complete.add(one);
+        api.perform(write(put(owner),alice,new DeckApi.Save("완성 덱","YUGIOH","COMPLETE",1,true,complete)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.revision").value(2));
+        complete.set(complete.size()-1,two);
+        api.perform(write(put(owner),alice,new DeckApi.Save("완성 덱","YUGIOH","COMPLETE",2,true,complete)))
+                .andExpect(status().isUnprocessableEntity());
+        api.perform(get("/api/v1/shared/decks/"+saved.path("shareToken").asText()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.revision").value(2)).andExpect(jsonPath("$.state").value("COMPLETE"));
+
+        // Old name-based limits still apply when a printing has no source-owned identity.
+        long manual=card("YUGIOH","Tri-Horned Dragon","PUBLISHED");
+        api.perform(write(post(path),alice,save(0,false,"DRAFT",main,one,new DeckRules.Line(manual,"SIDE",1))))
+                .andExpect(status().isUnprocessableEntity());
+        db.sql("update card set name='수동 도감 카드',specs='{\"konami_id\":4711}' where id=?").param(manual).update();
+        api.perform(write(post(path),alice,save(0,false,"DRAFT",main,one,new DeckRules.Line(manual,"SIDE",1))))
+                .andExpect(status().isCreated());
+        db.sql("update card set number='UNVERIFIED' where id=?").param(japanese).update();
+        api.perform(write(post(path),alice,save(0,false,"DRAFT",main,two))).andExpect(status().isCreated());
+    }
     @Test void atlasTilesAreReusedAndUnpublishedCardsCloseThePublicLink() throws Exception {
         long sheet=db.sql("insert into image_sheet(storage_key,cell_width,cell_height) values(?,300,438) returning id")
                 .param("sheets/"+UUID.randomUUID()+".webp").query(Long.class).single();

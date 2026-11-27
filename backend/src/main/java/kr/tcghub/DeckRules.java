@@ -19,7 +19,8 @@ class DeckRules {
         Line(long cardId,String section,int quantity) { this(cardId,section,quantity,null); }
     }
     record CardInfo(long id, String name, String identity, String kind, String stage, boolean basicEnergy,
-                    boolean triggerCard, String domains, String tags, String supertype, boolean unlimitedCopies) {
+                    boolean triggerCard, String domains, String tags, String supertype, boolean unlimitedCopies,
+                    String konamiId) {
         Set<String> labels(String value) {
             return value == null || value.isBlank() ? Set.of() : new HashSet<>(List.of(value.split("\u001f")));
         }
@@ -61,6 +62,26 @@ class DeckRules {
         };
     }
 
+    // Keep name-based copy limits, and connect original names backed by the same verified Konami CID.
+    private static Map<String,String> yugiohAliases(Collection<CardInfo> cards) {
+        var namesByCid = new HashMap<String,String>();
+        var aliases = new HashMap<String,String>();
+        for (var card : cards) {
+            if (card.konamiId()==null) continue;
+            String known = namesByCid.putIfAbsent(card.konamiId(),card.identity());
+            if (known==null) continue;
+            String group = copyName(known,aliases);
+            String current = copyName(card.identity(),aliases);
+            if (!group.equals(current)) aliases.put(current,group);
+        }
+        return aliases;
+    }
+
+    private static String copyName(String name, Map<String,String> aliases) {
+        while (aliases.containsKey(name)) name=aliases.get(name);
+        return name;
+    }
+
     void validate(Rule rule, List<Line> lines, boolean complete) {
         var quantities = new HashMap<String,Integer>();
         var counts = new HashMap<String,Integer>();
@@ -87,8 +108,16 @@ class DeckRules {
                     (select string_agg(lower(trim(v)),chr(31)) from jsonb_array_elements_text(
                         case when jsonb_typeof(specs->'tags')='array' then specs->'tags' else '[]'::jsonb end) v) as tags,
                     lower(coalesce(specs->>'supertype','')) as supertype,
-                    lower(concat_ws(' ',effect,specs->'texts'->>'en')) ~ 'you may (have|include) any number of (this card|cards with this card number) in your deck' as unlimited_copies
-                from card where game_code=:game and status='PUBLISHED' and id in (:ids)
+                    lower(concat_ws(' ',effect,specs->'texts'->>'en')) ~ 'you may (have|include) any number of (this card|cards with this card number) in your deck' as unlimited_copies,
+                    case when game_code='YUGIOH' and starts_with(legacy_key,'catalog:YUGIOH:')
+                              and specs->>'konami_id' ~ '^[1-9][0-9]*$'
+                              and exists(select 1 from feed_source f where f.id=c.source_id and f.provider='CATALOG' and f.source_key='YUGIOH')
+                         then specs->>'konami_id'
+                         when game_code='YUGIOH' and starts_with(legacy_key,'legacy:')
+                         then (select e.konami_id::text from legacy_card_edition e where e.card_id=c.id and e.konami_id>0
+                               and e.matched_number=c.number and e.matched_name=c.original_name)
+                    end as konami_id
+                from card c where game_code=:game and status='PUBLISHED' and id in (:ids)
                 """).param("game",rule.gameCode()).param("ids",ids).query(CardInfo.class).list();
             results.forEach(card->cards.put(card.id(),card));
             if (cards.size()!=ids.size()) throw new Invalid("이 게임의 공개 도감에 있는 카드만 추가할 수 있습니다.");
@@ -96,6 +125,7 @@ class DeckRules {
         int climax=0, triggers=0, basicPokemon=0;
         boolean checkBasicPokemon=true;
         boolean standard = rule.version()>=2 && rule.format().equals("CONSTRUCTED");
+        Map<String,String> aliases = standard && rule.gameCode().equals("YUGIOH") ? yugiohAliases(cards.values()) : Map.of();
         boolean riot = standard && rule.gameCode().equals("RIFTBOUND") && rule.version()>=3;
         boolean op = standard && rule.gameCode().equals("ONEPIECE");
         var leader = lines.stream().filter(l -> l.section().equals(riot ? "LEGEND" : "LEADER")).findFirst()
@@ -118,7 +148,7 @@ class DeckRules {
                     || rule.gameCode().equals("RIFTBOUND") && section.equals("RUNE")
                     || op && (section.equals("DON") || card.unlimitedCopies()));
             if (!unlimited) {
-                int copies=counts.merge(card.identity(),line.quantity(),Integer::sum);
+                int copies=counts.merge(copyName(card.identity(),aliases),line.quantity(),Integer::sum);
                 Integer limit=rule.maxCopiesPerCard();
                 if (standard && rule.gameCode().equals("RIFTBOUND") && section.equals("BATTLEFIELD")) limit=1;
                 if (limit!=null && copies>limit) throw new Invalid(card.name()+" 카드는 합계 "+limit+"장까지 넣을 수 있습니다.");
