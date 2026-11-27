@@ -7,8 +7,10 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.AssetFileDescriptor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.DocumentsContract;
@@ -25,8 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
 public final class ServerActivity extends LocalizedActivity {
@@ -35,13 +36,16 @@ public final class ServerActivity extends LocalizedActivity {
             Pattern.compile("https://[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)+");
     private static final String[] SERVICE_KEYS = {"db", "api", "worker", "tunnel"};
     private static final int[] SERVICE_NAMES = {R.string.database, R.string.web_server, R.string.worker, R.string.tunnel};
-    private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
+    private Future<?> operation;
+    private CancellationSignal readCancel;
+    private Runnable watchdog;
     private SharedPreferences prefs;
     private Uri tree;
     private String origin = "", pending = "";
     private long started, timeout;
     private boolean active, polling, ready, folderError;
+    private boolean statusRequest;
     private boolean servicesStopped, profileRunning;
     private HubUi screen;
     private TextView summary, profile, address, message;
@@ -58,6 +62,7 @@ public final class ServerActivity extends LocalizedActivity {
         if (tree != null) pending = prefs.getString("pending", "");
         started = prefs.getLong("started", 0);
         timeout = prefs.getLong("timeout", 60_000);
+        statusRequest = prefs.getBoolean("pendingStatus", timeout == 60_000);
         screen = new HubUi(this, getString(R.string.local_server), true);
         connect = screen.column();
         screen.add(screen.body, connect, 0);
@@ -213,7 +218,7 @@ public final class ServerActivity extends LocalizedActivity {
         if (tree == null) return;
         if (!pending.isEmpty()) {
             note(getString(R.string.waiting_request));
-            poll();
+            if (armDeadline()) poll();
         } else {
             request("status");
         }
@@ -228,7 +233,7 @@ public final class ServerActivity extends LocalizedActivity {
 
     @Override
     protected void onDestroy() {
-        io.shutdownNow();
+        cancelOperation();
         super.onDestroy();
     }
 
@@ -245,7 +250,7 @@ public final class ServerActivity extends LocalizedActivity {
         pair.setEnabled(pending.isEmpty());
         reconnect.setEnabled(pending.isEmpty());
         status.setEnabled(idle);
-        start.setEnabled(idle && !origin.isEmpty() && !profileRunning);
+        start.setEnabled(idle && !profileRunning);
         stop.setEnabled(idle && !servicesStopped);
         browser.setEnabled(idle && ready && !origin.isEmpty());
         adminSetup.setVisibility(LOCAL.equals(origin) ? View.VISIBLE : View.GONE);
@@ -293,14 +298,16 @@ public final class ServerActivity extends LocalizedActivity {
     }
 
     private void confirm(boolean poweringOn) {
+        // Without a current profile, only request local start. The paired bridge independently checks it.
+        boolean localStart = origin.isEmpty() || LOCAL.equals(origin);
         final String action =
-                poweringOn ? (LOCAL.equals(origin) ? "start-local" : "start-public") : "stop";
+                poweringOn ? (localStart ? "start-local" : "start-public") : "stop";
         new AlertDialog.Builder(this)
                 .setTitle(poweringOn ? getString(R.string.confirm_start) : getString(R.string.confirm_stop))
                 .setMessage(
                         !poweringOn
                                 ? getString(R.string.stop_order)
-                                : LOCAL.equals(origin)
+                                : localStart
                                         ? getString(R.string.local_start_detail)
                                         : origin + getString(R.string.public_start_detail))
                 .setNegativeButton(getString(R.string.cancel), null)
@@ -324,17 +331,20 @@ public final class ServerActivity extends LocalizedActivity {
         String id = UUID.randomUUID().toString().replace("-", "");
         long now = System.currentTimeMillis();
         pending = id;
+        statusRequest = action.equals("status");
         started = now;
         timeout = action.equals("admin-setup") ? 45_000 : action.equals("status") ? 60_000 : 12 * 60_000;
         prefs.edit()
                 .putString("pending", id)
+                .putBoolean("pendingStatus", statusRequest)
                 .putLong("started", now)
                 .putLong("timeout", timeout)
                 .apply();
         updateButtons();
         note(action.equals("status") ? getString(R.string.checking_services) : getString(R.string.processing));
         Uri parent = DocumentsContract.buildDocumentUriUsingTree(tree, ControlFolder.ID);
-        io.execute(
+        if (!armDeadline()) return;
+        submit(id,
                 () -> {
                     try {
                         String filename = "request-" + now + "-" + id + "-" + action;
@@ -346,7 +356,8 @@ public final class ServerActivity extends LocalizedActivity {
                                         filename);
                         if (created == null) throw new IOException();
                         runOnUiThread(() -> {
-                            if (action.equals("admin-setup") && active && !isDestroyed()) SetupPanel.openTermux(this);
+                            if (!acceptReply(id)) return;
+                            if (action.equals("admin-setup") && active) SetupPanel.openTermux(this);
                             poll();
                         });
                     } catch (Exception ex) {
@@ -362,11 +373,14 @@ public final class ServerActivity extends LocalizedActivity {
         Uri response =
                 DocumentsContract.buildDocumentUriUsingTree(
                         tree, ControlFolder.ID + "/reply-" + id + ".json");
-        io.execute(
+        CancellationSignal cancel = new CancellationSignal();
+        readCancel = cancel;
+        submit(id,
                 () -> {
                     JSONObject parsed = null;
                     boolean denied = false;
-                    try (InputStream in = getContentResolver().openInputStream(response)) {
+                    try (AssetFileDescriptor descriptor = getContentResolver().openAssetFileDescriptor(response, "r", cancel);
+                         InputStream in = descriptor == null ? null : descriptor.createInputStream()) {
                         if (in == null) throw new IOException();
                         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                         byte[] buf = new byte[512];
@@ -387,8 +401,9 @@ public final class ServerActivity extends LocalizedActivity {
                     boolean permissionLost = denied;
                     runOnUiThread(
                             () -> {
+                                if (!acceptReply(id)) return;
                                 polling = false;
-                                if (isDestroyed() || !id.equals(pending)) return;
+                                readCancel = null;
                                 if (permissionLost) {
                                     fail(id, getString(R.string.regrant_folder));
                                     return;
@@ -397,19 +412,49 @@ public final class ServerActivity extends LocalizedActivity {
                                     show(id, answer);
                                     return;
                                 }
-                                long age = System.currentTimeMillis() - started;
-                                if (age > timeout || age < -1000) {
-                                    fail(id, getString(R.string.request_timeout));
-                                    return;
-                                }
                                 if (active) ui.postDelayed(this::poll, 1000);
                             });
                 });
     }
 
+    private boolean armDeadline() {
+        if (watchdog != null) ui.removeCallbacks(watchdog);
+        String id = pending;
+        long delay = MailboxIo.remaining(System.currentTimeMillis(), started, timeout);
+        watchdog = () -> fail(id, getString(R.string.request_timeout));
+        if (delay == 0) {
+            watchdog.run();
+            return false;
+        }
+        ui.postDelayed(watchdog, delay);
+        return true;
+    }
+
+    private void submit(String id, Runnable task) {
+        operation = MailboxIo.submit(statusRequest, task);
+        if (operation == null) fail(id, getString(R.string.request_timeout));
+    }
+
+    private boolean acceptReply(String id) {
+        if (isDestroyed() || !id.equals(pending)) return false;
+        if (MailboxIo.remaining(System.currentTimeMillis(), started, timeout) > 0) return true;
+        fail(id, getString(R.string.request_timeout));
+        return false;
+    }
+
+    private void cancelOperation() {
+        if (watchdog != null) ui.removeCallbacks(watchdog);
+        MailboxIo.cancel(operation, readCancel == null ? null : readCancel::cancel);
+        watchdog = null;
+        operation = null;
+        readCancel = null;
+        polling = false;
+    }
+
     private void finishRequest() {
         pending = "";
-        prefs.edit().remove("pending").remove("started").remove("timeout").apply();
+        cancelOperation();
+        prefs.edit().remove("pending").remove("pendingStatus").remove("started").remove("timeout").apply();
         updateButtons();
     }
 

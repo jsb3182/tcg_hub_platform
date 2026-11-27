@@ -1,8 +1,10 @@
 package kr.tcghub.control;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.util.Base64;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -52,7 +54,7 @@ final class RecipeDocuments {
     boolean export(Uri uri) {
         if(!"tcghub-save".equals(uri.getScheme()))return false;
         String kind=uri.getHost();
-        if(!trusted() || !("png".equals(kind)||"json".equals(kind)||"xlsx".equals(kind)) || uri.getPathSegments().size()!=1)return true;
+        if(!trusted() || !("png".equals(kind)||"json".equals(kind)||"xlsx".equals(kind)||"ics".equals(kind)) || uri.getPathSegments().size()!=1)return true;
         String key=uri.getLastPathSegment();
         if(key==null || !key.matches("[a-f0-9]{32}"))return true;
         int size;
@@ -82,21 +84,43 @@ final class RecipeDocuments {
                     try(FileOutputStream out=new FileOutputStream(file,true)){out.write(chunk);}
                     activity.runOnUiThread(()->{
                         if(!key.equals(token)||closed)return;
-                        if(after==bytes){
-                            String mime=kind.equals("png")?"image/png":kind.equals("json")?"application/json":
-                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                            try {activity.startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).setType(mime)
-                                    .addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE,name),SAVE);}
-                            catch(RuntimeException ex){finish(key,false);}
-                        } else read(key,name,kind,offset+part.length());
+                        if(after==bytes) chooseDestination(key,name,kind);
+                        else read(key,name,kind,offset+part.length());
                     });
                 }catch(Exception ex){activity.runOnUiThread(()->finish(key,false));}
             });
         });
     }
+    private void chooseDestination(String key,String name,String kind) {
+        if(!trusted()){finish(key,false);return;}
+        if(!kind.equals("png") || Build.VERSION.SDK_INT<29){chooseFolder(key,name,kind);return;}
+        new AlertDialog.Builder(activity).setTitle(R.string.save_png_title)
+                .setItems(new String[]{activity.getString(R.string.save_gallery),activity.getString(R.string.save_folder)},
+                        (dialog,which)->{
+                            if(!key.equals(token) || !trusted()){finish(key,false);return;}
+                            if(which==1){chooseFolder(key,name,kind);return;}
+                            File file=staged;
+                            io.execute(()->{
+                                try {
+                                    GalleryPng.publish(activity.getContentResolver(),file,name);
+                                    activity.runOnUiThread(()->finish(key,true));
+                                } catch(IOException | RuntimeException ex){activity.runOnUiThread(()->finish(key,false));}
+                            });
+                        })
+                .setNegativeButton(R.string.cancel,(dialog,which)->finish(key,false))
+                .setOnCancelListener(dialog->finish(key,false)).show();
+    }
+    private void chooseFolder(String key,String name,String kind) {
+        String mime=kind.equals("png")?"image/png":kind.equals("json")?"application/json":kind.equals("ics")?"text/calendar":
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        try {activity.startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).setType(mime)
+                .addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE,name),SAVE);}
+        catch(RuntimeException ex){finish(key,false);}
+    }
     private static boolean matches(String kind,byte[] chunk) {
         if(chunk.length<4)return false;
         if(kind.equals("json"))return chunk[0]=='{';
+        if(kind.equals("ics"))return chunk.length>=17 && new String(chunk,0,17,java.nio.charset.StandardCharsets.US_ASCII).equals("BEGIN:VCALENDAR\r\n");
         if(kind.equals("xlsx"))return chunk[0]==80 && chunk[1]==75 && chunk[2]==3 && chunk[3]==4;
         return chunk.length>=24 && chunk[0]==(byte)137 && chunk[1]==80 && chunk[2]==78 && chunk[3]==71
                 && chunk[4]==13 && chunk[5]==10 && chunk[6]==26 && chunk[7]==10;
@@ -120,10 +144,8 @@ final class RecipeDocuments {
         if(uri==null || !trusted()){finish(key,false);return true;}
         Uri target=uri;File src=staged;
         io.execute(()->{
-            try(InputStream in=new FileInputStream(src);OutputStream out=activity.getContentResolver().openOutputStream(target,"wt")){
-                if(out==null)throw new IOException();
-                byte[] buffer=new byte[16384];int n;while((n=in.read(buffer))!=-1)out.write(buffer,0,n);
-            }catch(Exception ex){activity.runOnUiThread(()->finish(key,false));return;}
+            try { GalleryPng.copy(activity.getContentResolver(),src,target); }
+            catch(Exception ex){activity.runOnUiThread(()->finish(key,false));return;}
             activity.runOnUiThread(()->finish(key,true));
         });
         return true;

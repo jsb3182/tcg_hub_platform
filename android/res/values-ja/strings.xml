@@ -1,4 +1,7 @@
 <resources>
+    <string name="save_png_title">PNG の保存先</string>
+    <string name="save_gallery">ギャラリーに保存</string>
+    <string name="save_folder">フォルダを選択</string>
     <string name="app_name">"TCGハブ"</string>
     <string name="back">"戻る"</string>
     <string name="connect_platform">"プラットフォームに接続"</string>
