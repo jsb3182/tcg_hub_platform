@@ -80,6 +80,17 @@ class LibraryIntegrationTest {
         api.perform(write(post("/api/v1/me/decks"),alice,wrong)).andExpect(status().isUnprocessableEntity());
     }
 
+    @Test void legacyMonsterSubtypeDeterminesExtraDeckPlacement() throws Exception {
+        for(String subtype:List.of("융합 / 튜너","싱크로","엑시즈","링크")){
+            db.sql("update card set specs=jsonb_build_object('k','몬스터','sub',cast(? as text)) where id=?")
+                    .param(subtype).param(first).update();
+            api.perform(write(post("/api/v1/me/decks"),alice,new DeckApi.Save("분류 확인","YUGIOH","DRAFT",0,false,
+                    List.of(new DeckRules.Line(first,"EXTRA",1))))).andExpect(status().isCreated());
+            api.perform(write(post("/api/v1/me/decks"),alice,new DeckApi.Save("구역 확인","YUGIOH","DRAFT",0,false,
+                    List.of(new DeckRules.Line(first,"MAIN",1))))).andExpect(status().isUnprocessableEntity());
+        }
+    }
+
     @Test void printedCurveValuesDistinguishAbsentCostsFromZero() throws Exception {
         record Sample(String game, String specs, Integer expected) {}
         for (Sample sample : List.of(
