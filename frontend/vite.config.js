@@ -26,13 +26,13 @@ export default defineConfig({
         globPatterns: ['**/*.{html,js,css}'],
         navigateFallback: '/index.html',
         // Protected navigation always reaches the origin and its Access policy.
-        navigateFallbackAllowlist: [/^\/(?:\?.*)?$/, /^\/cards(?:\/\d+)?\/?(?:\?.*)?$/, /^\/(?:news|stores|play)\/?(?:\?.*)?$/],
+        navigateFallbackAllowlist: [/^\/(?:\?.*)?$/, /^\/(?:cards|releases)(?:\/\d+)?\/?(?:\?.*)?$/, /^\/(?:news|stores|play)\/?(?:\?.*)?$/],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: ({ sameOrigin, url, request }) =>
               sameOrigin && !request.headers.has('authorization') &&
-              /^\/api\/v1\/(?:games|packs|cards(?:\/\d+)?)$/.test(url.pathname),
+              /^\/api\/v1\/(?:games|releases|(?:packs|cards)(?:\/\d+)?)$/.test(url.pathname),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'tcg-public-catalog-v1',

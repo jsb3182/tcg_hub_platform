@@ -5,10 +5,12 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { request, sourceLink } from '../api'
 import { cardArtworks, preferredArtwork } from '../artwork'
 import ArtworkCredit from './ArtworkCredit.vue'
+import { pt } from '../pack'
 
 const props = defineProps({ cardId: { type: [Number, String], required: true }, lazy: Boolean })
 const host = ref()
 const dialog = ref()
+const article = ref()
 const card = ref(null)
 const error = ref('')
 const loading = ref(false)
@@ -32,6 +34,14 @@ const editions = computed(() => Object.entries(card.value?.specs?.names || {}).f
 const originalName = computed(() => {
   const name = card.value?.originalName
   return name && name !== title.value && !editions.value.some(([, printedName]) => printedName === name) ? name : ''
+})
+const catalogNameBasis={IMPORTED_LABEL:'기존 도감 표기',IMPORTED_ORIGINAL:'기존 도감 원문'}
+const wikiSearch=computed(()=>{
+  const c=card.value
+  if(!c || (titleLanguage.value===locale.value && (!effect.value || effectLanguage.value===locale.value)
+      && !catalogNameBasis[c.nameBasis] && c.nameBasis!=='RELATED_PRINTING'))return ''
+  const query=c.originalName || c.name
+  return query ? 'https://namu.wiki/Search?q='+encodeURIComponent(query) : ''
 })
 const specs = computed(() => Object.entries(card.value?.specs || {}).filter(([key, value]) =>
     !['xid','pk','ej','names','texts','images','sources'].includes(key) && value != null && value !== '' &&
@@ -77,7 +87,7 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
   <div ref="host" class="details-body">
     <p v-if="loading" class="muted" role="status">{{ $t("카드 상세를 불러오는 중입니다.") }}</p>
     <div v-else-if="error" role="alert"><p>{{ error }}</p><button class="secondary" @click="load">{{ $t("다시 시도") }}</button></div>
-    <article v-else-if="card">
+    <article v-else-if="card" ref="article">
       <h1 v-if="!lazy" :lang="titleLanguage || ''">{{ title }}</h1>
       <div class="detail-grid">
         <div class="illustration">
@@ -100,6 +110,10 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
         </div>
         <div class="card-facts">
           <div v-if="titleLanguage!==locale"><small>{{ $t('표시된 카드명') }}</small><p>{{ editionName(titleLanguage) }}</p></div>
+          <div v-if="card.nameBasis==='RELATED_PRINTING'"><small>{{ pt('다른 인쇄의 참고 카드명') }}</small>
+            <p v-if="sourceLink(card.nameReferenceUrl)"><a :href="sourceLink(card.nameReferenceUrl)" target="_blank" rel="noopener noreferrer">{{ pt('참고 인쇄본') }}</a></p>
+          </div>
+          <small v-else-if="catalogNameBasis[card.nameBasis]">{{ pt(catalogNameBasis[card.nameBasis]) }}</small>
           <div v-if="originalName"><small>{{ $t("원문명") }}</small><p>{{ originalName }}</p></div>
           <div v-if="card.number"><small>{{ $t("카드 번호") }}</small><p>{{ card.number }}</p></div>
           <div v-for="[code, name] in editions" :key="code">
@@ -112,6 +126,7 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
             <p><a v-if="sourceLink(card.sourceUrl)" :href="sourceLink(card.sourceUrl)" target="_blank" rel="noopener noreferrer">{{ card.sourceName || $t("원문 보기") }}</a>
               <span v-else>{{ card.sourceName }}</span></p>
           </div>
+          <a v-if="wikiSearch" :href="wikiSearch" target="_blank" rel="noopener noreferrer">{{ pt('나무위키에서 검색') }}</a>
           <div v-if="current?.rarity || card.rarity || card.variants?.[0]?.rarity"><small>{{ $t("레어도") }}</small><p>{{ current?.rarity || card.rarity || card.variants?.[0]?.rarity }}</p></div>
           <div class="lib-actions">
             <RouterLink :to="{name:'binder',query:{card:card.id}}">{{ $t("바인더에 담기") }}</RouterLink>
@@ -123,6 +138,7 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
       <section v-if="effect" class="detail-section"><h3>{{ $t("카드 효과") }}</h3><small v-if="effectLanguage!==locale" class="edition-note">{{ editionName(effectLanguage) }}</small><p :lang="effectLanguage || ''">{{ effect }}</p></section>
       <dl v-if="specs.length" class="specs"><div v-for="[key, value] in specs" :key="key"><dt>{{ $t(names[key]) || key }}</dt><dd>{{ display(value) }}</dd></div></dl>
     </article>
+    <slot v-if="card && article" name="after-card" :card="card" :article="article"/>
   </div>
 </template>
 

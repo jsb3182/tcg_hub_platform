@@ -39,7 +39,8 @@ const loginTarget = computed(() => {
   return {name:'login'}
 })
 const navigation = [
-  {to:'/', label:'카드 도감', pages:['catalog','card']}, {to:'/news', label:'새 소식', pages:['news']},
+  {to:'/', label:'카드 도감', pages:['catalog','card']}, {to:'/releases',label:'발매 일정',pages:['releases','pack']},
+  {to:'/news', label:'새 소식', pages:['news']},
   {to:'/stores', label:'매장 지도', pages:['stores']}, {to:'/binder', label:'바인더', pages:['binder']},
   {to:'/decks', label:'내 덱', pages:['decks','deck-new','deck-edit','shared-deck']}, {to:'/play', label:'플레이', pages:['play']},
 ]
