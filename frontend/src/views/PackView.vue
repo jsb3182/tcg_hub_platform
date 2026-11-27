@@ -1,19 +1,19 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { mediaPath, request } from '../api'
+import { mediaPath, request, sourceLink } from '../api'
 import { gameName, locale } from '../i18n'
-import { countLabel, facetLabel, inclusions, packTitle, pt } from '../pack'
-import { pngSnapshot } from '../pngSnapshot'
+import { countLabel, facetLabel, inclusions, packTitle, pt, regionName, shortRarity } from '../pack'
 import CardDetails from '../components/CardDetails.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
 import PackGallery from '../components/PackGallery.vue'
-import PngExport from '../components/PngExport.vue'
+import LegacyPackNavigation from '../components/LegacyPackNavigation.vue'
 
 const route=useRoute()
 const pack=ref(null), cards=ref([]), expanded=ref(null), page=ref(0), packPage=ref(0)
 const loading=ref(true), moreBusy=ref(false), hasMore=ref(false), error=ref(''), moreError=ref(''), retry=ref(0)
 const q=ref(''), inclusion=ref(''), listTop=ref()
+const releaseEvents=ref([]), releasePage=ref(0), releaseTotal=ref(0), releaseError=ref(false), releaseBusy=ref(false), releaseRetry=ref(0)
 const pageSize=30
 const countFields={NEW:'newCount',REPRINT:'reprintCount',NEW_ART:'newArtCount'}
 const filtered=computed(()=>{
@@ -25,8 +25,27 @@ const filtered=computed(()=>{
 const pages=computed(()=>Math.ceil(filtered.value.length/pageSize))
 const shown=computed(()=>filtered.value.slice(page.value*pageSize,(page.value+1)*pageSize))
 const special=computed(()=>pack.value?.group && pack.value.group!=='SCHEDULE')
-const backTo=computed(()=>({name:'releases',query:{...route.query}}))
+const showInclusions=computed(()=>pack.value?.gameCode==='YUGIOH'||Object.values(countFields).some(key=>pack.value?.[key]>0))
+const otherEvents=computed(()=>releaseEvents.value.filter(e=>!(e.region==='NA' && e.releaseDate===pack.value?.officialProduct?.launchDate && e.sourceUrl===pack.value?.officialProduct?.sourceUrl)))
+const backTo=computed(()=>{
+  const {section,...query}=route.query
+  const hash=['SCHEDULE','DISTRIBUTION','PREMIERE','ARCHIVE'].includes(section)?'#release-'+section:''
+  return {name:'releases',query,hash}
+})
 let controller, loadToEnd=false
+watch(()=>route.params.id,()=>{releasePage.value=0;releaseEvents.value=[];releaseTotal.value=0},{flush:'sync'})
+watch([()=>route.params.id,releasePage,releaseRetry],async([id,n],_,cleanup)=>{
+  const abort=new AbortController();cleanup(()=>abort.abort())
+  releaseError.value=false;releaseBusy.value=true
+  try{
+    const data=await request('/release-calendar?'+new URLSearchParams({packId:id,period:'all',size:24,page:n}),{signal:abort.signal})
+    if(abort.signal.aborted)return
+    const rows=(data.items||[]).filter(e=>String(e.catalogPackId)===String(id))
+    releaseEvents.value=n?releaseEvents.value.concat(rows):rows
+    releaseTotal.value=data.total||0
+  }catch{if(!abort.signal.aborted)releaseError.value=true}
+  finally{if(!abort.signal.aborted)releaseBusy.value=false}
+},{immediate:true})
 function apiPage(n,signal){
   return request('/packs/'+encodeURIComponent(route.params.id)+'?'+new URLSearchParams({lang:locale.value,page:n,size:200}),{signal})
 }
@@ -88,9 +107,6 @@ async function pickCard(id){
   const row=document.getElementById('pack-card-'+id)
   row?.querySelector('summary')?.focus({preventScroll:true});row?.scrollIntoView({block:'start'})
 }
-function snapshot(card,article,width){
-  return pngSnapshot(article,card.name,[pack.value.name,card.number].filter(Boolean).join(' · '),width)
-}
 </script>
 <template>
   <div class="pack-page">
@@ -108,7 +124,7 @@ function snapshot(card,article,width){
               <div><dt>{{ pt('북미 공인점 선행 발매') }}</dt><dd>{{ pack.officialProduct.otsDate }}</dd></div>
               <div><dt>{{ pt('공식 상품 구성') }}</dt><dd>{{ countLabel(pack.officialProduct.setSize) }}</dd></div>
             </dl>
-            <a :href="pack.officialProduct.sourceUrl" target="_blank" rel="noopener noreferrer">{{ pt('공식 상품 안내') }}</a>
+            <a v-if="sourceLink(pack.officialProduct.sourceUrl)" :href="sourceLink(pack.officialProduct.sourceUrl)" target="_blank" rel="noopener noreferrer">{{ pt('공식 상품 안내') }}</a>
           </template>
           <dl v-else-if="pack.metadata?.jp || pack.metadata?.kr" class="pack-dates">
             <div v-if="pack.metadata.jp"><dt>{{ pt('일본 발매') }}</dt><dd>{{ pack.metadata.jp }}</dd></div>
@@ -118,12 +134,19 @@ function snapshot(card,article,width){
           <p v-if="pack.metadata?.note">{{ pack.metadata.note }}</p>
         </div>
       </header>
-      <div v-if="pack.total" class="pack-counts" role="group" :aria-label="pt('수록 구분')">
+      <section v-if="otherEvents.length||releaseError" class="pack-releases">
+        <h2>{{ pt('지역별 발매 일정') }}</h2>
+        <ul><li v-for="e in otherEvents" :key="e.id"><span>{{ regionName(e.region) }}</span><time :datetime="e.releaseDate">{{ e.releaseDate }}</time>
+          <a v-if="sourceLink(e.sourceUrl)" :href="sourceLink(e.sourceUrl)" target="_blank" rel="noopener noreferrer">{{ pt('발매 정보 출처') }} ↗</a></li></ul>
+        <p v-if="releaseError" role="status">{{ pt('지역별 일정을 불러오지 못했습니다.') }} <button class="text-button" @click="releaseRetry++">{{ pt('다시 시도') }}</button></p>
+        <button v-else-if="(releasePage+1)*24<releaseTotal" class="text-button" :disabled="releaseBusy" @click="releasePage++">{{ pt('더 보기') }}</button>
+      </section>
+      <div v-if="pack.total && showInclusions" class="pack-counts" role="group" :aria-label="pt('수록 구분')">
         <button type="button" :aria-pressed="!inclusion" @click="inclusion=''"><span>{{ pt('전체') }}</span><strong>{{ pack.total.toLocaleString(locale) }}</strong></button>
         <button v-for="(label,key) in inclusions" :key="key" type="button" :aria-pressed="inclusion===key" @click="inclusion=inclusion===key?'':key"><span>{{ pt(label) }}</span><strong>{{ pack[countFields[key]].toLocaleString(locale) }}</strong></button>
       </div>
       <div class="pack-toolbar">
-        <h2 ref="listTop" tabindex="-1">{{ pt('수록 카드') }}</h2>
+        <h2 ref="listTop" tabindex="-1">{{ pt('수록 카드') }} <small v-if="pack.total&&!showInclusions">{{ pack.total.toLocaleString(locale) }}</small></h2>
         <div v-if="pack.total" class="pack-controls"><input type="search" v-model="q" :aria-label="pt('팩에서 검색')" :placeholder="pt('카드명·번호·효과')">
           <PackGallery :key="pack.id" :pack="pack" :cards="cards" :loading="moreBusy" :has-more="hasMore" :error="moreError" @load="loadMore(true)" @pick="pickCard"/>
         </div>
@@ -136,12 +159,8 @@ function snapshot(card,article,width){
         <template v-for="(card,i) in shown" :key="card.id">
           <h3 v-if="special && card.product && (i===0 || shown[i-1].product!==card.product)" class="pack-product">{{ card.product }} <small v-if="card.productDate">{{ card.productDate }}</small></h3>
           <details :id="'pack-card-'+card.id" class="pack-row" :open="expanded===card.id" @toggle="toggle(card.id,$event)">
-            <summary><span class="pack-number">{{ card.number }}</span><span class="pack-name"><strong :lang="card.language || ''">{{ card.name }}</strong><CardTextCredit :card="card"/><small v-if="card.inclusion || card.type">{{ [card.inclusion && facetLabel('inclusion',card.inclusion),card.type && facetLabel('type',card.type)].filter(Boolean).join(' · ') }}</small></span><span v-if="card.rarity" class="pack-rarity">{{ card.rarity }}</span><span class="chevron" aria-hidden="true"></span></summary>
-            <CardDetails :card-id="card.id" lazy>
-              <template #after-card="{card:details,article}"><div class="pack-row-actions">
-                <PngExport choose-width :name="[card.number,details.name].filter(Boolean).join(' ')" :label="pt('카드 정보 PNG')" :render="width=>snapshot(details,article,width)"/>
-              </div></template>
-            </CardDetails>
+            <summary><span class="pack-number">{{ card.number }}</span><span class="pack-name"><strong :lang="locale">{{ card.language===locale && card.name ? card.name : pt('이 언어의 카드명 미등록') }}</strong><CardTextCredit v-if="card.language===locale" :card="card"/><small v-if="card.inclusion || card.type"><span v-if="card.inclusion">{{ facetLabel('inclusion',card.inclusion) }}</span><span v-if="card.type" :class="{'pack-raw-type':!['몬스터','마법','함정'].includes(card.type)}">{{ card.inclusion?' · ':'' }}{{ facetLabel('type',card.type) }}</span></small></span><span v-if="card.rarity" class="pack-rarity">{{ shortRarity(card) }}</span><span class="chevron" aria-hidden="true"></span></summary>
+            <CardDetails :card-id="card.id" lazy/>
           </details>
         </template>
       </div>
@@ -150,6 +169,7 @@ function snapshot(card,article,width){
         <span>{{ page+1 }} / {{ hasMore && !q && !inclusion ? Math.ceil(pack.total/pageSize) : pages }}</span>
         <button type="button" class="secondary" :disabled="moreBusy || (page+1>=pages && !hasMore)" @click="goPage(page+1)">{{ pt('다음') }}</button>
       </nav>
+      <LegacyPackNavigation v-if="pack.metadata?.id || pack.officialProduct" :key="pack.id" :pack="pack"/>
     </template>
   </div>
 </template>
@@ -164,6 +184,8 @@ function snapshot(card,article,width){
 </style>
 <style scoped>
 .pack-heading h1,.pack-counts span{word-break:keep-all;overflow-wrap:anywhere}
+.pack-row[open] .pack-raw-type{display:none}
+.pack-releases{margin:0 0 1rem;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:.65rem 0}.pack-releases h2{font-size:1rem;margin:.1rem 0}.pack-releases ul{list-style:none;margin:0;padding:0}.pack-releases li{display:flex;align-items:baseline;flex-wrap:wrap;gap:.3rem .75rem;min-height:34px;padding:.3rem 0}.pack-releases time{font-variant-numeric:tabular-nums}.pack-releases a,.pack-releases p{font-size:.85rem}
 @media(max-width:480px){
   .pack-toolbar h2{flex-basis:100%}.pack-controls{flex-basis:100%}
   .pack-counts button{grid-template-rows:1fr auto;align-items:start;align-self:stretch;text-align:start}
