@@ -1,6 +1,6 @@
 # Android 플랫폼과 서버 운영
 
-`TCG 허브` 2.0.6는 Android 9 이상에서 카드 도감·바인더·덱·연습·소식·매장을 앱 안에 연다. 앱 아이콘으로 다시 열면 마지막에 직접 열었던 플랫폼으로 돌아간다.
+`TCG 허브` 2.0.7는 Android 9 이상에서 카드 도감·바인더·덱·연습·소식·매장을 앱 안에 연다. 앱 아이콘으로 다시 열면 마지막에 직접 열었던 플랫폼으로 돌아간다.
 
 **내 덱 → 새 덱 만들기 → 전체 레시피 캡처**에서 Android 파일 선택기로 레시피를 고른다. 분석 후 후보를 확인하고 원하는 덱으로 저장한다. 덱이나 팩의 **PNG 저장**, 내 덱 목록의 **JSON**·**Excel**을 누르면 Android에서 파일 이름과 저장 폴더를 선택할 수 있다. [캡처 형식과 인식 범위](RECIPE_CAPTURE.md)
 
@@ -31,10 +31,10 @@ A90에 Termux를 설치하고 한 번 연다. 첫 설치에서는 Ubuntu와 번�
 2. **Termux 열기**를 눌러 터미널에 붙여 넣고 Enter를 누른다. 명령은 설치 도우미와 서버 압축 파일을 각각 앱에 고정된 SHA-256과 대조한 뒤 설치한다. 다운로드나 설치가 중단되면 같은 명령으로 다시 진행한다.
 3. 설치 완료 주소가 표시되면 앱으로 돌아와 아래 절차로 제어 폴더를 한 번 연결한다. 이후 서버 시작·중지는 앱에서 할 수 있다. [제어 폴더 연결](#a90-제어-폴더를-처음-연결할-때)
 
-**Termux에서 직접 설치하는 방법**도 있다. A90 브라우저로 사용할 GitHub 릴리스를 열어 같은 태그의 `setup-termux.sh`와 파일의 SHA-256을 확인한다. 아래의 예시는 `a90-2026.11.27.2` 배포본을 휴대폰의 개인 폴더에 받는다. [릴리스 파일](https://github.com/jsb3182/tcg_hub_platform/releases)
+**Termux에서 직접 설치하는 방법**도 있다. A90 브라우저로 사용할 GitHub 릴리스를 열어 같은 태그의 `setup-termux.sh`와 파일의 SHA-256을 확인한다. 아래의 예시는 `a90-2026.11.27.3` 배포본을 휴대폰의 개인 폴더에 받는다. [릴리스 파일](https://github.com/jsb3182/tcg_hub_platform/releases)
 
 ```bash
-tag=a90-2026.11.27.2
+tag=a90-2026.11.27.3
 pkg install -y curl coreutils &&
   curl --proto '=https' --proto-redir '=https' -fL --retry 2 \
     "https://github.com/jsb3182/tcg_hub_platform/releases/download/$tag/setup-termux.sh" \
@@ -45,7 +45,7 @@ pkg install -y curl coreutils &&
 출력된 SHA-256이 릴리스에 표시된 값과 일치하면 아래 명령을 실행한다.
 
 ```bash
-bash "$HOME/setup-termux.sh" --release a90-2026.11.27.2
+bash "$HOME/setup-termux.sh" --release a90-2026.11.27.3
 ```
 
 Termux에서 설치가 끝나면 A90 브라우저로 `http://127.0.0.1:8080/`을 연다. 카드와 소식은 워커가 백그라운드에서 수집한다. `tcgctl media check-catalogs`를 실행하면 여섯 도감에 실제로 저장된 자동 수집 카드 수와 첫 수집 완료 여부를 볼 수 있다. 기존 로컬 배포의 백업은 `$HOME/tcg-backups/`에 보관된다.

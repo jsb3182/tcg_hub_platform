@@ -30,6 +30,8 @@
 
 ### A90 배포와 실기기 측정 기록
 
+Android 2.0.7(코드 17)과 함께 배포한 서버는 도감·바인더·덱·연습에서 같은 언어의 카드명을 사용한다. 카드명·효과·그림의 언어와 출처를 각각 확인할 수 있다. 관리자는 원본과 별도로 누락된 번역을 검수해 저장할 수 있다. [설치 파일과 체크섬](https://github.com/jsb3182/tcg_hub_platform/releases/tag/a90-2026.11.27.3) · [카드 언어와 출처](docs/CARD_SOURCES.md)
+
 Android 2.0.6(코드 16)에서는 갤러리에서 레시피를 가져오고 Android 파일 선택기로 PNG·JSON·Excel을 저장할 수 있다. 기존 설치에서 이 버전으로 올릴 때 APK와 서버를 함께 업데이트한다. [2.0.6 설치 파일과 체크섬](https://github.com/jsb3182/tcg_hub_platform/releases/tag/a90-2026.11.27.2) · [레시피 인식 범위](docs/RECIPE_CAPTURE.md)
 
 Android 앱 2.0.5(코드 15)는 제어 폴더가 연결된 A90에서 앱 아이콘으로 로컬 도감을 다시 연다. 서버 상태 조회가 늦어져도 **카드 플랫폼 열기**를 누를 수 있다. 이미 2.0.4 서버를 운영 중이면 APK만 업데이트하면 된다. USB로 연결한 Windows PC에서는 별도의 루프백 포트로 공개 도감을 조회할 수 있다. [2.0.5 설치 파일과 체크섬](https://github.com/jsb3182/tcg_hub_platform/releases/tag/a90-2026.11.27.1) · [PC에서 USB로 도감 열기](docs/ANDROID.md#windows-pc에서-usb로-a90-도감-열기)
