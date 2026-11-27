@@ -231,7 +231,7 @@ async function copyLink() {
             <small>{{ entries.filter(e=>e.section===s.section).reduce((n,e)=>n+(Number(e.quantity)||0),0) }}{{ $t("장 · 규칙") }} {{ s.minCards ?? 0 }}{{ s.maxCards===s.minCards?'':'~'+(s.maxCards ?? $t("제한 없음")) }}{{ $t("장") }}</small>
           </h2>
           <ul class="lib-list"><li v-for="e in entries.filter(e=>e.section===s.section)" :key="[e.cardId,e.variantId,e.neuronArtwork].join('-')"><div><strong>{{ e.name }}</strong><small>{{ [e.number,e.packName,e.neuronArtwork&&($t('일러스트')+' '+e.neuronArtwork)].filter(Boolean).join(' · ') }}</small></div>
-            <div class="lib-controls"><input :value="e.quantity" @change="updateQuantity(e,$event)" type="number" min="1" max="999" :aria-label="e.name+$t(' 수량')" /><button type="button" class="text-button" :aria-label="e.name+$t(' 빼기')" @click="removeEntry(e)">{{ $t("빼기") }}</button></div>
+            <div class="lib-controls"><input :value="e.quantity" @input="updateQuantity(e,$event)" type="number" min="1" max="999" :aria-label="e.name+$t(' 수량')" /><button type="button" class="text-button" :aria-label="e.name+$t(' 빼기')" @click="removeEntry(e)">{{ $t("빼기") }}</button></div>
           </li></ul></section>
           <label class="lib-check"><input type="checkbox" v-model="shared" />{{ $t("링크가 있는 사람에게 덱 공개") }}</label>
           <div class="lib-actions"><button type="button" class="secondary" @click="save('DRAFT')">{{ $t("임시 저장") }}</button><button type="button" class="primary" @click="save('COMPLETE')">{{ $t("구성 완료 저장") }}</button></div>
