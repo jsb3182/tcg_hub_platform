@@ -16,6 +16,16 @@ public final class PlatformTest {
         require(publicHost.resource("https://tile.openstreetmap.org/13/8752/3882.png"));
         require(publicHost.resource("https://assets.tcgdex.net/ko/test.webp"));
         require(publicHost.resource("https://artworks-jp-n.ygoresources.com/1/2/4041_2.png"));
+        require(publicHost.resource("https://artworks-en-n.ygoresources.com/0/40/41_1.png"));
+        require(publicHost.resource("https://artworks-ko-db.ygoresources.com/0/40/41_1.png"));
+        String riotCard = "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/"
+                + "0123456789abcdef0123456789abcdef01234567-744x1039.png";
+        require(publicHost.resource(riotCard));
+        require(publicHost.resource(riotCard + "?accountingTag=RB"));
+        require(!publicHost.resource(riotCard + "?v=1"));
+        require(!publicHost.resource(riotCard.replace("game_data_live", "other")));
+        require(!publicHost.resource("https://artworks-jp-rn.ygoresources.com/1/51/50_1.png"));
+        require(!publicHost.resource("https://artworks-ko-db.ygoresources.com/0/40/41_1.png?v=1"));
         require(!publicHost.resource("https://artworks-jp-n.ygoresources.com/other.png"));
         require(publicHost.resource("https://www.onepiece-cardgame.kr/fileDownload?downname=OP01.png"));
         for (String blocked : new String[]{"file:///sdcard/test", "content://com.termux.documents/test",
