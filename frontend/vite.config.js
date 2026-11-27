@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     vue(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       manifest: {
         id: '/',
         lang: 'ko',
@@ -22,6 +22,10 @@ export default defineConfig({
         })),
       },
       workbox: {
+        // Existing windows still import chunks from their own release. Activate after the last
+        // one closes so Workbox can safely remove those chunks, including during deck edits.
+        skipWaiting: false,
+        clientsClaim: true,
         importScripts: ['/local-entry-update.js'],
         globPatterns: ['**/*.{html,js,css}'],
         navigateFallback: '/index.html',
