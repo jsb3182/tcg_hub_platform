@@ -36,3 +36,53 @@ test('card sources keep only named wiki details and plain article text',()=>{
   assert.equal(r.textKo,'<em>문서 요약</em>')
   assert.deepEqual(r.details,{traits:['빛 속성'],packs:['수록 상품']})
 })
+
+const reference={language:'ko',title:'카드',url:'https://namu.wiki/w/카드',snapshotDate:'2026-08-29'}
+function renderedLink(game,url){
+  return cardWikiReferences({wikiReferences:[{...reference,verificationUrl:url}]},game)[0].verificationUrl
+}
+
+test('the August 2026 snapshot points to its fixed Archive item',()=>{
+  const item='https://archive.org/details/namuwiki-data-dump-20260829'
+  const render=(snapshotUrl,snapshotDate=reference.snapshotDate)=>
+    cardWikiReferences({wikiReferences:[{...reference,snapshotDate,snapshotUrl}]})[0].snapshotUrl
+  assert.equal(render(item),item)
+  assert.equal(render(item,'2026-08-28'),'')
+  for(const other of [item+'0',item+'?q=else',item+'#files',item.replace('/details/','/download/'),
+    item.replace('archive.org','archive.org.example.invalid'),item.replace('https:','http:')]) assert.equal(render(other),'')
+})
+
+test('each game retains its verified publisher card or product link',()=>{
+  const links={
+    YUGIOH:['https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid=4711&request_locale=ko'],
+    POKEMON:['https://pokemoncard.co.kr/cards/detail/BS2014001001'],
+    ONEPIECE:[
+      'https://www.onepiece-cardgame.kr/cardlist.do?blockIcons=&categories=&colors=&freewords=ST01-001&illustrations=&page=0&series=all&size=20',
+      'https://onepiece-cardgame.kr/cardlist.do?categories=&colors=&freewords=OP01-003&illustrations=&series=all',
+      'https://onepiece-cardgame.kr/products/view.do?brdno=236','https://www.onepiece-cardgame.kr/products/view.do?brdno=481',
+    ],
+    NIVEL:['http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=664'],
+  }
+  for(const [game,urls] of Object.entries(links)){
+    for(const url of urls){
+      assert.equal(renderedLink(game,url),url)
+      for(const other of Object.keys(links).filter(key=>key!==game))assert.equal(renderedLink(other,url),'')
+    }
+  }
+})
+
+test('publisher origins, card identifiers and allowed query fields are checked',()=>{
+  const op='https://www.onepiece-cardgame.kr'
+  for(const url of [
+    op+'/cardlist.do',op+'/cardlist.do?freewords=search',op+'/cardlist.do?freewords=ST01-001&freewords=OP01-003',
+    op+'/cardlist.do?freewords=ST01-001&next=https://example.invalid',op+'/cardlist.do?freewords=ST01-001#other',
+    op+'/products/view.do?brdno=0',op+'/topics/view.do?brdno=236',op+'/products/view.do?brdno=236&next=/',
+    'http://www.onepiece-cardgame.kr/products/view.do?brdno=236','https://www.onepiece-cardgame.kr.example.invalid/products/view.do?brdno=236',
+    'https://visitor@www.onepiece-cardgame.kr/products/view.do?brdno=236',
+  ])assert.equal(renderedLink('ONEPIECE',url),'')
+  const nivel='http://nivelarena.co.kr/bbs/board.php'
+  for(const url of [nivel+'?bo_table=notice&wr_id=664',nivel+'?bo_table=cardlists',
+    nivel+'?bo_table=cardlists&wr_id=664&wr_id=1291',nivel+'?bo_table=cardlists&wr_id=-1',
+    nivel+'?bo_table=cardlists&wr_id=664&url=https://example.invalid',
+    nivel.replace('nivelarena.co.kr','nivelarena.co.kr.example.invalid')+'?bo_table=cardlists&wr_id=664'])assert.equal(renderedLink('NIVEL',url),'')
+})
