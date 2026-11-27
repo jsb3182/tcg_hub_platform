@@ -17,6 +17,8 @@ const atlasTile=(col,language)=>({sheetId:9,col,row:0,url:'/media/fixture.webp',
 const atlasVariants=[{id:71,image:atlasTile(0,'en')},{id:72,image:atlasTile(3,'ja')},{id:73,image:atlasTile(2,null)}]
 function atlasCard(lang){
  return {id:54,name:titles[lang],language:lang,effect:effects[lang],effectLanguage:lang,gameCode:'YUGIOH',number:'AT-54',
+   nameBasis:'PRINTED_NAME',nameReferenceUrl:'https://example.invalid/prints/'+lang+'/name',
+   effectReferenceUrl:'https://example.invalid/prints/'+lang+'/effect',
    imageUrl:null,imageLanguage:null,image:(atlasVariants.find(v=>v.image.language===lang)||atlasVariants[0]).image}
 }
 function artwork(id,lang){
@@ -27,6 +29,8 @@ function artwork(id,lang){
  return {productCode,imageUrl:'/media/fixture.webp',imageLanguage,imageProduct,imageSource}
 }
 const deck={id:70,name:'Fixture deck',gameCode:'ONEPIECE',revision:1,state:'DRAFT',updatedAt:'2026-11-01T00:00:00Z',entries:[],rule:{version:1,sections:[{section:'MAIN',minCards:50,maxCards:50}]}}
+const sourceCard={id:54,name:'수집 카드 QA',number:'QA-54',gameCode:'YUGIOH',status:'PENDING',version:1,editable:false,specs:{}}
+let translation={lang:'ja',name:'保存済み',effect:'',sourceUrl:'https://example.invalid/ja',basis:'TRANSLATED_NAME',version:1},firstSave=true
 try {
  const context=await browser.newContext({viewport:{width:360,height:800},isMobile:true,hasTouch:true,serviceWorkers:'block'})
  // Android System WebView 91 predates these built-ins. Disable them before any app module loads.
@@ -72,9 +76,10 @@ try {
    if(api==='cards')return json({items:[card],total:1})
    if(api==='cards/54')return json({...atlasCard(lang),specs:{},variants:atlasVariants})
    if(api==='cards/55')return json({...atlasCard(lang),id:55,imageUrl:'/media/fixture.webp',imageLanguage:'en',specs:{},variants:atlasVariants})
+   if(api==='cards/56')return json({...atlasCard(lang),id:56,imageUrl:'/media/fixture.webp',imageLanguage:lang,imageBasis:'CARD_REFERENCE',imageSource:'https://example.invalid/prints/'+lang+'/art',effectBasis:lang==='ko'?'REVIEWED_TRANSLATION':'REVIEWED_PRINTING',specs:{names:{[lang]:'Obsolete unreviewed name'}},variants:atlasVariants})
    if(['cards/51','cards/52','cards/53'].includes(api)){
      const id=Number(api.split('/')[1])
-     return json({...card,id,...artwork(id,lang),variants:[],specs:{names:titles,sources:{ja:'https://example.invalid/public-card-ja'}}})
+     return json({...card,id,...artwork(id,lang),effectBasis:'RELATED_PRINTING',variants:[],specs:{names:titles,sources:{ja:'https://example.invalid/public-card-ja'}}})
    }
    if(api.startsWith('shared/decks/')){
      const gameCode=api.split('/').pop()
@@ -83,13 +88,25 @@ try {
      return json({...deck,gameCode,entries:[...entries,{name:'Excluded card',cardId:73,section:'SIDE',quantity:15,curveValue:9}]})
    }
    if(api==='me/binder/stats')return json(codes.map(gameCode=>({gameCode,copies:0,uniqueCards:0})))
-   if(api==='me/binder')return json({items:[{cardId:51,name:card.name,edition:'en',condition:'NM',tradable:true,quantity:2}],total:1,copies:2})
+   if(api==='me/binder')return json({items:[{cardId:51,...card,name:lang==='ja'?'Practice card':card.name,language:lang==='ja'?'en':lang,nameBasis:lang==='ko'?'TRANSLATED_NAME':'SOURCE_LABEL',edition:'en',condition:'NM',tradable:true,quantity:2}],total:1,copies:2})
    if(api==='me/binder/51')return json({quantity:u.searchParams.get('edition')==='ja'?3:2})
    if(api==='me/decks')return json({items:[],total:0})
    if(api==='me/decks/import')return json(deck,201)
    if(api==='me/decks/70')return json(deck)
+   if(api==='me/decks/71')return json({...deck,id:71,gameCode:'YUGIOH',nameJa:'保存済み',nameEn:'Saved deck',
+     entries:[{...atlasCard(lang),cardId:54,section:'MAIN',quantity:2,variantId:72,image:atlasTile(3,'ja')}]})
+   if(api==='me/decks/rules/YUGIOH')return json({...deck.rule,sections:[{section:'MAIN',minCards:40,maxCards:60}]})
+   if(api==='me/decks/needed')return json({items:[{cardId:54,name:titles.en,language:'en',nameBasis:'SOURCE_LABEL',number:'AT-54',owned:0,required:1}],next:null})
    if(api==='me/decks/70/code')return json({code:'TCGHUB1-fixture'})
    if(api==='admin/operations')return json({cardCounts:{ONEPIECE:1},sources:subscriptions})
+   if(api==='admin/catalog/cards')return json({items:[sourceCard],total:1})
+   if(api==='admin/catalog/cards/54')return json(sourceCard)
+   if(api==='admin/catalog/cards/54/translations')return json([translation])
+   if(api==='admin/catalog/cards/54/translations/ja'){
+     if(firstSave){firstSave=false;translation={...translation,name:'別の編集',version:2};return json({},409)}
+     const edit=req.postDataJSON();assert.equal(edit.version,translation.version)
+     translation={...edit,lang:'ja',version:edit.version+1};return json(translation)
+   }
    if(api==='admin/sources/x'){
      const {username,gameCode,storeId}=req.postDataJSON()
      if(username==='invalid_store')return json({},400)
@@ -120,7 +137,8 @@ try {
  assert.equal(await page.locator('html').getAttribute('lang'),'ja')
  assert.equal(await select.inputValue(),'ja')
  assert.equal(await page.locator('.card-facts [lang=ja] a').getAttribute('href'),'https://example.invalid/public-card-ja')
- await visible(page.locator('.detail-section .edition-note').filter({hasText:'英語版'}))
+ await visible(page.locator('.detail-section .card-text-credit').filter({hasText:'効果の言語 · 英語'}))
+ await visible(page.locator('.detail-section .card-text-credit').getByText('別の収録版を参考にした効果',{exact:true}))
  const translations={
    ko:{different:'다른 제품의 그림',same:'그림 수록 제품',unknown:'수록 제품 미확인',edition:'한국어판'},
    en:{different:'Art from another set',same:'Art from set',unknown:'Printing unconfirmed',edition:'English edition'},
@@ -186,6 +204,21 @@ try {
  await position(page.locator('.illustration button.atlas'),'100% 0%')
  await select.selectOption('en');await visible(page.locator('.illustration .localized-card img'))
  await visible(caption.getByText('English edition',{exact:true}))
+ // A general reference has its own citation. A matching, verified local printing wins a tie.
+ await go('/cards/56?lang=ko')
+ await visible(caption.getByRole('link',{name:'카드 참고 이미지'}))
+ assert.equal(await caption.locator('a').getAttribute('href'),'https://example.invalid/prints/ko/art')
+ await select.selectOption('ja')
+ await visible(caption.getByText('日本語版',{exact:true}))
+ assert.equal(await caption.locator('a').count(),0)
+ for(const lang of ['ko','en','ja']){
+   await select.selectOption(lang)
+   await visible(page.locator('.card-facts .card-text-credit a[href$="/'+lang+'/name"]'))
+   await visible(page.locator('.detail-section .card-text-credit a[href$="/'+lang+'/effect"]'))
+   await visible(page.locator('.detail-section .card-text-credit').getByText(({ko:'검수한 번역 효과',en:'Verified printed effect',ja:'確認済みの収録版の効果'})[lang],{exact:true}))
+   assert.equal(await page.getByText('Obsolete unreviewed name',{exact:true}).count(),0)
+   await fits()
+ }
  await go('/?game=YUGIOH&lang=ko')
  await visible(page.locator('.catalog-edition').filter({hasText:'대체 이미지 · 영어판'}))
  await go('/play?game=YUGIOH&lang=ja')
@@ -200,6 +233,8 @@ try {
    const detail=hand.locator('details')
    if(!await detail.evaluate(e=>e.open))await detail.locator('summary').click()
    await visible(detail.locator('p[lang='+lang+']').getByText(effects[lang]))
+   await visible(detail.locator('a[href$="/'+lang+'/effect"]'))
+   await visible(hand.locator('a[href$="/'+lang+'/name"]'))
    await fits()
  }
  for(const [game,size] of Object.entries({YUGIOH:5,POKEMON:7,ONEPIECE:5,WEISS:5,NIVEL:5,RIFTBOUND:4})){
@@ -256,6 +291,14 @@ try {
  await zones.nth(1).getByRole('button',{name:'手札に戻す'}).click()
  await visible(zones.nth(0).getByRole('heading',{name:'手札 · 6'}))
  await go('/binder');await select.selectOption('en');await visible(page.locator('.binder-pockets li'))
+ const owned=page.locator('.binder-pockets li').first()
+ for(const [l,actual,label,credit] of [['ko','ko',titles.ko,'번역 카드명'],['ja','en',titles.en,'カード名の言語 · 英語'],['en','en',titles.en,'Source catalog name']]){
+   await select.selectOption(l)
+   await visible(owned.locator('a[lang='+actual+']').getByText(label,{exact:true}))
+   await visible(owned.locator('.card-text-credit').filter({hasText:credit}))
+   assert.equal(new URL(await owned.locator('a').first().getAttribute('href'),origin).searchParams.get('lang'),l)
+   await fits()
+ }
  await page.locator('.binder-pockets button').click()
  const dialog=page.getByRole('dialog')
  const lotRead=page.waitForResponse(r=>r.url().includes('edition=ja'));await dialog.locator('select').nth(0).selectOption('ja');await lotRead
@@ -265,6 +308,34 @@ try {
  await page.locator('.view-control button').last().click();assert.equal(await page.locator('.binder-pockets').count(),0);await fits()
  await go('/decks');await page.locator('.deck-code summary').click();await page.locator('.deck-code textarea').fill('TCGHUB1-fixture');await page.locator('.deck-code button').click()
  await page.waitForURL('**/decks/70**');await page.locator('.deck-code summary').click();await page.locator('.deck-code button').click();assert.equal(await page.locator('.deck-code textarea').inputValue(),'TCGHUB1-fixture')
+ // A new deck must relabel its real cards before it has a server-side deck ID.
+ await go('/decks/new?game=YUGIOH&lang=ko')
+ await page.getByRole('button',{name:titles.ko+' 추가',exact:true}).click()
+ await page.locator('.lib-controls input').fill('2')
+ for(const lang of ['en','ja','ko']){
+   await select.selectOption(lang)
+   await visible(page.locator('.lib-list strong[lang='+lang+']').getByText(titles[lang],{exact:true}).first())
+   await visible(page.locator('.lib-recipe span[lang='+lang+']').getByText(titles[lang],{exact:true}))
+   assert.equal(await page.locator('.lib-controls input').inputValue(),'2')
+   assert.ok(new URL(page.url()).pathname.endsWith('/new'))
+   await fits()
+ }
+ page.once('dialog',d=>d.accept())
+ await go('/decks/71?lang=ja')
+ const lines=page.locator('.recipe-panel .lib-recipe ul').first()
+ await visible(lines.getByText(titles.ja,{exact:true}))
+ await page.locator('.lib-controls input').fill('3')
+ for(const lang of ['en','ko','ja']){
+   await select.selectOption(lang)
+   await visible(lines.locator('[lang='+lang+']').getByText(titles[lang],{exact:true}))
+   await position(lines.locator('.lib-thumbnail'),'100% 0%')
+   assert.equal(await page.locator('.lib-controls input').inputValue(),'3')
+ }
+ const needs=page.locator('details').filter({has:page.locator('summary').getByText('必要なカード',{exact:true})})
+ await needs.locator('summary').click()
+ await visible(needs.locator('a[lang=en]').getByText(titles.en,{exact:true}))
+ await visible(needs.locator('.card-text-credit').filter({hasText:'カード名の言語 · 英語'}))
+ page.once('dialog',d=>d.accept())
  await go('/stores');await page.locator('.store-select').click();await visible(page.locator('.ol-viewport'))
  const notices=page.locator('.store-events li')
  for(const [lang,heading,tournament,restock,arrival] of [
@@ -285,6 +356,35 @@ try {
    await fits()
  }
  await go('/admin')
+ await select.selectOption('en')
+ await btn('Catalog editor').click()
+ const selectCard=()=>page.locator('.admin-catalog-list button').filter({hasText:'수집 카드 QA'}).click()
+ await selectCard()
+ const trans=page.locator('.card-translations')
+ const expand=async()=>{await trans.locator('summary').click();await visible(trans.locator('fieldset'))}
+ await expand();await trans.getByLabel('Language to edit').selectOption('ja')
+ assert.equal(await trans.getByLabel('Card name',{exact:true}).inputValue(),translation.name)
+ await trans.getByLabel('Card name',{exact:true}).fill('編集中')
+ await trans.getByLabel('Language to edit').selectOption('ko')
+ assert.equal(await trans.getByLabel('Card name',{exact:true}).inputValue(),'')
+ // Drafts survive other languages and selecting a different editor tab.
+ await btn('Back to list').click();await selectCard();await expand()
+ await trans.getByLabel('Language to edit').selectOption('ja')
+ assert.equal(await trans.getByLabel('Card name',{exact:true}).inputValue(),'編集中')
+ await trans.getByRole('button',{name:'Save language entry'}).click()
+ await visible(trans.locator('.translation-conflict').getByText('別の編集',{exact:true}))
+ if(process.env.QA_SCREENSHOTS)await trans.screenshot({path:join(process.env.QA_SCREENSHOTS,'admin-translation-conflict-360.png')})
+ assert.equal(await trans.getByLabel('Card name',{exact:true}).inputValue(),'編集中')
+ await trans.getByRole('button',{name:'Save my edit over this version'}).click()
+ await visible(trans.getByRole('status').getByText('Language entry saved.'))
+ assert.equal(translation.name,'編集中')
+ await trans.getByLabel('Card name',{exact:true}).fill('')
+ await trans.getByRole('button',{name:'Remove this language entry'}).click()
+ await visible(trans.getByRole('status').getByText('Language entry removed.'))
+ assert.equal(translation.version,4);assert.equal(translation.name,'');await fits()
+ await select.selectOption('ja');await visible(trans.getByLabel('編集する言語'))
+ await select.selectOption('ko');await visible(trans.getByLabel('보완할 언어'))
+ await select.selectOption('en')
  const sourcesTab=page.locator('.admin-tabs button').nth(1)
  await sourcesTab.click()
  const sourceForm=page.locator('.x-source')
@@ -316,5 +416,5 @@ try {
  fixtureRole='ROLE_USER';await page.reload();await visible(page.getByRole('alert'))
  assert.equal(await page.locator('.x-source').count(),0)
  assert.deepEqual(errors,[])
- console.log('360px Chrome passed: verified, fallback and unknown Yu-Gi-Oh! atlas editions in catalog and play; six opening-hand sizes and copy-weighted curves; trilingual same, alternate and unknown artwork products and source navigation; six-game catalog; trilingual navigation and original news; One Piece redraw, draw, field and DON!!; differentiated binder writes; deck-code import/export; OSM store/event selection; admin X subscription, store lookup, 400/409, role guard and disabled host actions.')
+ console.log('360px Chrome passed: Korean, English and Japanese in binder, unsaved and edited decks, search, catalog and play; per-field source links, language fallback and reference image priority; pinned variant and edited quantities survive language changes; six deck curves and hands, One Piece play, store events and administrator controls.')
 }finally{await browser.close()}

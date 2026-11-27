@@ -7,6 +7,7 @@ import { useSession } from '../stores/session'
 import { request } from '../api'
 import AdminCatalogEditor from './AdminCatalogEditor.vue'
 import AdminCardImage from './AdminCardImage.vue'
+import AdminCardTranslations from './AdminCardTranslations.vue'
 import '../styles/catalog-admin.css'
 
 const props=defineProps({games:{type:Array,required:true}})
@@ -153,6 +154,7 @@ onBeforeUnmount(()=>{
       <template v-if="editing">
         <AdminCatalogEditor :kind="kind" :item="item" :seed="seed" :games="games" :busy="busy || loadingItem" :notice="notice"
           @saved="saved" @dirty="formDirty=$event" @busy="saving=$event" @dismiss="dismiss" @reload="open(item.id)" @add-card="create" />
+        <AdminCardTranslations v-if="kind==='cards' && item?.id" :key="'translations-'+item.id" :card-id="item.id" :disabled="busy || loadingItem" @busy="saving=$event"/>
         <AdminCardImage v-if="kind==='cards' && item?.status==='PUBLISHED'" :key="item.id" :card="item" :jobs="jobs" :disabled="saving || loadingItem" @job="rememberJob" @busy="uploading=$event" />
         <p v-else-if="kind==='cards' && (!item || item.status==='PENDING')" class="muted">{{ $t("카드를 공개 상태로 저장하면 이미지를 등록할 수 있습니다.") }}</p>
       </template>

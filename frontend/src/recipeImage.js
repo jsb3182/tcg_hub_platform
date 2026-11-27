@@ -3,15 +3,17 @@ import { locale, t } from './i18n'
 import { sectionLabel } from './library'
 import { recipeUiLabels } from './recipeUiLabels'
 import { slots } from './recipeLayout'
+import {cardArtworks,preferredArtwork} from './artwork'
 
 export function rt(key){
   return locale.value==='ko' ? key : recipeUiLabels[key]?.[locale.value==='en'?0:1] ?? t(key)
 }
 function source(entry){
   const tile=entry.image
-  if(tile && mediaPath(tile.url) && Number.isInteger(tile.col) && tile.col>=0 && tile.col<4 &&
-      Number.isInteger(tile.row) && tile.row>=0 && tile.row<3)return {url:mediaPath(tile.url),tile}
-  return {url:artworkUrl(entry.imageUrl)}
+  const src=entry.variantId && tile ? null : entry.imageUrl
+  const choice=preferredArtwork(cardArtworks(src,entry.imageLanguage,[{image:tile}],null,entry.imageBasis),locale.value)
+  if(choice?.style)return {url:mediaPath(tile.url),tile}
+  return {url:artworkUrl(choice?.src)}
 }
 function fitLabel(ctx,text,maxWidth){
   const chars=Array.from(String(text||''))

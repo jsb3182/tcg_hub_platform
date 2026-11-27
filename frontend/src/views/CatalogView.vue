@@ -7,6 +7,7 @@ import { mediaPath, request } from '../api'
 import CardDetails from '../components/CardDetails.vue'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
 import ArtworkCredit from '../components/ArtworkCredit.vue'
+import CardTextCredit from '../components/CardTextCredit.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -146,12 +147,13 @@ function reset() {
         <details v-for="card in result.items" :key="card.id" class="card-row">
           <summary>
             <span class="card-leading">
-              <LibraryThumbnail v-slot="{art}" :image="card.image" :src="card.imageUrl" :language="card.imageLanguage">
-                <span class="card-title"><strong :lang="card.language || locale">{{ card.name || card.originalName || $t("이름 미정") }}</strong>
+              <LibraryThumbnail v-slot="{art}" :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card">
+                <span class="card-title"><strong :lang="card.language || ''">{{ card.name || card.originalName || $t("이름 미정") }}</strong>
+                <CardTextCredit :card="card"/>
                 <small v-if="card.packName">{{ card.packName }}</small>
                 <small class="card-id-mobile">{{ [card.number,card.rarity].filter(Boolean).join(' · ') }}</small>
-                <small v-if="art && art.language!==locale" class="catalog-edition">
-                  <ArtworkCredit :language="art.language" :label-image="!supportedLanguage(art.language)" automatic/>
+                <small v-if="art && (art.language!==locale || art.reference)" class="catalog-edition">
+                  <ArtworkCredit :language="art.language" :label-image="!supportedLanguage(art.language)" :printing="art.reference ? card : null" automatic disable-link/>
                 </small>
                 </span>
               </LibraryThumbnail>

@@ -39,5 +39,5 @@ export function editionName(language) {
 }
 export function localizedCard(card) {
   const names=card?.specs?.names
-  return names?.[locale.value] || card?.name || card?.originalName || t('이름 미정')
+  return card?.name || names?.[locale.value] || card?.originalName || t('이름 미정')
 }

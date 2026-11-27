@@ -1,10 +1,11 @@
 <script setup>
-import { t as uiText, locale, localizedCard, editionName } from '../i18n'
+import { t as uiText, locale, localizedCard, supportedLanguage } from '../i18n'
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { request, sourceLink } from '../api'
 import { cardArtworks, preferredArtwork } from '../artwork'
 import ArtworkCredit from './ArtworkCredit.vue'
+import CardTextCredit from './CardTextCredit.vue'
 import { pt } from '../pack'
 
 const props = defineProps({ cardId: { type: [Number, String], required: true }, lazy: Boolean })
@@ -20,17 +21,22 @@ const choices = computed(() => {
   const data = card.value
   const legacyUrl = data?.specs?.images?.[locale.value]
   return cardArtworks(data?.imageUrl || legacyUrl, data?.imageUrl ? data.imageLanguage : locale.value,
-    data?.variants || [], failedImage.value)
+    data?.variants || [], failedImage.value, data?.imageBasis)
 })
 const current = computed(() => choices.value.find(art => art.key === selectedArt.value) ||
   preferredArtwork(choices.value, locale.value))
 const index = computed(() => choices.value.indexOf(current.value))
-const effect=computed(()=>card.value?.specs?.texts?.[locale.value]||card.value?.effect)
-const titleLanguage = computed(()=>card.value?.specs?.names?.[locale.value] ? locale.value : card.value?.language)
-const effectLanguage = computed(()=>card.value?.specs?.texts?.[locale.value] ? locale.value : card.value?.effectLanguage)
+const effect=computed(()=>card.value?.effect ?? card.value?.specs?.texts?.[locale.value])
+const titleLanguage = computed(()=>card.value?.language ?? (card.value?.specs?.names?.[locale.value] ? locale.value : null))
+const effectLanguage = computed(()=>card.value?.effectLanguage ?? (card.value?.specs?.texts?.[locale.value] ? locale.value : null))
 const title = computed(() => localizedCard(card.value))
-const editionLabels = { ko: "한국어판", en: "영어판", ja: "일본어판" }
-const editions = computed(() => Object.entries(card.value?.specs?.names || {}).filter(([code]) => Object.prototype.hasOwnProperty.call(editionLabels, code)))
+const editionLabels = { ko:'한국어 카드명', en:'영어 카드명', ja:'일본어 카드명' }
+const editions = computed(() => Object.entries(card.value?.specs?.names || {}).filter(([code,name]) => {
+  if(!supportedLanguage(code) || !name)return false
+  if(code!==locale.value)return true
+  // Keep a distinct language-edition source when the primary title has no citation.
+  return name===title.value && !sourceLink(card.value.nameReferenceUrl) && !!sourceLink(card.value.specs?.sources?.[code])
+}))
 const originalName = computed(() => {
   const name = card.value?.originalName
   return name && name !== title.value && !editions.value.some(([, printedName]) => printedName === name) ? name : ''
@@ -44,7 +50,7 @@ const wikiSearch=computed(()=>{
   return query ? 'https://namu.wiki/Search?q='+encodeURIComponent(query) : ''
 })
 const specs = computed(() => Object.entries(card.value?.specs || {}).filter(([key, value]) =>
-    !['xid','pk','ej','names','texts','images','sources'].includes(key) && value != null && value !== '' &&
+    !['xid','pk','ej','names','texts','images','sources','nameBasis','referenceNames','referenceNameUrls','editionEvidence'].includes(key) && value != null && value !== '' &&
     !(card.value?.gameCode==='ONEPIECE' && ['productCode','imageProducts','imageSources'].includes(key))))
 const names = { k: "종류", at: "속성", lv: "레벨", mk: "링크 마커", rc: "종족", sub: "유형", ps: "펜듈럼 스케일", pe: "펜듈럼 효과", atk: "공격력", def: "수비력", or: "읽기", nw: "수록 구분", pr: "출처", pd: "발매 정보", type: "유형", attribute: "속성", level: "레벨", race: "종족" }
 function display(value) {
@@ -80,7 +86,10 @@ onMounted(() => {
   } else load()
 })
 onBeforeUnmount(() => { controller?.abort(); accordion?.removeEventListener('toggle', onToggle) })
-watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) load() })
+watch([() => props.cardId,locale], () => {
+  if (!props.lazy || accordion?.open) load()
+  else { controller?.abort(); card.value=null;loading.value=false;error.value='' }
+})
 </script>
 
 <template>
@@ -95,7 +104,7 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
           <button v-else-if="current?.style" class="atlas" :style="current.style" type="button" :aria-label="title + $t(' 이미지 확대')" @click="dialog.showModal()"></button>
           <span v-else class="atlas missing">{{ $t("이미지 미등록") }}</span>
           <small v-if="current?.src || current?.style" class="edition-note" aria-live="polite">
-            <ArtworkCredit label-image :language="current.language" :automatic="selectedArt===null" :printing="current.src && card.gameCode==='ONEPIECE' ? card : null"/>
+            <ArtworkCredit label-image :language="current.language" :automatic="selectedArt===null" :printing="current.src ? card : null"/>
           </small>
           <div v-if="choices.length > 1" class="variant-nav">
             <button type="button" :disabled="index === 0" @click="selectedArt=choices[index-1].key" :aria-label="$t('이전 일러스트')">‹</button>
@@ -109,15 +118,11 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
           </dialog>
         </div>
         <div class="card-facts">
-          <div v-if="titleLanguage!==locale"><small>{{ $t('표시된 카드명') }}</small><p>{{ editionName(titleLanguage) }}</p></div>
-          <div v-if="card.nameBasis==='RELATED_PRINTING'"><small>{{ pt('다른 인쇄의 참고 카드명') }}</small>
-            <p v-if="sourceLink(card.nameReferenceUrl)"><a :href="sourceLink(card.nameReferenceUrl)" target="_blank" rel="noopener noreferrer">{{ pt('참고 인쇄본') }}</a></p>
-          </div>
-          <small v-else-if="catalogNameBasis[card.nameBasis]">{{ pt(catalogNameBasis[card.nameBasis]) }}</small>
+          <CardTextCredit :card="card" detailed link/>
           <div v-if="originalName"><small>{{ $t("원문명") }}</small><p>{{ originalName }}</p></div>
           <div v-if="card.number"><small>{{ $t("카드 번호") }}</small><p>{{ card.number }}</p></div>
           <div v-for="[code, name] in editions" :key="code">
-            <small>{{ $t(editionLabels[code]) }}</small>
+            <small>{{ pt(editionLabels[code]) }}</small>
             <p :lang="code"><a v-if="sourceLink(card.specs?.sources?.[code])" :href="sourceLink(card.specs.sources[code])" target="_blank" rel="noopener noreferrer">{{ name }}</a><template v-else>{{ name }}</template></p>
           </div>
           <div v-if="card.packName"><small>{{ $t("수록 팩") }}</small><p>{{ card.packName }}</p></div>
@@ -129,13 +134,13 @@ watch([() => props.cardId,locale], () => { if (!props.lazy || accordion?.open) l
           <a v-if="wikiSearch" :href="wikiSearch" target="_blank" rel="noopener noreferrer">{{ pt('나무위키에서 검색') }}</a>
           <div v-if="current?.rarity || card.rarity || card.variants?.[0]?.rarity"><small>{{ $t("레어도") }}</small><p>{{ current?.rarity || card.rarity || card.variants?.[0]?.rarity }}</p></div>
           <div class="lib-actions">
-            <RouterLink :to="{name:'binder',query:{card:card.id}}">{{ $t("바인더에 담기") }}</RouterLink>
-            <RouterLink :to="{name:'deck-new',query:{game:card.gameCode,card:card.id}}">{{ $t("이 카드로 덱 만들기") }}</RouterLink>
-            <RouterLink v-if="lazy" :to="{ name: 'card', params: { id: card.id } }">{{ $t("상세 페이지 열기") }}</RouterLink>
+            <RouterLink :to="{name:'binder',query:{card:card.id,lang:locale}}">{{ $t("바인더에 담기") }}</RouterLink>
+            <RouterLink :to="{name:'deck-new',query:{game:card.gameCode,card:card.id,lang:locale}}">{{ $t("이 카드로 덱 만들기") }}</RouterLink>
+            <RouterLink v-if="lazy" :to="{ name: 'card', params: { id: card.id },query:{lang:locale} }">{{ $t("상세 페이지 열기") }}</RouterLink>
           </div>
         </div>
       </div>
-      <section v-if="effect" class="detail-section"><h3>{{ $t("카드 효과") }}</h3><small v-if="effectLanguage!==locale" class="edition-note">{{ editionName(effectLanguage) }}</small><p :lang="effectLanguage || ''">{{ effect }}</p></section>
+      <section v-if="effect" class="detail-section"><h3>{{ $t("카드 효과") }}</h3><p :lang="effectLanguage || ''">{{ effect }}</p><CardTextCredit :card="card" effect link detailed/></section>
       <dl v-if="specs.length" class="specs"><div v-for="[key, value] in specs" :key="key"><dt>{{ $t(names[key]) || key }}</dt><dd>{{ display(value) }}</dd></div></dl>
     </article>
     <slot v-if="card && article" name="after-card" :card="card" :article="article"/>

@@ -6,6 +6,7 @@ import { gameName, locale } from '../i18n'
 import { countLabel, facetLabel, inclusions, pt } from '../pack'
 import { pngSnapshot } from '../pngSnapshot'
 import CardDetails from '../components/CardDetails.vue'
+import CardTextCredit from '../components/CardTextCredit.vue'
 import PackGallery from '../components/PackGallery.vue'
 import PngExport from '../components/PngExport.vue'
 
@@ -126,7 +127,7 @@ function snapshot(card,article,width){
         <template v-for="(card,i) in shown" :key="card.id">
           <h3 v-if="special && card.product && (i===0 || shown[i-1].product!==card.product)" class="pack-product">{{ card.product }} <small v-if="card.productDate">{{ card.productDate }}</small></h3>
           <details :id="'pack-card-'+card.id" class="pack-row" :open="expanded===card.id" @toggle="toggle(card.id,$event)">
-            <summary><span class="pack-number">{{ card.number }}</span><span class="pack-name"><strong :lang="card.language || ''">{{ card.name }}</strong><small v-if="card.inclusion || card.type">{{ [card.inclusion && facetLabel('inclusion',card.inclusion),card.type && facetLabel('type',card.type)].filter(Boolean).join(' · ') }}</small></span><span v-if="card.rarity" class="pack-rarity">{{ card.rarity }}</span><span class="chevron" aria-hidden="true"></span></summary>
+            <summary><span class="pack-number">{{ card.number }}</span><span class="pack-name"><strong :lang="card.language || ''">{{ card.name }}</strong><CardTextCredit :card="card"/><small v-if="card.inclusion || card.type">{{ [card.inclusion && facetLabel('inclusion',card.inclusion),card.type && facetLabel('type',card.type)].filter(Boolean).join(' · ') }}</small></span><span v-if="card.rarity" class="pack-rarity">{{ card.rarity }}</span><span class="chevron" aria-hidden="true"></span></summary>
             <CardDetails :card-id="card.id" lazy>
               <template #after-card="{card:details,article}"><div class="pack-row-actions">
                 <PngExport choose-width :name="[card.number,details.name].filter(Boolean).join(' ')" :label="pt('카드 정보 PNG')" :render="width=>snapshot(details,article,width)"/>

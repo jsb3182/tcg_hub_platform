@@ -1,11 +1,13 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { locale } from '../i18n'
-import { sectionLabel, stateLabel } from '../library'
+import { deckName,sectionLabel, stateLabel } from '../library'
 import { copies, groupRecipe, slots } from '../recipeLayout'
 import { drawRecipe, rt } from '../recipeImage'
 import DeckAnalysis from './DeckAnalysis.vue'
 import LibraryThumbnail from './LibraryThumbnail.vue'
+import CardTextCredit from './CardTextCredit.vue'
+import ArtworkCredit from './ArtworkCredit.vue'
 import PngExport from './PngExport.vue'
 
 const props=defineProps({deck:{type:Object,required:true},gameName:String})
@@ -13,7 +15,7 @@ const query=ref(''),mode=ref('list'),images=ref(true),excludeSide=ref(false),lim
 const groups=computed(()=>groupRecipe(props.deck))
 const total=computed(()=>groups.value.reduce((n,g)=>n+g.total,0))
 const hasSide=computed(()=>groups.value.some(g=>g.section==='SIDE' && g.total))
-const name=computed(()=>((locale.value==='ja' && props.deck.nameJa) || (locale.value==='en' && props.deck.nameEn) || props.deck.name))
+const name=computed(()=>deckName(props.deck))
 const term=computed(()=>query.value.trim().normalize('NFKC').toLowerCase())
 const shown=computed(()=>groups.value.map(group=>{
   const entries=term.value?group.entries.filter(e=>[e.name,e.number].some(s=>
@@ -45,14 +47,18 @@ function exportImage(){
         <p v-if="group.counts.length" class="recipe-counts" :aria-label="rt('유형별 장수')"><span v-for="[type,n] in group.counts" :key="type">{{ rt(type) }} {{ n }}</span></p>
         <small v-if="!group.entries.length">{{ rt('등록된 카드가 없습니다.') }}</small>
         <ul v-else-if="mode==='list'"><li v-for="e in group.entries" :key="[e.cardId,e.variantId,e.neuronArtwork].join('-')">
-          <div class="lib-print"><LibraryThumbnail v-if="images" :image="e.image" :src="e.image?undefined:e.imageUrl"/>
-            <span>{{ e.name }} <small>{{ e.number }}</small></span></div><b>×{{ e.quantity }}</b>
+          <div class="lib-print"><LibraryThumbnail :image="images?e.image:null" :src="images && !(e.variantId && e.image)?e.imageUrl:undefined" :language="e.imageLanguage" :printing="e" v-slot="{art}">
+            <span><span :lang="e.language || ''">{{ e.name }}</span><CardTextCredit :card="e"/><small>{{ e.number }}</small><small v-if="art?.reference || (art?.src && e.imageBasis==='SELECTED_ARTWORK')"><ArtworkCredit :language="art.language" :printing="e"/></small></span>
+          </LibraryThumbnail></div><b>×{{ e.quantity }}</b>
         </li></ul>
         <template v-else>
           <ul class="recipe-tiles"><li v-for="{entry,index} in group.slots" :key="[entry.cardId,entry.variantId,entry.neuronArtwork,index].join('-')">
             <RouterLink :to="{name:'card',params:{id:entry.cardId},query:{lang:locale}}" :aria-label="entry.name">
-              <span class="recipe-art"><LibraryThumbnail :image="entry.image" :src="entry.image?undefined:entry.imageUrl" v-slot="{art}"><small v-if="!art">{{ rt('이미지 없음') }}</small></LibraryThumbnail></span>
-              <strong>{{ entry.name }}</strong><small>{{ entry.number }}</small>
+              <LibraryThumbnail :image="entry.image" :src="entry.variantId&&entry.image?undefined:entry.imageUrl" :language="entry.imageLanguage" :printing="entry" v-slot="{art}">
+                <span v-if="!art" class="recipe-art"><small>{{ rt('이미지 없음') }}</small></span>
+                <strong :lang="entry.language || ''">{{ entry.name }}</strong><small>{{ entry.number }}</small><small v-if="art?.reference || (art?.src && entry.imageBasis==='SELECTED_ARTWORK')"><ArtworkCredit :printing="entry" :language="art.language" disable-link/></small>
+                <CardTextCredit :card="entry"/>
+              </LibraryThumbnail>
             </RouterLink>
           </li></ul>
           <button v-if="group.slots.length<group.matched" class="secondary recipe-more" type="button" @click="limits[group.section]=(limits[group.section]||72)+72">
@@ -71,4 +77,7 @@ function exportImage(){
 <style scoped>
 .recipe-tools{display:flex;align-items:end;justify-content:space-between;flex-wrap:wrap;gap:8px}.recipe-search{min-width:0;flex:1 1 180px}.recipe-tools .recipe-search{margin:0}.recipe-display,.recipe-export-buttons{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.recipe-switch{display:flex;border:1px solid var(--bd);border-radius:8px;padding:2px;background:var(--sf)}.recipe-switch button{border:0;background:transparent;color:var(--tx);padding:4px 10px;font-size:.86rem;min-height:40px}.recipe-switch button[aria-pressed=true]{background:var(--ac);color:var(--sf);border-radius:6px}
 .recipe-section h4{display:flex;align-items:baseline;gap:6px}.recipe-section h4 span{color:var(--mu);font-size:.85rem;font-weight:500}.recipe-counts{display:flex;flex-wrap:wrap;gap:3px 12px;color:var(--mu);font-size:.78rem;margin:1px 0 8px}.lib-recipe .recipe-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,86px),1fr));gap:10px}.lib-recipe .recipe-tiles li{padding:0;border:0;display:block;min-width:0}.recipe-tiles a{text-decoration:none;color:var(--tx);display:block}.recipe-tiles strong,.recipe-tiles small{display:block;line-height:1.25;font-size:.73rem;overflow-wrap:anywhere}.recipe-tiles strong{margin-top:3px}.recipe-tiles a:hover strong{text-decoration:underline}.recipe-art{display:grid;place-items:center;width:100%;aspect-ratio:300/438;background:var(--sf);border:1px solid var(--bd);border-radius:4px;overflow:hidden}.recipe-art :deep(.lib-thumbnail){display:block;width:100%;height:100%;background-size:400% 300%;object-fit:contain}.recipe-more{margin-top:9px}.recipe-export{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}.recipe-export-buttons{margin-left:auto}.recipe-display .text-button{min-height:44px}
+</style>
+<style scoped>
+.recipe-tiles a :deep(.lib-thumbnail){width:100%;aspect-ratio:300/438;object-fit:contain;display:block;border:1px solid var(--bd);border-radius:4px}
 </style>

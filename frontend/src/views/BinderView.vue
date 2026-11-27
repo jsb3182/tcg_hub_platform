@@ -5,10 +5,12 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { request } from '../api'
 import { useSession } from '../stores/session'
-import { gameName, languages } from '../i18n'
+import { gameName, languages, locale } from '../i18n'
+import CardTextCredit from '../components/CardTextCredit.vue'
 import LibraryAccess from '../components/LibraryAccess.vue'
 import CatalogPicker from '../components/CatalogPicker.vue'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
+import ArtworkCredit from '../components/ArtworkCredit.vue'
 const session = useSession(), route = useRoute()
 const games = ref([]), game = ref(''), page = ref(0), result = ref(null), error = ref(''), notice = ref('')
 const selected = ref(null), quantity = ref(1), busy = ref(false), retry = ref(0)
@@ -42,13 +44,13 @@ watch([()=>session.account?.email,retry],async([email],_,cleanup)=>{
 },{immediate:true})
 let returnFocus
 watch(game, () => { page.value = 0; selected.value = null },{flush:'sync'})
-watch([() => session.account?.email, criteria, page, retry], async ([email], _, cleanup) => {
+watch([() => session.account?.email, criteria, page, retry, locale], async ([email], _, cleanup) => {
   const abort = new AbortController(); cleanup(() => abort.abort())
   error.value = ''; result.value = null
   if (!email) { selected.value = null; return }
   try {
     const [options, list] = await Promise.all([request('/games',{signal:abort.signal}),
-      session.authenticatedRequest('/me/binder?'+criteria.value+'&page='+page.value,{signal:abort.signal})])
+      session.authenticatedRequest('/me/binder?'+criteria.value+'&page='+page.value+'&lang='+locale.value,{signal:abort.signal})])
     if (!abort.signal.aborted) { games.value = options; result.value = list }
   } catch (cause) { if (!abort.signal.aborted) error.value = cause.message }
 }, {immediate:true})
@@ -57,14 +59,14 @@ watch([() => session.account?.email, () => route.query.card], async ([email,card
   if (!email || !/^\d+$/.test(card || '')) return
   const abort = new AbortController(); cleanup(() => abort.abort())
   try {
-    const item = await request('/cards/'+card,{signal:abort.signal})
+    const item = await request('/cards/'+card+'?lang='+locale.value,{signal:abort.signal})
     if (!abort.signal.aborted) await pick(item)
   } catch (cause) { if (!abort.signal.aborted) error.value = cause.message }
 }, {immediate:true})
 async function open(item,count,initial,trigger) {
   if(trigger) returnFocus=trigger
   lotVersion++;lotBusy.value=false;lotReady.value=true;edition.value=item.edition||'und';condition.value=item.condition||'UNSPECIFIED';tradable.value=!!item.tradable
-  selected.value={id:item.cardId ?? item.id, name:item.name, expected:count}
+  selected.value={...item,id:item.cardId ?? item.id,expected:count}
   quantity.value=initial
   formError.value=''
   await nextTick()
@@ -73,6 +75,15 @@ async function open(item,count,initial,trigger) {
   quantityInput.value.focus()
   quantityInput.value.select()
 }
+watch(locale,async(lang,_,cleanup)=>{
+  const item=selected.value
+  if(!item)return
+  const abort=new AbortController();cleanup(()=>abort.abort())
+  try{
+    const card=await request('/cards/'+item.id+'?lang='+lang,{signal:abort.signal})
+    if(!abort.signal.aborted && selected.value===item)Object.assign(item,{name:card.name,language:card.language,nameBasis:card.nameBasis,nameReferenceUrl:card.nameReferenceUrl})
+  }catch(cause){if(!abort.signal.aborted&&selected.value===item)formError.value=cause.message}
+})
 function close() {
   lotVersion++;lotBusy.value=false
   quantityDialog.value?.close()
@@ -131,7 +142,7 @@ async function save() {
     <p v-if="notice" role="status">{{ notice }}</p>
     <dialog v-if="selected" ref="quantityDialog" class="lib-dialog" aria-labelledby="binder-card-title" @cancel.prevent="!busy && close()">
       <form @submit.prevent="save">
-        <h2 id="binder-card-title">{{ selected.name }}</h2>
+        <h2 id="binder-card-title" :lang="selected.language || ''">{{ selected.name }}</h2><CardTextCredit :card="selected"/>
         <label>{{ $t("보유 수량") }}<input ref="quantityInput" v-model.number="quantity" type="number" required min="0" max="9999" inputmode="numeric" autofocus :readonly="busy" aria-describedby="binder-quantity-help" /></label>
         <div class="binder-fields"><label>{{ $t("언어판") }}<select v-model="edition" :disabled="busy" @change="readLot"><option v-for="v in editions" :key="v" :value="v">{{ editionName(v) }}</option></select></label>
          <label>{{ $t("카드 상태") }}<select v-model="condition" :disabled="busy" @change="readLot"><option v-for="v in conditions" :key="v" :value="v">{{ conditionName(v) }}</option></select></label>
@@ -148,7 +159,11 @@ async function save() {
         <p v-if="!result && !error" role="status">{{ $t("바인더를 불러오는 중입니다.") }}</p>
         <p v-else-if="result && !result.items.length">{{ $t("이 바인더에 등록된 카드가 없습니다.") }}</p>
         <ul v-else-if="result" class="lib-list" :class="{'binder-pockets':view==='grid'}"><li v-for="card in result.items" :key="[card.cardId,card.edition,card.condition,card.tradable].join('-')">
-          <div class="lib-print"><LibraryThumbnail :image="card.image" /><div><RouterLink :to="'/cards/'+card.cardId">{{ card.name }}</RouterLink><small>{{ [card.number,card.rarity,editionName(card.edition),conditionName(card.condition),card.tradable?$t('거래 가능'):''].filter(Boolean).join(' · ') }}</small></div></div>
+          <div class="lib-print"><LibraryThumbnail :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card" v-slot="{art}"><div>
+            <RouterLink :to="{name:'card',params:{id:card.cardId},query:{lang:locale}}" :lang="card.language || ''">{{ card.name }}</RouterLink>
+            <CardTextCredit :card="card"/><small>{{ [card.number,card.rarity,editionName(card.edition),conditionName(card.condition),card.tradable?$t('거래 가능'):''].filter(Boolean).join(' · ') }}</small>
+            <small v-if="art?.reference"><ArtworkCredit :language="art.language" :printing="card"/></small>
+          </div></LibraryThumbnail></div>
           <button class="secondary" :disabled="busy" :aria-label="card.name+$t(' 수량 수정')" @click="open(card,card.quantity,card.quantity,$event.currentTarget)">{{ card.quantity }}{{ $t("장 수정") }}</button>
         </li></ul>
         <nav v-if="result?.total>pageSize" class="pagination" :aria-label="$t('바인더 페이지')"><button class="secondary" :disabled="!page" @click="page--">{{ $t("이전") }}</button><span>{{ page+1 }} / {{ Math.ceil(result.total/pageSize) }}</span><button class="secondary" :disabled="(page+1)*pageSize>=result.total" @click="page++">{{ $t("다음") }}</button></nav>

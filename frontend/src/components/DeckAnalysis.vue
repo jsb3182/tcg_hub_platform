@@ -42,8 +42,8 @@ function draw() { hand.value=openingHand(entries.value,size.value) }
       <p v-if="hand.length" role="status" class="measure">{{ $t('손패') }} {{ hand.length }}{{ $t('장') }} · {{ $t('남은 덱') }} {{ total-hand.length }}{{ $t('장') }}</p>
       <ol v-if="hand.length" class="sample-hand">
         <li v-for="(entry,i) in hand" :key="entry.cardId+'-'+i">
-          <LibraryThumbnail :image="entry.image" :src="entry.image ? undefined : entry.imageUrl"/>
-          <span>{{ entry.name }} <small>{{ entry.number }}</small></span>
+          <LibraryThumbnail :image="entry.image" :src="entry.variantId && entry.image ? undefined : entry.imageUrl" :language="entry.imageLanguage" :printing="entry"/>
+          <span><span :lang="entry.language || ''">{{ entry.name }}</span> <small>{{ entry.number }}</small></span>
         </li>
       </ol>
     </section>

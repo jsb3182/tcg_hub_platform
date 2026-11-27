@@ -3,7 +3,7 @@ import {gameName, t} from '../i18n'
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { useRoute,useRouter } from 'vue-router'
 import { useSession } from '../stores/session'
-import { savedDate,stateLabel } from '../library'
+import { deckName,savedDate,stateLabel } from '../library'
 import { practiceLanguage } from '../play'
 import LibraryAccess from '../components/LibraryAccess.vue'
 import DeckNeeds from '../components/DeckNeeds.vue'
@@ -57,8 +57,8 @@ watch([()=>session.account?.email,page,retry,search],([email],_,cleanup)=>{
     <p v-else-if="!result" role="status">{{ $t("덱을 불러오는 중입니다.") }}</p>
     <p v-else-if="!result.total" class="state">{{ search ? $t('조건에 맞는 덱이 없습니다.') : $t("첫 덱을 만들어 도감의 카드를 담아 보세요.") }}</p>
     <ul v-else class="lib-panel lib-list"><li v-for="d in result.items" :key="d.id"><div>
-      <RouterLink :to="{name:'deck-edit',params:{id:d.id},query}">{{ d.name }}</RouterLink>
-      <small v-if="d.nameJa||d.nameEn">{{ [d.nameJa,d.nameEn].filter(Boolean).join(' · ') }}</small>
+      <RouterLink :to="{name:'deck-edit',params:{id:d.id},query}">{{ deckName(d) }}</RouterLink>
+      <small v-if="d.nameJa||d.nameEn">{{ [...new Set([d.name,d.nameJa,d.nameEn])].filter(n=>n && n!==deckName(d)).join(' · ') }}</small>
       <small v-if="d.gameCode==='YUGIOH'">{{ $t('메인') }} {{ d.mainCount }} · {{ $t('엑스트라') }} {{ d.extraCount }} · {{ $t('사이드') }} {{ d.sideCount }}</small>
       <small>{{ gameName(d.gameCode) }} · {{ d.cards }}{{ $t("장 ·") }} {{ stateLabel(d.state) }} · {{ d.shareToken?$t("링크 공유 중"):$t("비공개") }}</small>
       <small>{{ $t("저장") }} {{ savedDate(d.updatedAt) }}</small></div><img v-if="covers[d.id]" :src="covers[d.id]" class="deck-cover" alt=""></li></ul>
