@@ -74,7 +74,7 @@ try {
     await snap('unavailable-en',reader)
     const source=page.locator('.reader-source');await source.locator('summary').click();await source.getByText(raw.effect,{exact:true}).waitFor()
     await page.goto(origin+'/?'+new URLSearchParams({game:'YUGIOH',q:raw.number,lang:'en'}))
-    const result=page.locator('.catalog-list>.card-row').filter({has:page.locator('.card-code').getByText(raw.number,{exact:true})}).first()
+    const result=page.locator('.catalog-list .card-row').filter({has:page.locator('.card-code').getByText(raw.number,{exact:true})}).first()
     await result.locator(':scope>summary').click()
     await result.locator('.card-reader').getByRole('heading',{name:raw.number}).waitFor()
     assert.ok(!(await result.locator(':scope>summary').innerText()).includes(raw.name),'An open catalog row must also use the selected language')

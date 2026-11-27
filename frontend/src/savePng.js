@@ -4,9 +4,9 @@ export function savePng(blob,filename) {
   return saveDocument(blob,filename)
 }
 export async function saveDocument(blob,filename) {
-  const kind={'image/png':'png','application/json':'json','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx'}[blob?.type]
+  const kind={'image/png':'png','application/json':'json','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx','text/calendar':'ics'}[blob?.type]
   if(!(blob instanceof Blob)||!kind||!blob.size)throw Error('file')
-  const name=(filename||'TCG').replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').replace(/\.(png|json|xlsx)$/i,'').slice(0,80)+'.'+kind
+  const name=(filename||'TCG').replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').replace(/\.(png|json|xlsx|ics)$/i,'').slice(0,80)+'.'+kind
   if (!navigator.userAgent.includes('TCGHubPng/1')) {
     const url=URL.createObjectURL(blob)
     const link=document.createElement('a')

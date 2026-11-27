@@ -12,18 +12,20 @@ const codes=['YUGIOH','POKEMON','WEISS','NIVEL','RIFTBOUND','ONEPIECE'],regions=
 const day='2026-11-27', size=24
 const events=Array.from({length:186},(_,i)=>{
   const j=i%codes.length,id=i+1,releaseDate=new Date(Date.UTC(2026,9,20+i)).toISOString().slice(0,10)
-  return {id,gameCode:codes[j],region:regions[j],releaseDate,code:'QA-'+id,productKey:'product-'+id,
+  return {id,gameCode:codes[j],region:regions[j],releaseDate,code:'QA-'+id,productKey:'product-'+id,productType:i%2?'BOOSTER':'STARTER',
     name:'시험 상품 '+id,names:{ko:'시험 상품 '+id,en:'Test set '+id,ja:'テスト商品 '+id},sourceUrl:'https://example.invalid/sets/'+id,
     catalogPackId:i%3?1000+id:null,catalogCount:i%3?1:0}
 })
 const mime={'.html':'text/html;charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png'}
 function fixture(params){
   const period=params.get('period'),game=params.get('game'),region=params.get('region'),q=(params.get('q')||'').toLowerCase(),p=+(params.get('page')||0),packId=+params.get('packId')
-  let rows=events.filter(e=>(!game||e.gameCode===game)&&(!region||e.region===region)&&(!packId||e.catalogPackId===packId)&&
+  const month=params.get('month'),product=params.get('productType'),limit=Number(params.get('size')||size)
+  let rows=events.filter(e=>(!game||game.split(',').includes(e.gameCode))&&(!region||region.split(',').includes(e.region))&&(!packId||e.catalogPackId===packId)&&
+    (!month||e.releaseDate.startsWith(month))&&(!product||product.split(',').includes(e.productType))&&
     (period==='all'||(period==='past'?e.releaseDate<day:e.releaseDate>=day))&&
     (!q||[e.name,e.code,...Object.values(e.names)].some(n=>n.toLowerCase().includes(q))))
   rows.sort((a,b)=>(period==='past'?-1:1)*a.releaseDate.localeCompare(b.releaseDate))
-  return {items:rows.slice(p*size,(p+1)*size),page:p,size,total:rows.length,asOf:day}
+  return {items:rows.slice(p*limit,(p+1)*limit),page:p,size:limit,total:rows.length,asOf:day}
 }
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||undefined})
 let nextPublicRequest=0
@@ -175,6 +177,29 @@ try{
   await page.goto(origin+'/releases?lang=ko')
   await page.locator('.release-summary').waitFor()
   if(process.env.QA_SCREENSHOTS){await mkdir(process.env.QA_SCREENSHOTS,{recursive:true});await page.screenshot({path:resolve(process.env.QA_SCREENSHOTS,'release-calendar-'+width+'.png')})}
+  if(!actual){
+    await page.getByRole('button',{name:'월간 달력'}).click()
+    await page.locator('.month-picker').waitFor()
+    await page.locator('.release-multi summary').click()
+    for(const name of ['유희왕','포켓몬 TCG','북미','영어판','부스터 팩'])
+      await page.locator('.release-multi').getByLabel(name,{exact:true}).check()
+    await page.waitForURL(u=>u.searchParams.get('productType')==='BOOSTER')
+    await page.locator('.release-summary').waitFor()
+    const multiple=new URL(page.url()).searchParams
+    assert.deepEqual(multiple.get('game').split(',').sort(),['POKEMON','YUGIOH'])
+    assert.deepEqual(multiple.get('region').split(',').sort(),['EN','NA'])
+    const active=page.locator('.date-grid button').first();await active.waitFor()
+    const iso=(await active.getAttribute('aria-label')).slice(0,10);await active.click()
+    await page.waitForURL(u=>u.searchParams.get('day')===iso)
+    assert.ok((await rows.locator('time').evaluateAll(items=>items.map(x=>x.dateTime))).every(d=>d===iso))
+    assert.match(await rows.first().locator('time small').innerText(),/^D(?:−|\+|-Day)/)
+    await page.getByRole('button',{name:'이 달의 전체 일정'}).click()
+    await page.getByRole('button',{name:'다음 달'}).click()
+    await page.waitForURL(u=>u.searchParams.get('month')==='2026-12')
+    await page.getByRole('button',{name:'타임라인'}).click()
+    await page.waitForURL(u=>!u.searchParams.has('view') && u.searchParams.get('game')?.includes(','))
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width)
+  }
   assert.deepEqual(errors,[]);console.log(width+'px '+(actual?'Spring':'fixture')+' six games, default, periods, paging, region, locale, source/pack links, search and width passed: '+evidence.join(' / '))
   await ctx.close()
  }

@@ -1,3 +1,4 @@
+import {riftEffectText} from './riftSymbols.js'
 const languages = ['ko', 'en', 'ja']
 
 function text(value) {
@@ -36,6 +37,9 @@ const labels = {
   soul: ['소울', 'Soul', 'ソウル'], hit: ['히트', 'Hit', 'ヒット'], life: ['라이프', 'Life', 'ライフ'],
   energy: ['에너지', 'Energy', 'エネルギー'], might: ['위력', 'Might', '戦闘力'],
   runePower: ['힘', 'Power', 'ルーンのパワー'],
+  stage:['진화 단계','Evolution stage','進化段階'],regulation:['레귤레이션 마크','Regulation mark','レギュレーションマーク'],
+  domain:['영역','Domain','ドメイン'],printingNumber:['인쇄 번호','Printing number','収録番号'],
+  traits:['특징','Traits','特徴'],counter:['카운터','Counter','カウンター'],
 }
 
 function terms(rows) {
@@ -97,6 +101,52 @@ const nivelAttributes = terms([
 ])
 const arrows = {Top:'↑', Bottom:'↓', Left:'←', Right:'→', 'Top-Left':'↖', 'Top-Right':'↗', 'Bottom-Left':'↙', 'Bottom-Right':'↘'}
 
+const pokemonClasses=terms([
+  ['포켓몬','Pokémon','ポケモン'],['트레이너스','Trainer','トレーナーズ'],['에너지','Energy','エネルギー'],
+  ['아이템','Item','グッズ'],['서포트','Supporter','サポート'],['서포터','Supporter','サポート'],['스타디움','Stadium','スタジアム'],
+  ['기본 에너지','Basic Energy','基本エネルギー'],['특수 에너지','Special Energy','特殊エネルギー'],['포켓몬의 도구','Pokémon Tool','ポケモンのどうぐ'],
+  ['복원','Restored','復元'],['레벨업','Level Up','レベルアップ'],['기본','Basic','たね'],['1진화','Stage 1','1進化'],['2진화','Stage 2','2進化'],
+  ['M진화','Mega Evolution','M進化'],['V진화','V Evolution','V進化'],['BREAK진화','BREAK Evolution','BREAK進化'],
+])
+const riftTypes=terms([
+  ['유닛','Unit','ユニット'],['전설','Legend','レジェンド'],['룬','Rune','ルーン'],['도구','Gear','装備'],
+  ['주문','Spell','スペル'],['전장','Battlefield','バトルフィールド'],['토큰','Token','トークン'],
+])
+const riftDomains=terms([
+  ['분노','Fury','Fury'],['평정','Calm','Calm'],['정신','Mind','Mind'],['신체','Body','Body'],['혼돈','Chaos','Chaos'],['질서','Order','Order'],
+])
+const traitTerms={
+  YUGIOH:{type:ygoType,attribute:ygoAttribute,race:ygoRace},POKEMON:{type:pokemonClasses,stage:pokemonClasses,energyType:pokemonTypes},
+  ONEPIECE:{type:onepieceTypes,color:colors},WEISS:{type:weissTypes,color:colors},
+  NIVEL:{type:nivelTypes,attribute:nivelAttributes},RIFTBOUND:{type:riftTypes,domain:riftDomains},
+}
+export function traitLabel(game,key,lang){
+  const field=game==='RIFTBOUND' && key==='power' ? 'runePower' : key
+  return Object.prototype.hasOwnProperty.call(labels,field) ? labels[field][languages.indexOf(lang)] : null
+}
+export function traitValueLabel(game,key,raw,lang) {
+  if(!traitLabel(game,key,lang) || (typeof raw!=='string' && typeof raw!=='number'))return null
+  const value=String(raw).trim(),i=languages.indexOf(lang)
+  if(!value)return null
+  if(game==='ONEPIECE' && ['attribute','traits'].includes(key))
+    return lang==='ko' && value.length<=160 && /[가-힣A-Za-z0-9]/u.test(value) && !/[<>\[\]\u0000-\u001f]/u.test(value) ? value : null
+  if(key==='printingNumber')return /^[A-Za-z0-9][A-Za-z0-9 .★☆/#-]*$/.test(value)?value:null
+  if(key==='regulation'){
+    if(value.toLowerCase()==='none')return ['표기 없음','Unmarked','表記なし'][i]
+    return /^[a-z]{1,3}$/i.test(value)?value.toUpperCase():null
+  }
+  const dict=traitTerms[game]?.[key]
+  if(dict){
+    const translated=dict.get((game==='ONEPIECE'&&value.toLowerCase()==='don'?'don!!':value.toLowerCase()))?.[i]
+    if(translated)return translated
+    if(lang==='ko' && /[가-힣]/.test(value) && !/[<>\[\]]/.test(value))return value
+    if(lang==='en' && /^[a-zA-Z][a-zA-Z '!-]*$/.test(value))return value
+    if(lang==='ja' && /[ぁ-ヿ]/.test(value) && !/[<>\[\]]/.test(value))return value
+    return null
+  }
+  return numeric(value) ?? (value==='?'?'?':null)
+}
+
 function numeric(value) {
   if (typeof value === 'number') return Number.isSafeInteger(value) && value >= 0 ? String(value) : null
   return typeof value === 'string' && /^\d{1,8}$/.test(value.trim()) ? value.trim() : null
@@ -139,6 +189,8 @@ function factsFor(card, lang) {
     }
     case 'POKEMON':
       add('hp', numeric(specs.hp))
+      for(const [key,raw] of [['type',specs.card_type],['stage',specs.stage],['regulation',specs.regulation]])
+        add(key,traitValueLabel('POKEMON',key,raw,lang))
       add('energyType', list(pokemonTypes, specs.types))
       add('retreat', numeric(specs.retreat))
       add('pokedex', numeric(specs.pokedex_number))
@@ -155,12 +207,24 @@ function factsFor(card, lang) {
       add('power', numeric(specs['파워']))
       add('hit', numeric(specs['히트']))
       break
-    case 'ONEPIECE':
+    case 'ONEPIECE': {
       add('type', word(onepieceTypes, specs.type === 'don' ? 'DON!!' : specs.type))
       add('color', list(colors, specs.colors))
-      for (const key of ['cost', 'power', 'life']) add(key, numeric(specs[key]))
+      const regional = lang==='ko' ? specs.regionalFacts?.ko : null
+      const sameProduct = regional?.productCode && regional.productCode===specs.productCode
+      if(regional) {
+        add('attribute',traitValueLabel('ONEPIECE','attribute',regional.attribute,lang))
+        if(Array.isArray(regional.traits)) {
+          const traits=regional.traits.map(value=>traitValueLabel('ONEPIECE','traits',value,lang)).filter(Boolean)
+          add('traits',traits.join(' · '))
+        }
+      }
+      for (const key of ['cost', 'power', 'life','counter']) add(key, (sameProduct ? numeric(regional[key]) : null) ?? numeric(specs[key]))
       break
+    }
     case 'RIFTBOUND':
+      add('type',traitValueLabel('RIFTBOUND','type',specs.type,lang))
+      add('domain',list(riftDomains,specs.domains))
       add('energy', numeric(specs.energy))
       add('might', numeric(specs.might))
       add('runePower', numeric(specs.power))
@@ -173,10 +237,11 @@ export function cardDetailLocale(card, lang) {
   const valid = languages.includes(lang)
   const title = valid && editionField(card, lang, 'name', card?.nameLanguage ?? card?.language, 'names')
   const rules = valid && editionField(card, lang, 'effect', card?.effectLanguage, 'texts')
+  const effect=card?.gameCode==='RIFTBOUND'?riftEffectText(rules?.value,lang):rules?.value
   const hasTile = Array.isArray(card?.variants) && card.variants.some(v => v?.image?.language === lang && text(v.image.url))
   const hasImage = (card?.imageLanguage === lang && text(card?.imageUrl)) || hasTile || text(card?.specs?.images?.[lang])
   return {
-    name: title?.value ?? null, effect: rules?.value ?? null,
+    name: title?.value ?? null, effect: effect ?? null, symbolOriginal: effect!==rules?.value ? rules.value : null,
     nameLanguage: title?.value ? lang : null, effectLanguage: rules?.value ? lang : null,
     nameBasis: title?.basis ?? null, effectBasis: rules?.basis ?? null,
     nameReferenceUrl: title?.reference ?? null, effectReferenceUrl: rules?.reference ?? null,

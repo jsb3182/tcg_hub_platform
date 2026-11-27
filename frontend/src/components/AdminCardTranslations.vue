@@ -2,6 +2,7 @@
 import {computed,onBeforeUnmount,ref,watch} from 'vue'
 import {languages,locale} from '../i18n'
 import {sourceLink} from '../api'
+import {namuArticleUrl} from '../wikiReferences'
 import {pt} from '../pack'
 import {useSession} from '../stores/session'
 import {useTranslationDrafts} from '../stores/translationDrafts'
@@ -16,6 +17,7 @@ const key=computed(()=>props.cardId+'/'+lang.value)
 const blank={name:'',effect:'',sourceUrl:'',basis:'TRANSLATED_NAME',version:0}
 const record=computed(()=>rows.value.find(r=>r.lang===lang.value)||blank)
 const form=computed(()=>drafts.get(key.value)||record.value)
+const articleUrl=computed(()=>namuArticleUrl(form.value.sourceUrl.trim()))
 const dirty=computed(()=>drafts.has(key.value))
 const conflict=computed(()=>ready.value && dirty.value && record.value.version!==form.value.version)
 const emptyText=computed(()=>!form.value.name.trim() && !form.value.effect.trim())
@@ -46,6 +48,7 @@ async function save(){
   const original=form.value
   const name=original.name.trim(),effect=original.effect.trim(),sourceUrl=original.sourceUrl.trim()
   if((name || effect) && !sourceLink(sourceUrl)){error.value=pt('확인한 원문 URL을 입력하세요.');return}
+  if((name || effect) && articleUrl.value && original.basis==='PRINTED_NAME'){error.value=pt('인쇄본 원문에는 이 게임의 공식 사이트 URL을 입력하세요.');return}
   error.value='';notice.value='';saving.value=true;emit('busy',true)
   try{
     const result=await session.adminRequest(endpoint.value+'/'+lang.value,{method:'PUT',body:{
@@ -76,6 +79,7 @@ async function save(){
         </select></label>
         <label>{{ pt('확인한 원문 URL') }}<input type="url" :value="form.sourceUrl" maxlength="2048" inputmode="url" placeholder="https://…" :required="!!(form.name.trim() || form.effect.trim())" @input="edit('sourceUrl',$event.target.value)"></label>
         <small v-if="form.basis==='PRINTED_NAME'" class="muted">{{ pt('인쇄본 원문에는 이 게임의 공식 사이트 URL을 입력하세요.') }}</small>
+        <a v-if="articleUrl" :href="articleUrl" target="_blank" rel="noopener noreferrer">{{ pt('나무위키 문서 열기') }}</a>
         <div v-if="conflict" class="translation-conflict">
           <strong>{{ pt('현재 서버 값') }}</strong>
           <p v-if="record.name" :lang="lang">{{ record.name }}</p><p v-if="record.effect" :lang="lang">{{ record.effect }}</p>

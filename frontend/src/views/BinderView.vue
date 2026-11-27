@@ -159,7 +159,7 @@ async function save() {
         <p v-if="!result && !error" role="status">{{ $t("바인더를 불러오는 중입니다.") }}</p>
         <p v-else-if="result && !result.items.length">{{ $t("이 바인더에 등록된 카드가 없습니다.") }}</p>
         <ul v-else-if="result" class="lib-list" :class="{'binder-pockets':view==='grid'}"><li v-for="card in result.items" :key="[card.cardId,card.edition,card.condition,card.tradable].join('-')">
-          <div class="lib-print"><LibraryThumbnail :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card" v-slot="{art}"><div>
+          <div class="lib-print"><LibraryThumbnail placeholder :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card" v-slot="{art}"><div>
             <RouterLink :to="{name:'card',params:{id:card.cardId},query:{lang:locale}}" :lang="card.language || ''">{{ card.name }}</RouterLink>
             <CardTextCredit :card="card"/><small>{{ [card.number,card.rarity,editionName(card.edition),conditionName(card.condition),card.tradable?$t('거래 가능'):''].filter(Boolean).join(' · ') }}</small>
             <small v-if="art?.reference"><ArtworkCredit :language="art.language" :printing="card"/></small>
@@ -180,5 +180,5 @@ async function save() {
 .view-control{display:flex;gap:.25rem;margin:.7rem 0}.view-control [aria-pressed=true]{border-color:var(--ac);color:var(--ac)}
 .binder-pockets {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--bd);border:1px solid var(--bd)}
 .binder-pockets>li {display:flex;align-items:stretch;justify-content:space-between;flex-direction:column;min-width:0;background:var(--sf);padding:.4rem;overflow-wrap:anywhere}
-.binder-pockets .lib-print {display:flex;flex-direction:column;align-items:start}.binder-pockets .lib-thumbnail{width:100%;height:auto;aspect-ratio:300/438}
+.binder-pockets .lib-print {display:flex;flex-direction:column;align-items:start}.binder-pockets :deep(.lib-thumbnail){align-self:center;flex:none;width:min(100%,clamp(88px,24vw,152px));height:auto;aspect-ratio:300/438}
 </style>

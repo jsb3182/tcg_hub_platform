@@ -1,3 +1,7 @@
+export function savedDeckPicture(value){
+  return typeof value==='string' && value.startsWith('data:image/jpeg;base64,') ? value : ''
+}
+
 export async function prepareDeckPicture(file,slot) {
   if(!file || !['image/jpeg','image/png','image/webp'].includes(file.type) || file.size>10*1024*1024) throw Error('image')
   const url=URL.createObjectURL(file)

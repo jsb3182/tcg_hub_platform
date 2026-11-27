@@ -15,10 +15,12 @@ assert.equal(new URL(origin).hostname,'127.0.0.1')
 const mime={'.html':'text/html;charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'}
 const tile=(i)=>({url:'/media/sheets/pack-qa.png',sheetId:9,col:i%4,row:0,cellWidth:40,cellHeight:58,language:i===0?'ko':'ja'})
 const fakeCards=Array.from({length:45},(_,i)=>({id:i+1,number:'QA-'+String(i+1).padStart(3,'0'),name:'합성 카드 '+(i+1),gameCode:'YUGIOH',language:'ko',
-  inclusion:i<33?'NEW':'REPRINT',type:i%2?'마법':'몬스터',rarity:i%2?'R':'UR',rarities:[i%2?'R':'UR'],image:tile(i),effect:'검증용 카드 효과',effectLanguage:'ko'}))
+  inclusion:i<33?'NEW':'REPRINT',type:i%2?'마법':'몬스터',rarity:i%2?'R':'UR',rarities:[i%2?'R':'UR'],image:tile(i),
+  imageUrl:'https://publisher.example.invalid/card.png',imageLanguage:'ko',effect:'검증용 카드 효과',effectLanguage:'ko'}))
 const pack={id:7,code:'DBGV',name:'테스트 팩',gameCode:'YUGIOH',metadata:{jp:'2026-09-05',kr:'2026-12'},total:45,newCount:33,reprintCount:12,newArtCount:0,group:'SCHEDULE',page:0,size:200,hasMore:false,cards:fakeCards}
+const largePack=Array.from({length:221},(_,i)=>({...fakeCards[i%fakeCards.length],id:1001+i,number:'BIG-'+(i+1)}))
 const entries=[['MAIN',3,'Effect Monster'],['MAIN',2,'Spell Card'],['EXTRA',1,'Fusion Effect Monster'],['SIDE',1,'Trap Card']].map(([section,quantity,type],i)=>({
-  section,quantity,type,name:'Recipe '+(i+1),number:'DECK-0'+i,cardId:40+i,image:tile(i),
+  section,quantity,type,name:'Recipe '+(i+1),number:'DECK-0'+i,cardId:40+i,image:tile(i),imageUrl:'https://publisher.example.invalid/card.png',imageLanguage:'ko',
 }))
 const deck={id:18,gameCode:'YUGIOH',name:'테스트 덱',nameEn:'Fixture deck',nameJa:'テストデッキ',state:'DRAFT',
   entries,rule:{sections:['MAIN','EXTRA','SIDE'].map(section=>({section}))}}
@@ -39,7 +41,7 @@ try{
     }
     await ctx.route('**/*',async route=>{
       const url=new URL(route.request().url())
-      if(url.origin!==origin)return route.abort()
+      if(url.origin!==origin){if(url.hostname==='publisher.example.invalid')errors.push('Remote card image requested');return route.abort()}
       const path=url.pathname
       const json=(obj,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(obj)})
       if(path==='/media/sheets/pack-qa.png')return route.fulfill({contentType:'image/png',body:Buffer.from(sheet,'base64')})
@@ -49,9 +51,13 @@ try{
       if(path==='/api/v1/auth/refresh')return json({},401)
       if(path==='/api/v1/packs/7')return json(pack)
       if(path==='/api/v1/packs/8')return json(announced)
+      if(path==='/api/v1/packs/9'){
+        const page=Number(url.searchParams.get('page')||0)
+        return json({...pack,id:9,page,total:largePack.length,hasMore:page===0,cards:largePack.slice(page*200,(page+1)*200)})
+      }
       if(path==='/api/v1/releases')return json([pack,announced])
       if(path==='/api/v1/release-calendar')return json({items:[],total:0,page:0,size:24,asOf:'2026-11-27'})
-      if(path.match(/^\/api\/v1\/cards\/\d+$/)){const c=fakeCards.find(x=>x.id===Number(path.split('/').pop()));return json({...c,
+      if(path.match(/^\/api\/v1\/cards\/\d+$/)){const id=Number(path.split('/').pop()),c=fakeCards.find(x=>x.id===id)||largePack.find(x=>x.id===id);return json({...c,
         nameBasis:'RELATED_PRINTING',nameReferenceUrl:'https://example.invalid/references/name',
         specs:{k:c.type,atk:1000},variants:[{id:c.id,rarity:c.rarity,image:c.image}]})}
       if(path.startsWith('/api/'))return json([])
@@ -136,6 +142,17 @@ try{
     await page.locator('.pack-back').click()
     await page.waitForURL(u=>u.pathname==='/releases' && u.hash==='#release-PREMIERE')
     await visible(page.locator('#release-PREMIERE').getByText('메이즈 오브 머신즈',{exact:true}))
+    if(!actual){
+      await page.goto(origin+'/releases/9?lang=ko')
+      const numbers=[]
+      for(let i=0;i<Math.ceil(largePack.length/30);i++){
+        await page.waitForFunction(n=>document.querySelector('.pack-row .pack-number')?.textContent==='BIG-'+n,i*30+1)
+        await visible(page.locator('.pack-row[open] .card-reader'))
+        numbers.push(...await page.locator('.pack-row .pack-number').allTextContents())
+        if(i<7)await page.locator('.pack-page>nav.pagination').getByRole('button',{name:'다음'}).click()
+      }
+      assert.deepEqual(numbers,largePack.map(c=>c.number),'every card must appear exactly once across the 200-card API boundary')
+    }
     await page.goto(origin+'/shared/decks/fixture')
     const recipe=page.locator('.recipe-panel');await visible(recipe.locator('.lib-recipe'))
     assert.equal(await recipe.locator('.lib-recipe .lib-thumbnail').count(),4)
@@ -148,7 +165,7 @@ try{
     await recipe.getByRole('checkbox',{name:'이미지에 사이드 제외'}).check()
     await recipe.getByRole('button',{name:'이미지 미리보기'}).click()
     const minus=await save(preview.getByRole('button',{name:'PNG 파일 다운로드'}))
-    assert.ok(minus.readUInt32BE(20)<whole.readUInt32BE(20));assert.equal(minus.readUInt32BE(16),960)
+    assert.ok(minus.readUInt32BE(20)<whole.readUInt32BE(20));assert.equal(minus.readUInt32BE(16),1200)
     await preview.getByRole('button',{name:'닫기'}).click()
     await page.locator('.locale-switch select').selectOption('ja');await visible(recipe.getByRole('heading',{name:'テストデッキ'}))
     await page.locator('.locale-switch select').selectOption('en');await visible(recipe.getByRole('heading',{name:'Fixture deck'}))

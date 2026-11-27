@@ -61,6 +61,12 @@ test('same-CID editions remain distinct and a nonexistent official painting neve
   assert.equal(both.candidates[0].variantId,123)
   assert.equal(both.candidates[1].variantId,null)
   assert.equal(both.candidates[1].neuronArtwork,1)
+  const waiting=resolveMatch({local:[],neuron:[{konamiId:'4041',neuronArtwork:3,score:.96}]},[],new Map([
+    ['4041',{cardId:18,konamiId:'4041',artworks:{3:null}}],
+  ]))
+  assert.equal(waiting.confidence,'high')
+  assert.equal(waiting.candidates[0].neuronArtwork,3)
+  assert.equal(waiting.candidates[0].imageUrl,null)
   const missing = resolveMatch({local:[],neuron:[{konamiId:'900',neuronArtwork:1,score:.99}]},[],map)
   assert.deepEqual(missing,{confidence:'unmatched',candidates:[]})
   const ambiguous = resolveMatch({local:[{position:0,score:.80}],neuron:[{konamiId:'900',neuronArtwork:1,score:.89}]},refs,map)

@@ -1,6 +1,23 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cardDetailLocale } from '../src/cardDetailLocale.js'
+import { cardDetailLocale, traitValueLabel } from '../src/cardDetailLocale.js'
+import {riftEffectText} from '../src/riftSymbols.js'
+
+test('known Riot symbols use the selected field language and preserve the original rules',()=>{
+  const raw=':rb_energy_1::rb_rune_fury: / :rb_energy_0: / :rb_might: / :rb_exhaust:'
+  const cards={ko:'[에너지 1][분노 룬] / [에너지 0] / [위력] / [탈진]',en:'[Energy 1][Fury Rune] / [Energy 0] / [Might] / [Exhaust]',ja:'[エネルギー 1][Furyのルーン] / [エネルギー 0] / [戦闘力] / [エグゾースト]'}
+  for(const [lang,formatted] of Object.entries(cards)){
+    const card={gameCode:'RIFTBOUND',effectLanguage:lang,effect:raw}
+    assert.equal(riftEffectText(raw,lang),formatted)
+    assert.equal(cardDetailLocale(card,lang).effect,formatted)
+    assert.equal(cardDetailLocale(card,lang).symbolOriginal,raw)
+    assert.equal(cardDetailLocale({...card,gameCode:'POKEMON'},lang).effect,raw)
+    assert.equal(riftEffectText(':rb_unknown_x::rb_rune_rainbow::rb_energy_4096:',lang),':rb_unknown_x::rb_rune_rainbow::rb_energy_4096:')
+  }
+  const names=['분노','평정','정신','신체','혼돈','질서']
+  for(const [n,k] of ['fury','calm','mind','body','chaos','order'].entries())assert.equal(riftEffectText(':rb_rune_'+k+':','ko'),'['+names[n]+' 룬]')
+  assert.equal(riftEffectText(raw,'zh'),raw)
+})
 
 function facts(card, lang) {
   return Object.fromEntries(cardDetailLocale(card, lang).facts.map(f => [f.key, [f.label, f.value]]))
@@ -79,7 +96,7 @@ test('only curated structural values are exposed for all six publishers', () => 
   assert.deepEqual(facts(ws,'ja').type, ['カード種類','キャラ'])
   assert.deepEqual(facts(ws,'ko').level, ['레벨','0'])
   const rift={gameCode:'RIFTBOUND',specs:{type:'Unit',energy:4,power:1,might:4,domains:['Fury'],editionEvidence:{token:'omit'}}}
-  assert.deepEqual(facts(rift,'ko'),{energy:['에너지','4'],might:['위력','4'],runePower:['힘','1']})
+  assert.deepEqual(facts(rift,'ko'),{type:['종류','유닛'],domain:['영역','분노'],energy:['에너지','4'],might:['위력','4'],runePower:['힘','1']})
   const op={gameCode:'ONEPIECE',specs:{type:'leader',colors:['red','green'],life:'4',cost:'',power:5000,cleanName:'omit'}}
   assert.deepEqual(facts(op,'ja'), {type:['カード種類','リーダー'],color:['色','赤 / 緑'],power:['パワー','5000'],life:['ライフ','4']})
   const nivel={gameCode:'NIVEL',specs:{language:'ko',type:'아이템',attribute:'화염',코스트:'2',파워:'-',히트:'-',키워드:'어태커',IP:'제목'}}
@@ -97,4 +114,21 @@ test('unknown language, arbitrary nested specs and unclassified images remain un
     assert.deepEqual(detail.facts,[])
     assert.ok(Object.entries(detail).every(([k,v])=>k==='facts' || v===null))
   }
+})
+
+test('official Korean One Piece traits stay with their language and numbers with their product',()=>{
+  const ko={productCode:'OP-15',attribute:'참격',traits:['이스트 블루','클리크 해적단','CP9'],life:4,power:5000,counter:0}
+  const card={gameCode:'ONEPIECE',specs:{productCode:'OP-15',type:'leader',life:'5',regionalFacts:{ko}}}
+  assert.deepEqual(facts(card,'ko').traits,['특징','이스트 블루 · 클리크 해적단 · CP9'])
+  assert.deepEqual(facts(card,'ko').attribute,['속성','참격'])
+  assert.deepEqual(facts(card,'ko').counter,['카운터','0'])
+  assert.deepEqual(facts(card,'ko').life,['라이프','4'])
+  for(const lang of ['en','ja']){
+    assert.equal(facts(card,lang).attribute,undefined)
+    assert.equal(facts(card,lang).traits,undefined)
+    assert.equal(traitValueLabel('ONEPIECE','traits','이스트 블루',lang),null)
+  }
+  card.specs.productCode='ST-99'
+  assert.deepEqual(facts(card,'ko').life,['라이프','5'])
+  assert.equal(facts(card,'ko').counter,undefined)
 })

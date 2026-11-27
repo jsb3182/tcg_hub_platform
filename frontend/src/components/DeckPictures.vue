@@ -2,7 +2,7 @@
 import {ref,watch,onBeforeUnmount} from 'vue'
 import {t} from '../i18n'
 import {useSession} from '../stores/session'
-import {prepareDeckPicture} from '../deckPictures'
+import {prepareDeckPicture,savedDeckPicture} from '../deckPictures'
 const props=defineProps({id:[Number,String],pictures:Object,disabled:Boolean})
 const emit=defineEmits(['pick'])
 const session=useSession(), saved=ref({}), previews=ref({}),message=ref(''),working=ref(false)
@@ -17,7 +17,7 @@ async function load(e){
   const id=props.id
   try{
     const images=await Promise.all(fields.map(async ([slot])=>[slot,(await session.authenticatedRequest('/me/decks/'+id+'/decoration/'+slot)).image]))
-    if(active&&props.id===id)saved.value=Object.fromEntries(images)
+    if(active&&props.id===id)saved.value=Object.fromEntries(images.map(([key,value])=>[key,savedDeckPicture(value)]))
   }catch(cause){if(active)message.value=cause.message}
 }
 async function choose(slot,e){

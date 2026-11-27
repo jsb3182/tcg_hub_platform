@@ -6,13 +6,14 @@ import { gameName, locale } from '../i18n'
 import { countLabel, facetLabel, inclusions, packTitle, pt, regionName, shortRarity } from '../pack'
 import CardDetails from '../components/CardDetails.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
+import RiftEffectSummary from '../components/RiftEffectSummary.vue'
 import PackGallery from '../components/PackGallery.vue'
 import LegacyPackNavigation from '../components/LegacyPackNavigation.vue'
 
 const route=useRoute()
 const pack=ref(null), cards=ref([]), expanded=ref(null), page=ref(0), packPage=ref(0)
 const loading=ref(true), moreBusy=ref(false), hasMore=ref(false), error=ref(''), moreError=ref(''), retry=ref(0)
-const q=ref(''), inclusion=ref(''), listTop=ref()
+const q=ref(''), inclusion=ref(''), sort=ref('source'),listTop=ref()
 const releaseEvents=ref([]), releasePage=ref(0), releaseTotal=ref(0), releaseError=ref(false), releaseBusy=ref(false), releaseRetry=ref(0)
 const pageSize=30
 const countFields={NEW:'newCount',REPRINT:'reprintCount',NEW_ART:'newArtCount'}
@@ -29,8 +30,21 @@ const showInclusions=computed(()=>pack.value?.gameCode==='YUGIOH'||Object.values
 const otherEvents=computed(()=>releaseEvents.value.filter(e=>!(e.region==='NA' && e.releaseDate===pack.value?.officialProduct?.launchDate && e.sourceUrl===pack.value?.officialProduct?.sourceUrl)))
 const backTo=computed(()=>{
   const {section,...query}=route.query
-  const hash=['SCHEDULE','DISTRIBUTION','PREMIERE','ARCHIVE'].includes(section)?'#release-'+section:''
+  const hash=section==='catalog-packs'?'#catalog-packs':['SCHEDULE','DISTRIBUTION','PREMIERE','ARCHIVE'].includes(section)?'#release-'+section:''
   return {name:'releases',query,hash}
+})
+const announced=computed(()=>{
+  const n=pack.value?.officialProduct?.setSize ?? pack.value?.metadata?.cnt
+  return /^\d{1,5}$/.test(String(n)) && Number(n)>0?Number(n):null
+})
+const breakdown=computed(()=>{
+  const groups=[new Map(),new Map()]
+  for(const card of cards.value){
+    const rarities=card.rarities?.length?card.rarities:[card.rarity]
+    for(const val of new Set(rarities.filter(Boolean)))groups[0].set(val,(groups[0].get(val)||0)+1)
+    if(card.type)groups[1].set(card.type,(groups[1].get(card.type)||0)+1)
+  }
+  return groups.map(group=>[...group].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]))))
 })
 let controller, loadToEnd=false
 watch(()=>route.params.id,()=>{releasePage.value=0;releaseEvents.value=[];releaseTotal.value=0},{flush:'sync'})
@@ -47,7 +61,7 @@ watch([()=>route.params.id,releasePage,releaseRetry],async([id,n],_,cleanup)=>{
   finally{if(!abort.signal.aborted)releaseBusy.value=false}
 },{immediate:true})
 function apiPage(n,signal){
-  return request('/packs/'+encodeURIComponent(route.params.id)+'?'+new URLSearchParams({lang:locale.value,page:n,size:200}),{signal})
+  return request('/packs/'+encodeURIComponent(route.params.id)+'?'+new URLSearchParams({lang:locale.value,page:n,size:200,sort:sort.value}),{signal})
 }
 async function loadMore(all=false){
   if(!hasMore.value || !controller) return
@@ -65,7 +79,7 @@ async function loadMore(all=false){
   }catch(e){if(!signal.aborted)moreError.value=e.message}
   finally{if(!signal.aborted){moreBusy.value=false;loadToEnd=false}}
 }
-watch([()=>route.params.id,locale,retry],async([id],previous,onCleanup)=>{
+watch([()=>route.params.id,locale,retry,sort],async([id],previous,onCleanup)=>{
   const different=previous?.[0]!==id
   const controllerForRequest=new AbortController()
   controller=controllerForRequest
@@ -92,7 +106,11 @@ function toggle(id,event){
   else if(expanded.value===id)expanded.value=null
 }
 async function goPage(n){
-  if(n>=pages.value && hasMore.value) await loadMore()
+  const signal=controller?.signal
+  if(hasMore.value && (n+1)*pageSize>filtered.value.length){
+    await loadMore()
+    if(signal?.aborted || moreError.value)return
+  }
   if(n<0 || n>=pages.value)return
   page.value=n;expanded.value=shown.value[0]?.id ?? null
   await nextTick();listTop.value?.focus({preventScroll:true});listTop.value?.scrollIntoView({block:'start'})
@@ -145,9 +163,19 @@ async function pickCard(id){
         <button type="button" :aria-pressed="!inclusion" @click="inclusion=''"><span>{{ pt('전체') }}</span><strong>{{ pack.total.toLocaleString(locale) }}</strong></button>
         <button v-for="(label,key) in inclusions" :key="key" type="button" :aria-pressed="inclusion===key" @click="inclusion=inclusion===key?'':key"><span>{{ pt(label) }}</span><strong>{{ pack[countFields[key]].toLocaleString(locale) }}</strong></button>
       </div>
+      <details class="pack-breakdown" @toggle="e=>{if(e.target.open && hasMore)loadMore(true)}">
+        <summary>{{ pt('수록 구성') }} · {{ pt('공개 카드') }} {{ pack.total ?? 0 }}</summary>
+        <p>{{ pt('상품 전체 수록 수') }} · {{ announced??pt('수록 수 미확인') }}</p>
+        <p v-if="moreBusy">{{ cards.length }} / {{ pack.total }}</p>
+        <div v-else-if="!hasMore"><div v-for="(group,i) in [pack.rarityCounts?pack.rarityCounts.map(r=>[r.rarity,r.count]):breakdown[0],breakdown[1]]" :key="i"><strong>{{ pt(i?'카드 종류':'레어도') }}</strong>
+          <span v-for="[label,n] in group" :key="label">{{ facetLabel(i?'type':'rarity',label,pack.gameCode) }} {{ n }}</span><span v-if="!i && pack.unknownRarityCount">{{ pt('레어도 미기재') }} {{ pack.unknownRarityCount }}</span><small v-if="!group.length">{{ pt('미분류') }}</small></div></div>
+      </details>
       <div class="pack-toolbar">
         <h2 ref="listTop" tabindex="-1">{{ pt('수록 카드') }} <small v-if="pack.total&&!showInclusions">{{ pack.total.toLocaleString(locale) }}</small></h2>
         <div v-if="pack.total" class="pack-controls"><input type="search" v-model="q" :aria-label="pt('팩에서 검색')" :placeholder="pt('카드명·번호·효과')">
+          <select v-model="sort" :aria-label="pt('수록 카드 정렬')" @change="page=0">
+            <option v-for="(label,key) in {source:'수록 순',number:'번호 순',rarity:'레어도 순',name:'이름 순'}" :key="key" :value="key">{{ pt(label) }}</option>
+          </select>
           <PackGallery :key="pack.id" :pack="pack" :cards="cards" :loading="moreBusy" :has-more="hasMore" :error="moreError" @load="loadMore(true)" @pick="pickCard"/>
         </div>
       </div>
@@ -159,7 +187,7 @@ async function pickCard(id){
         <template v-for="(card,i) in shown" :key="card.id">
           <h3 v-if="special && card.product && (i===0 || shown[i-1].product!==card.product)" class="pack-product">{{ card.product }} <small v-if="card.productDate">{{ card.productDate }}</small></h3>
           <details :id="'pack-card-'+card.id" class="pack-row" :open="expanded===card.id" @toggle="toggle(card.id,$event)">
-            <summary><span class="pack-number">{{ card.number }}</span><span class="pack-name"><strong :lang="locale">{{ card.language===locale && card.name ? card.name : pt('이 언어의 카드명 미등록') }}</strong><CardTextCredit v-if="card.language===locale" :card="card"/><small v-if="card.inclusion || card.type"><span v-if="card.inclusion">{{ facetLabel('inclusion',card.inclusion) }}</span><span v-if="card.type" :class="{'pack-raw-type':!['몬스터','마법','함정'].includes(card.type)}">{{ card.inclusion?' · ':'' }}{{ facetLabel('type',card.type) }}</span></small></span><span v-if="card.rarity" class="pack-rarity">{{ shortRarity(card) }}</span><span class="chevron" aria-hidden="true"></span></summary>
+            <summary><span class="pack-number">{{ card.number }}</span><span class="pack-name"><strong :lang="locale">{{ card.language===locale && card.name ? card.name : pt('이 언어의 카드명 미등록') }}</strong><CardTextCredit v-if="card.language===locale" :card="card"/><small v-if="card.inclusion || card.type"><span v-if="card.inclusion">{{ facetLabel('inclusion',card.inclusion) }}</span><span v-if="card.type">{{ card.inclusion?' · ':'' }}{{ facetLabel('type',card.type,pack.gameCode) }}</span></small><RiftEffectSummary v-if="pack.gameCode==='RIFTBOUND'" :card="card"/></span><span v-if="card.rarity" class="pack-rarity">{{ shortRarity(card) }}</span><span class="chevron" aria-hidden="true"></span></summary>
             <CardDetails :card-id="card.id" lazy/>
           </details>
         </template>
@@ -174,6 +202,7 @@ async function pickCard(id){
   </div>
 </template>
 <style scoped>
+.pack-breakdown{border-bottom:1px solid var(--bd);padding-block:5px;font-size:.85rem}.pack-breakdown summary{cursor:pointer;min-height:38px;padding:6px 0}.pack-breakdown>div>div{display:flex;flex-wrap:wrap;gap:.3rem .8rem;margin:.4rem 0}
 .pack-page{max-width:900px;margin:0 auto;padding:12px 0 24px}.pack-back{display:inline-flex;align-items:center;gap:7px;min-height:44px;text-decoration:none;font-size:.9rem;font-weight:650}.pack-back:hover{text-decoration:underline}
 .pack-heading{display:flex;align-items:center;gap:22px;padding:16px 0 20px}.pack-cover{width:clamp(100px,19%,160px);height:102px;object-fit:cover;border-radius:8px;background:var(--bd)}.pack-heading-text{min-width:0}.pack-heading h1{margin:4px 0 8px;font-size:clamp(1.65rem,3.6vw,2.35rem);line-height:1.17;overflow-wrap:anywhere;letter-spacing:-.035em}.pack-heading p{color:var(--mu);margin:0;font-size:.84rem}
 .pack-dates{display:flex;flex-wrap:wrap;gap:3px 18px;margin:0;font-size:.85rem}.pack-dates div{display:flex;gap:6px}.pack-dates dt{color:var(--mu)}.pack-dates dd{margin:0;font-variant-numeric:tabular-nums}
