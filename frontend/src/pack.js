@@ -1,6 +1,8 @@
 import { locale, t } from './i18n'
 
 const labels = {
+  '카드명 표시':['Show card names','カード名を表示'],
+  '뉴런 일러스트':['Neuron artwork','ニューロンのイラスト'],'저장한 그림':['Saved artwork','保存したイラスト'],
   '한국어':['Korean','韓国語'], '영어':['English','英語'], '일본어':['Japanese','日本語'],
   '카드명 언어':['Name language','カード名の言語'],'효과 언어':['Effect language','効果の言語'],
   '인쇄본 표기':['Printed name','収録版の表記'],'수집처 표기':['Source catalog name','収集元の表記'],

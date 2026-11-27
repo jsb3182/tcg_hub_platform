@@ -15,6 +15,7 @@ import CaptureReview from '../components/CaptureReview.vue'
 import DeckPictures from '../components/DeckPictures.vue'
 import DeckNeeds from '../components/DeckNeeds.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
+import YugiohLimits from '../components/YugiohLimits.vue'
 import {storeDeckPictures} from '../deckPictures'
 const route=useRoute(), router=useRouter(), session=useSession()
 const games=ref([]), game=ref(''), name=ref(''), section=ref('MAIN'), entries=ref([]), saved=ref(null), rule=ref(null)
@@ -24,6 +25,9 @@ const id=computed(()=>route.params.id), selectedGameName=computed(()=>gameName(g
 const shareUrl=computed(()=>saved.value?.shareToken ? location.origin+'/shared/decks/'+saved.value.shareToken : '')
 const baseline=ref(null), practiceChoice=ref(null), errorElement=ref(null)
 const nameJa=ref(''),nameEn=ref(''),pictures=ref({}),reviewing=ref(false)
+const region=ref(''),regionChecked=ref(false)
+const supportedRegions=computed(()=>game.value==='YUGIOH'?(rule.value?.regions||[]).filter(r=>r==='OCG'||r==='TCG'):[])
+const checkPending=computed(()=>supportedRegions.value.length>0 && !!region.value && !regionChecked.value)
 const undone=ref([]),redone=ref([])
 function snapshotEntries(){return entries.value.map(e=>({...e}))}
 function beforeCardEdit(){undone.value.push(snapshotEntries());if(undone.value.length>30)undone.value.shift();redone.value=[]}
@@ -34,7 +38,7 @@ function updateQuantity(entry,event){
 }
 function removeEntry(entry){beforeCardEdit();entries.value.splice(entries.value.indexOf(entry),1)}
 let retryPictures=null
-const content=computed(()=>JSON.stringify([name.value,nameJa.value,nameEn.value,game.value,shared.value,
+const content=computed(()=>JSON.stringify([name.value,nameJa.value,nameEn.value,game.value,shared.value,region.value,
   entries.value.map(e=>[e.cardId,e.section,e.quantity,e.variantId,e.neuronArtwork])]))
 const dirty=computed(()=>baseline.value!==null && (baseline.value!==content.value||reviewing.value||Object.keys(pictures.value).length>0))
 const preview=computed(()=>({name:name.value || uiText("이름 없는 덱"),nameJa:nameJa.value,nameEn:nameEn.value,gameCode:game.value,entries:entries.value,rule:rule.value,state:
@@ -67,6 +71,7 @@ function fill(deck, lang='ko') {
   undone.value=[];redone.value=[]
   saved.value=deck;rule.value=deck.rule;game.value=deck.gameCode;name.value=deck.name
   nameJa.value=deck.nameJa||'';nameEn.value=deck.nameEn||''
+  region.value=supportedRegions.value.includes(deck.region)?deck.region:''
   entries.value=deck.entries.map(e=>({...e,labelLocale:lang}));shared.value=!!deck.shareToken
   baseline.value=content.value
   if (!rule.value.sections.some(s=>s.section===section.value)) section.value=rule.value.sections[0]?.section
@@ -75,7 +80,7 @@ watch([()=>session.account?.email,id,()=>route.name,reload,
   ()=>route.name==='deck-new'?route.query.card:null,()=>route.name==='deck-new'?route.query.game:null],async([email,deckId,routeName],_,cleanup)=>{
   const current=++generation, abort=new AbortController();cleanup(()=>abort.abort())
   baseline.value=null;loading.value=true;error.value='';notice.value='';saved.value=null;rule.value=null;entries.value=[];history.value=null;historyError.value=''
-  failedLoad.value=false;name.value='';nameJa.value='';nameEn.value='';shared.value=false;reviewing.value=false
+  failedLoad.value=false;name.value='';nameJa.value='';nameEn.value='';shared.value=false;reviewing.value=false;region.value='';regionChecked.value=false
   undone.value=[];redone.value=[]
   pictures.value=retryPictures?.id===String(deckId)?retryPictures.files:{}
   if(Object.keys(pictures.value).length)error.value=uiText('덱은 저장됐습니다. 남은 이미지를 다시 저장하세요.')
@@ -131,7 +136,7 @@ async function loadRule(current,signal) {
   if(current===generation){rule.value=result;section.value=result.sections[0]?.section}
 }
 async function switchGame(e) {
-  game.value=e.target.value;rule.value=null;error.value='';busy.value=true
+  game.value=e.target.value;rule.value=null;error.value='';busy.value=true;region.value='';regionChecked.value=false
   try{await loadRule(generation)}catch(cause){error.value=cause.message}finally{busy.value=false}
 }
 function add(card,trigger,lang=locale.value) {
@@ -168,11 +173,13 @@ async function save(state,practice=false) {
   if(reviewing.value)return showError(uiText('캡처 검토를 마치고 확인한 카드를 덱에 추가하세요.'))
   if(!name.value.trim())return showError(uiText("덱 이름을 입력해 주세요."))
   if(entries.value.some(e=>!Number.isInteger(e.quantity)||e.quantity<1||e.quantity>999))return showError(uiText("카드 수량은 1~999 사이의 정수로 입력해 주세요."))
+  if(state==='COMPLETE' && checkPending.value)return
   const current=generation,wasNew=!id.value
   busy.value=true
   try {
     const deck=await session.authenticatedRequest('/me/decks'+(id.value?'/'+id.value:''),{method:id.value?'PUT':'POST',body:{
       name:name.value.trim(),state,gameCode:game.value,shared:shared.value,revision:saved.value?.revision??0,
+      ...(supportedRegions.value.length?{region:region.value}:{}),
       nameJa:nameJa.value.trim(),nameEn:nameEn.value.trim(),entries:entries.value.map(({cardId,quantity,section,variantId,neuronArtwork})=>({cardId,quantity,section,variantId,neuronArtwork}))}})
     if(current!==generation)return
     fill(deck);history.value=null
@@ -211,7 +218,7 @@ async function applyRevision(rev) {
   historyBusy.value=true;historyError.value=''
   try{
     const snapshot=await session.authenticatedRequest('/me/decks/'+id.value+'/history/'+rev)
-    if(current===generation){beforeCardEdit();name.value=snapshot.name;nameJa.value=snapshot.nameJa||'';nameEn.value=snapshot.nameEn||'';entries.value=snapshot.entries.map(e=>({...e}));notice.value=rev+uiText("번째 구성을 편집기에 불러왔습니다. 저장하면 새 내역으로 기록됩니다.")}
+    if(current===generation){beforeCardEdit();name.value=snapshot.name;nameJa.value=snapshot.nameJa||'';nameEn.value=snapshot.nameEn||'';region.value=supportedRegions.value.includes(snapshot.region)?snapshot.region:'';entries.value=snapshot.entries.map(e=>({...e}));notice.value=rev+uiText("번째 구성을 편집기에 불러왔습니다. 저장하면 새 내역으로 기록됩니다.")}
   }catch(cause){if(current===generation)historyError.value=cause.message}
   finally{historyBusy.value=false}
 }
@@ -241,8 +248,9 @@ async function copyLink() {
         <CaptureReview v-if="game==='YUGIOH'&&rule" @apply="importRows" @pending="reviewing=$event" @suggest="v=>{if(!name)name=v}"/>
         <DeckPictures :id="id" :pictures="pictures" :disabled="busy" @pick="(slot,file)=>pictures={...pictures,[slot]:file}"/>
         <template v-if="rule"><p>{{ $t("기본 구성 규칙 · 버전") }} {{ rule.version }} <a v-if="rule.source" :href="rule.source" target="_blank" rel="noopener noreferrer">{{ $t("공식 규칙") }}</a></p>
-          <p class="muted">{{ $t("구역별 장수와 중복 수량을 검사합니다. 금지·제한 목록과 개별 카드 예외는 대회 규정을 확인해 주세요.") }}</p>
-          <p v-if="game==='YUGIOH'"><a href="https://www.yugioh.co.kr/site/limit_regulation.php" target="_blank" rel="noopener noreferrer">{{ $t('한국 OCG 금지·제한 목록') }}</a></p>
+          <p v-if="!region" class="muted">{{ $t("구역별 장수와 중복 수량을 검사합니다. 금지·제한 목록과 개별 카드 예외는 대회 규정을 확인해 주세요.") }}</p>
+          <p v-if="game==='YUGIOH'&&!region"><a href="https://www.yugioh.co.kr/site/limit_regulation.php" target="_blank" rel="noopener noreferrer">{{ $t('한국 OCG 금지·제한 목록') }}</a></p>
+          <YugiohLimits v-if="supportedRegions.length" v-model:region="region" :regions="supportedRegions" :entries="entries" editable @checked="regionChecked=$event"/>
           <div class="lib-actions"><button type="button" class="text-button" :disabled="!undone.length" @click="restoreCards(undone,redone)">{{ $t("카드 변경 취소") }}</button><button type="button" class="text-button" :disabled="!redone.length" @click="restoreCards(redone,undone)">{{ $t("카드 변경 다시 적용") }}</button></div>
           <section v-for="s in rule.sections" :key="s.section"><h2>{{ sectionLabel(s.section) }}
             <small>{{ entries.filter(e=>e.section===s.section).reduce((n,e)=>n+(Number(e.quantity)||0),0) }}{{ $t("장 · 규칙") }} {{ s.minCards ?? 0 }}{{ s.maxCards===s.minCards?'':'~'+(s.maxCards ?? $t("제한 없음")) }}{{ $t("장") }}</small>
@@ -251,7 +259,7 @@ async function copyLink() {
             <div class="lib-controls"><input :value="e.quantity" @input="updateQuantity(e,$event)" type="number" min="1" max="999" :aria-label="e.name+$t(' 수량')" /><button type="button" class="text-button" :aria-label="e.name+$t(' 빼기')" @click="removeEntry(e)">{{ $t("빼기") }}</button></div>
           </li></ul></section>
           <label class="lib-check"><input type="checkbox" v-model="shared" />{{ $t("링크가 있는 사람에게 덱 공개") }}</label>
-          <div class="lib-actions"><button type="button" class="secondary" @click="save('DRAFT')">{{ $t("임시 저장") }}</button><button type="button" class="primary" @click="save('COMPLETE')">{{ $t("구성 완료 저장") }}</button></div>
+          <div class="lib-actions"><button type="button" class="secondary" @click="save('DRAFT')">{{ $t("임시 저장") }}</button><button type="button" class="primary" :disabled="checkPending" @click="save('COMPLETE')">{{ $t("구성 완료 저장") }}</button></div>
           <p v-if="dirty" class="lib-unsaved" role="status">{{ $t("저장되지 않은 변경 사항이 있습니다.") }}</p>
         </template></fieldset>
         <div v-if="shareUrl"><p><a :href="shareUrl">{{ shareUrl }}</a></p><button class="secondary" @click="copyLink">{{ $t("공유 링크 복사") }}</button></div>
@@ -260,7 +268,7 @@ async function copyLink() {
           <h2 id="practice-choice-title">{{ $t("어떤 구성으로 연습할까요?") }}</h2>
           <p>{{ $t("저장하지 않은 변경 사항이 있습니다.") }}</p>
           <div class="lib-dialog-actions">
-            <button class="primary" @click="save(saved.state,true)">{{ $t("변경 저장 후 연습") }}</button>
+            <button class="primary" :disabled="saved?.state==='COMPLETE' && checkPending" @click="save(saved.state,true)">{{ $t("변경 저장 후 연습") }}</button>
             <button class="secondary" @click="useSaved">{{ $t("변경 버리고 저장본으로 연습") }}</button>
             <button class="text-button" autofocus @click="practiceChoice.close()">{{ $t("편집 계속") }}</button>
           </div>

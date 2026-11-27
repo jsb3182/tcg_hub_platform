@@ -10,6 +10,7 @@ import { pngSnapshot } from '../pngSnapshot'
 const props=defineProps({pack:{type:Object,required:true},cards:{type:Array,required:true},loading:Boolean,hasMore:Boolean,error:String})
 const emit=defineEmits(['pick','load'])
 const dialog=ref(), tiles=ref(), opener=ref(), page=ref(0)
+const showLabels=ref(false)
 const fields={inclusion:'수록 구분',type:'카드 종류',rarity:'레어도'}
 const chosen=reactive({inclusion:[],type:[],rarity:[]})
 const options=computed(()=>Object.fromEntries(Object.keys(fields).map(key=>[
@@ -35,6 +36,11 @@ function restoreScroll(){
 }
 function close(){dialog.value.close();restoreScroll()}
 function pick(id){close();emit('pick',id)}
+function printingImage(card){
+  if(card.image?.url && (card.imageBasis==='CARD_REFERENCE' ||
+      (card.productCode && card.imageProduct && card.productCode!==card.imageProduct))) return null
+  return card.imageUrl
+}
 async function exportPage(){return pngSnapshot(tiles.value,props.pack.name,
   [props.pack.code,countLabel(filtered.value.length),pages.value>1?(page.value+1)+' / '+pages.value:''].filter(Boolean).join(' · '),720)}
 onBeforeUnmount(restoreScroll)
@@ -60,20 +66,26 @@ onBeforeUnmount(restoreScroll)
           </fieldset>
         </section>
         <div class="gallery-result"><strong role="status">{{ countLabel(filtered.length) }}</strong>
+          <label class="gallery-label-toggle"><input type="checkbox" v-model="showLabels">{{ pt('카드명 표시') }}</label>
           <button v-if="hasFilters" class="text-button" type="button" @click="reset">{{ pt('필터 지우기') }}</button>
         </div>
         <p v-if="loading" class="muted" role="status">{{ pt('카드 불러오는 중…') }}</p>
         <p v-if="error" role="alert" class="inline-error">{{ error }} <button type="button" class="text-button" @click="emit('load')">{{ pt('다시 시도') }}</button></p>
         <p v-if="!shown.length && !loading" class="state">{{ pt('검색 결과가 없습니다.') }}</p>
         <div v-else ref="tiles" class="pack-tiles">
-          <button type="button" class="pack-tile" v-for="card in shown" :key="card.id" @click="pick(card.id)">
-            <LibraryThumbnail :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card" v-slot="{art}">
-              <span v-if="!art" class="tile-image">{{ pt('이미지 없음') }}</span>
+          <div class="pack-cell" v-for="card in shown" :key="card.id">
+            <button type="button" class="pack-tile" :aria-label="[card.number,card.name].filter(Boolean).join(' · ')"
+              :title="[card.number,card.name].filter(Boolean).join(' · ')" @click="pick(card.id)">
+              <LibraryThumbnail :image="card.image" :src="printingImage(card)" :language="card.imageLanguage" :printing="card" v-slot="{art}">
+                <span v-if="!art" class="tile-image"><strong :lang="card.language || ''">{{ card.name }}</strong><small>{{ pt('이미지 없음') }}</small></span>
+                <small v-if="showLabels && art?.reference" class="tile-art-credit"><ArtworkCredit :language="art.language" :printing="card" disable-link/></small>
+              </LibraryThumbnail>
+            </button>
+            <div v-if="showLabels" class="tile-caption">
               <small v-if="card.number">{{ card.number }}</small><strong :lang="card.language || ''">{{ card.name }}</strong>
-              <small v-if="art?.reference"><ArtworkCredit :language="art.language" :printing="card" disable-link/></small>
               <CardTextCredit :card="card"/>
-            </LibraryThumbnail>
-          </button>
+            </div>
+          </div>
         </div>
       </div>
       <footer class="gallery-bottom">
@@ -91,9 +103,34 @@ onBeforeUnmount(restoreScroll)
 .gallery-options label{position:relative;cursor:pointer}.gallery-options input{position:absolute;opacity:0;width:1px;height:1px;min-height:0;margin:0}.gallery-options span{min-height:34px;display:flex;align-items:center;padding:3px 10px;border:1px solid var(--bd);border-radius:6px;font-size:.85rem;font-weight:500}.gallery-options .active span{background:var(--ac);color:var(--sf);border-color:var(--ac)}.gallery-options input:focus-visible+span{outline:2px solid var(--ac);outline-offset:2px}
 .facet-all{padding:3px 10px;min-height:34px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--tx);font-size:.85rem}.facet-all[aria-pressed=true]{background:var(--tx);color:var(--sf);border-color:var(--tx)}
 .gallery-result{border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px}.gallery-result strong{font-size:.91rem;font-variant-numeric:tabular-nums}
-.pack-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,105px),1fr));gap:14px 10px}.pack-tile{display:block;padding:0;border:0;background:transparent;text-align:start;min-width:0;color:var(--tx)}.pack-tile:hover strong{text-decoration:underline;color:var(--ac)}.pack-tile strong,.pack-tile small{display:block;overflow-wrap:anywhere;line-height:1.32}.pack-tile strong{font-size:.84rem;font-weight:650}.pack-tile small{margin:5px 0 3px;color:var(--mu);font-size:.7rem}
-.tile-image{display:grid;width:100%;aspect-ratio:300/438;place-items:center;overflow:hidden;background:var(--bg);font-size:.7rem;color:var(--mu);border:1px solid var(--bd);border-radius:5px}.tile-image :deep(.lib-thumbnail){height:100%;width:100%;display:block;object-fit:contain;background-size:400% 300%;background-repeat:no-repeat}
+.pack-tiles{display:grid}.pack-tile{padding:0;border:0;background:transparent;text-align:start;min-width:0;color:var(--tx)}
+.tile-image{display:grid;width:100%;aspect-ratio:300/438;place-items:center;overflow:hidden;background:var(--bg);font-size:.7rem;color:var(--mu);border:1px solid var(--bd);border-radius:5px}
 .gallery-bottom{flex-wrap:wrap;justify-content:flex-end;padding:10px 20px;border-top:1px solid var(--bd)}.gallery-bottom nav{display:flex;gap:8px;align-items:center;margin-right:auto}.gallery-bottom span{font-size:.8rem}
-@media(max-width:560px){.pack-gallery{width:100%;max-width:100%;max-height:94vh;margin:auto 0 0;border-radius:16px 16px 0 0}.gallery-frame{max-height:94vh}.gallery-top,.gallery-body,.gallery-bottom{padding-inline:14px}.gallery-bottom{padding-bottom:max(10px,env(safe-area-inset-bottom))}.pack-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.gallery-bottom .secondary{padding-inline:9px}.gallery-options span{min-height:40px}}
+@media(max-width:560px){.pack-gallery{width:100%;max-width:100%;max-height:94vh;margin:auto 0 0;border-radius:16px 16px 0 0}.gallery-frame{max-height:94vh}.gallery-top,.gallery-body,.gallery-bottom{padding-inline:14px}.gallery-bottom{padding-bottom:max(10px,env(safe-area-inset-bottom))}.gallery-bottom .secondary{padding-inline:9px}.gallery-options span{min-height:40px}}
 </style>
-<style scoped>.pack-tile :deep(.lib-thumbnail){display:block;width:100%;aspect-ratio:300/438;object-fit:contain}</style>
+<style scoped>
+.gallery-label-toggle{display:inline-flex;align-items:center;gap:6px;min-height:34px;font-size:.83rem;margin-inline-start:auto}
+.gallery-label-toggle input{width:16px;height:16px;min-height:0;margin:0;accent-color:var(--ac)}
+.pack-tiles{grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}
+.pack-cell{min-width:0;align-self:start}
+.pack-tile{width:100%;display:block;line-height:0;border-radius:3px}
+.pack-tile:hover,.pack-tile:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+.pack-tile :deep(.lib-thumbnail){display:block;width:100%;aspect-ratio:300/438;object-fit:contain}
+.tile-caption{padding:4px 1px 6px;line-height:1.3;overflow-wrap:anywhere}
+.tile-caption strong,.tile-caption small{display:block;font-size:.75rem}
+.tile-caption small{color:var(--mu)}
+.tile-image{align-content:center;gap:3px;padding:4px;text-align:center}
+.tile-image strong{font-size:.68rem;line-height:1.25}
+@media(min-width:561px){
+  .pack-gallery{width:min(760px,calc(100% - 32px));max-height:94vh}
+  .gallery-frame{max-height:94vh}
+  .gallery-top,.gallery-body{padding:10px 16px}
+  .gallery-bottom{padding:7px 16px}
+  .gallery-result{margin:8px 0;padding-top:6px}
+  .gallery-filters legend{float:inline-start;width:5rem;padding-top:7px}
+  .gallery-options{margin-inline-start:5.2rem}
+}
+@media(max-width:720px){.pack-tiles{grid-template-columns:repeat(7,minmax(0,1fr))}}
+@media(max-width:560px){.pack-tiles{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}}
+@media(max-width:330px){.pack-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>

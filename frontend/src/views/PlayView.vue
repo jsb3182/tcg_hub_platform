@@ -3,10 +3,11 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
+import {pt} from '../pack'
 import {deckName as localizedDeckName} from '../library'
 import { request, artworkUrl } from '../api'
 import { useSession } from '../stores/session'
-import { newRound, playGames, playText, practiceLanguage, practiceOpening,
+import { newRound, playGames, playText, practiceLanguage, practiceOpening,practiceKey,practiceEntries,practiceLabel,
   rememberPracticeLanguage, rememberPracticeOpening, validOpeningSize } from '../play'
 
 const route = useRoute()
@@ -34,7 +35,8 @@ const labels = ref({})
 const round = ref(null)
 const opening = ref(practiceOpening(game.value))
 const total = computed(() => cards.value.reduce((count, card) => count + card.quantity, 0))
-const ids = computed(() => cards.value.map(card => card.id).join(','))
+const ids = computed(() => [...new Set(cards.value.map(card => card.id))].join(','))
+const byKey=computed(()=>new Map(cards.value.map(card=>[card.key,practiceLabel(card,labels.value[card.id])])))
 const identity = computed(() => session.account?.email || '')
 const validOpening = computed(() => validOpeningSize(opening.value))
 const zones = ['hand', 'table', 'discard']
@@ -104,13 +106,7 @@ watch([game, deckId, identity, deckRetry], async ([currentGame, id, account], pr
     if (deck.gameCode !== currentGame) throw new Error()
     const entries = deck.entries.filter(card => card.section === 'MAIN')
     if (entries.reduce((n, e) => n + e.quantity, 0) > 150) throw new Error()
-    const grouped=new Map()
-    for(const card of entries){
-      const prior=grouped.get(card.cardId)
-      if(prior)prior.quantity+=card.quantity
-      else grouped.set(card.cardId,{id:card.cardId,name:card.name,language:card.language,quantity:card.quantity})
-    }
-    cards.value=[...grouped.values()]
+    cards.value=practiceEntries(entries)
     deckInfo.value = deck
   } catch { if (!controller.signal.aborted) deckError.value = true }
   finally { if (!controller.signal.aborted) deckBusy.value = false }
@@ -130,16 +126,18 @@ watch([game, lang, ids, labelsRetry], async (_, __, cleanup) => {
   } catch { if (!controller.signal.aborted) labelError.value = true }
 }, { immediate: true })
 
-function label(id) {
-  return labels.value[id] || cards.value.find(card => card.id === id)
+function label(key){return byKey.value.get(key)}
+function artLabel(card){
+  if(card?.neuronArtwork!=null)return pt('뉴런 일러스트')+' '+card.neuronArtwork
+  return card?.variantId!=null ? pt('저장한 그림')+' '+card.printOrder : ''
 }
 function changeQuantity(card, amount) {
-  const entry = cards.value.find(item => item.id === card.id)
+  const key=practiceKey(card),entry=cards.value.find(item=>item.key===key)
   if (amount > 0 && total.value >= 150) return
   if (entry) {
     entry.quantity += amount
-    if (entry.quantity === 0) cards.value = cards.value.filter(item => item.id !== card.id)
-  } else if (amount > 0) cards.value.push({ ...card, quantity: amount })
+    if (entry.quantity === 0) cards.value = cards.value.filter(item=>item.key!==key)
+  } else if (amount > 0) cards.value.push({ ...card, key, quantity: amount })
 }
 function start() {
   if (total.value && validOpening.value) { round.value = newRound(cards.value, opening.value); resetResources() }
@@ -192,9 +190,10 @@ function move(from, index, to) {
       </section>
       <section class="panel">
         <h3>{{ t.selection }} · {{ total }}</h3><p v-if="!total">{{ t.empty }}</p>
-        <ul class="play-list"><li v-for="card in cards" :key="card.id">
-          <span><span :lang="label(card.id)?.language || ''">{{ label(card.id)?.name }}</span> × {{ card.quantity }}<CardTextCredit :card="label(card.id)"/></span>
-          <button class="secondary" :aria-label="t.remove+' '+label(card.id)?.name" @click="changeQuantity(card,-1)">−</button>
+        <ul class="play-list"><li v-for="card in cards" :key="card.key">
+          <span v-if="artLabel(card)" class="practice-saved-art"><LibraryThumbnail :image="label(card.key).image" :src="label(card.key).imageUrl" :language="label(card.key).imageLanguage" v-slot="{art}"><small v-if="!art">{{ pt('이미지 없음') }}</small></LibraryThumbnail></span>
+          <span><span :lang="label(card.key)?.language || ''">{{ label(card.key)?.name }}</span> × {{ card.quantity }}<small v-if="artLabel(card)">{{ artLabel(card) }}</small><CardTextCredit :card="label(card.key)"/></span>
+          <button class="secondary" :aria-label="[t.remove,label(card.key)?.name,artLabel(card)].filter(Boolean).join(' ')" @click="changeQuantity(card,-1)">−</button>
         </li></ul>
         <p v-if="total >= 150">{{ t.limit }}</p>
         <label>{{ t.opening }}<input v-model.number="opening" type="number" min="1" max="10" /></label>
@@ -220,10 +219,10 @@ function move(from, index, to) {
             <label v-if="zone==='hand'" class="exchange-card"><input type="checkbox" v-model="exchange" :value="i" :aria-label="$t('교환할 카드')+' '+label(id)?.name"></label>
             <figure v-if="artworkUrl(label(id)?.imageUrl) || label(id)?.image" class="practice-art">
               <LibraryThumbnail :src="label(id)?.imageUrl" :image="label(id)?.image" show-edition :language="label(id)?.imageLanguage"
-                :printing="label(id)"/>
+                :printing="label(id)" v-slot="{art}"><small v-if="!art && artLabel(label(id))">{{ pt('이미지 없음') }}</small></LibraryThumbnail>
             </figure>
 
-            <span><strong :lang="label(id)?.language">{{ label(id)?.name }}</strong><CardTextCredit :card="label(id)" detailed link/></span>
+            <span><strong :lang="label(id)?.language">{{ label(id)?.name }}</strong><small v-if="artLabel(label(id))">{{ artLabel(label(id)) }}<template v-if="!artworkUrl(label(id).imageUrl) && !label(id).image"> · {{ pt('이미지 없음') }}</template></small><CardTextCredit :card="label(id)" detailed link/></span>
             <details v-if="label(id)?.effect"><summary>{{ $t('효과') }}</summary><p :lang="label(id).effectLanguage || ''">{{ label(id).effect }}</p><CardTextCredit :card="label(id)" effect link/></details>
             <small v-if="zone==='table' && attached[i]">{{ game==='ONEPIECE'?'DON!!':$t('에너지') }} × {{ attached[i] }}</small>
             <button v-if="zone==='table' && game!=='YUGIOH'" class="secondary" :disabled="!stock" @click="attach(i)">{{ $t('부착') }}</button>
@@ -260,4 +259,6 @@ function move(from, index, to) {
 .resource-controls {display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;margin:1rem 0}
 .resource-controls input {width:5rem}.practice-art{display:grid;gap:.2rem;margin:0;align-content:start}.practice-art :deep(.lib-thumbnail){width:40px;height:56px}
 .practice-zones li {flex-wrap:wrap}.play-page .exchange-card input {width:20px;height:20px}.practice-zones details p {white-space:pre-line}
+.practice-zones .play-list li>span>small,.practice-setup .play-list li>span>small{display:block;color:var(--mu)}
+.practice-saved-art{flex:0 0 38px}.practice-saved-art :deep(.lib-thumbnail){display:block;width:38px;aspect-ratio:300/438;object-fit:contain}
 </style>
