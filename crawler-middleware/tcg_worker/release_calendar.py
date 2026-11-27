@@ -54,6 +54,9 @@ def checked(rows, game=None):
                 or not 1 <= len(v.strip()) <= 400 for k,v in names.items()):
             raise ValueError("Invalid localized calendar names")
         item = {**row, "names":names}
+        category = row.get("publisherCategory")
+        if category is not None and (row["game"] != "ONEPIECE" or category not in ("BOOSTERS", "DECKS")):
+            raise ValueError("Unknown publisher product category")
         if row["game"] == "ONEPIECE" and row["region"] == "KR":
             code = row.get("code") or ""
             product = re.fullmatch(r"(OP|ST|EB|PRB)K-(\d{2})", code)
@@ -98,28 +101,41 @@ def save(db, rows, *, seed=False):
     added = db.execute("""
         WITH incoming AS MATERIALIZED (
             SELECT game AS game_code,key AS product_key,region,code,name,names,date AS release_date,
-                   url AS source_url,"catalogCode" AS catalog_code,"catalogName" AS catalog_name
+                   url AS source_url,"catalogCode" AS catalog_code,"catalogName" AS catalog_name,"publisherCategory" AS publisher_category
               FROM jsonb_to_recordset(%s) r(game text,key text,region text,code text,name text,names jsonb,
-                                            date date,url text,"catalogCode" text,"catalogName" text)
+                                            date date,url text,"catalogCode" text,"catalogName" text,"publisherCategory" text)
         ), previous AS MATERIALIZED (
             SELECT p.id,p.game_code,p.product_key,p.region FROM product_release p
               JOIN incoming USING(game_code,product_key,region)
         ), written AS (
             INSERT INTO product_release AS p(game_code,product_key,region,code,name,names,release_date,source_url,
-                                             catalog_code,catalog_name,from_seed)
+                                             catalog_code,catalog_name,publisher_category,from_seed)
             SELECT i.*,%s FROM incoming i
             ON CONFLICT(game_code,product_key,region) DO UPDATE SET code=excluded.code,name=excluded.name,
                 names=excluded.names,release_date=excluded.release_date,source_url=excluded.source_url,
-                catalog_code=excluded.catalog_code,catalog_name=excluded.catalog_name,from_seed=excluded.from_seed
+                catalog_code=excluded.catalog_code,catalog_name=excluded.catalog_name,
+                publisher_category=coalesce(excluded.publisher_category, CASE WHEN
+                    (p.code,p.source_url) IS NOT DISTINCT FROM (excluded.code,excluded.source_url) THEN p.publisher_category END),
+                from_seed=excluded.from_seed
             WHERE NOT p.manual AND (p.from_seed OR NOT excluded.from_seed) AND
-                (p.code,p.name,p.names,p.release_date,p.source_url,p.catalog_code,p.catalog_name,p.from_seed)
-                IS DISTINCT FROM (excluded.code,excluded.name,excluded.names,excluded.release_date,
-                                  excluded.source_url,excluded.catalog_code,excluded.catalog_name,excluded.from_seed)
+                ((p.code,p.name,p.names,p.release_date,p.source_url,p.catalog_code,p.catalog_name,p.from_seed)
+                 IS DISTINCT FROM (excluded.code,excluded.name,excluded.names,excluded.release_date,excluded.source_url,
+                                   excluded.catalog_code,excluded.catalog_name,excluded.from_seed)
+                 OR (excluded.publisher_category IS NOT NULL AND p.publisher_category IS DISTINCT FROM excluded.publisher_category))
             RETURNING game_code,product_key,region
         )
         SELECT count(*) FROM written LEFT JOIN previous USING(game_code,product_key,region) WHERE previous.id IS NULL
     """,(Jsonb(rows),seed)).fetchone()[0]
     if seed:
+        categories = [r for r in rows if r.get("publisherCategory")]
+        if categories:
+            # Only fill missing provenance for the very same official product. Its live date may have changed.
+            db.execute("""
+                UPDATE product_release p SET publisher_category=i."publisherCategory"
+                FROM jsonb_to_recordset(%s) i(game text,key text,region text,code text,url text,"publisherCategory" text)
+                WHERE (p.game_code,p.product_key,p.region,p.code,p.source_url)=(i.game,i.key,i.region,i.code,i.url)
+                  AND NOT p.manual AND NOT p.from_seed AND p.publisher_category IS NULL
+                """, (Jsonb(categories),))
         # A seed may repair missing catalog hints on the identical live announcement, even offline.
         # Keep the operator's selection and the live publisher metadata and precedence.
         hints = [row for row in rows if row["game"] == "ONEPIECE" and row["region"] == "EN"

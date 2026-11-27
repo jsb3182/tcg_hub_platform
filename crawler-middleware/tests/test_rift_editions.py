@@ -50,6 +50,31 @@ class Fixture:
 
 
 class RiftEditions(unittest.TestCase):
+    def test_signature_slug_requires_matching_provider_ids_public_code_and_unique_art(self):
+        signed = {**printing(303, "English fixture", 31), "id": "ogn-303-star-298",
+                  "riftboundId": "ogn-303*-298", "variant": "signature"}
+        regular = printing(303, "English regular", 30)
+        en = {**official(signed, "English fixture", 31), "id": signed["id"], "publicCode": "OGN-303*/298"}
+        ko = {**official(signed, "한글 서명판", 32, rule="<p>테스트 효과</p>"), "id": signed["id"], "publicCode": "OGN-303*/298"}
+        with tempfile.TemporaryDirectory() as tmp:
+            def load(cards, english, korean):
+                return list(riftbound(Fixture(Path(tmp), cards, english, korean)))
+            item, other = load([signed, regular], [en, official(regular, "Regular", 30)],
+                               [ko, official(regular, "일반판", 33)])
+            self.assertEqual((item["number"], item["external_id"]), ("ogn-303*-298", "en:fixture-31"))
+            self.assertEqual(item["specs"]["editionEvidence"]["ko"]["publisherId"], "ogn-303-star-298")
+            self.assertEqual(item["specs"]["texts"]["ko"], "테스트 효과")
+            self.assertEqual(item["specs"]["images"]["ko"], asset(32) + "?accountingTag=RB")
+            self.assertEqual(other["specs"]["images"]["ko"], asset(33) + "?accountingTag=RB")
+            for wrong in ({"id": "ogn-304-star-298"}, {"variant": "overnumbered"}, {"num": 304},
+                          {"riftboundId": "sfd-303*-298", "id": "sfd-303-star-298"}, {"imgUrl": asset(999)}):
+                self.assertNotIn("names", load([{**signed, **wrong}], [en], [ko])[0]["specs"])
+            for invalid_en, invalid_ko in (([en], [ko,ko]), ([en], [{**ko,"publicCode":"OGN-303/298"}]),
+                    ([{**en,"publicCode":"OGN-303/298"}], [{**ko,"publicCode":"OGN-303/298"}])):
+                self.assertNotIn("names", load([signed], invalid_en, invalid_ko)[0]["specs"])
+            duplicate = {**signed, "riftboundId": signed["id"], "printing_id": "different-id"}
+            self.assertTrue(all("names" not in r["specs"] for r in load([signed, duplicate], [en], [ko])))
+
     def test_exact_english_asset_binds_region_and_preserves_original_and_rule_symbols(self):
         champion = printing(1, "Fixture, Fiery", 10)
         spell = printing(2, "Fixture Spell", 20)
