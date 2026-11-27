@@ -63,6 +63,7 @@ final class PlatformOrigin {
                 case "dapi.kakao.com": return path.equals("/v2/maps/sdk.js");
                 case "t1.daumcdn.net": return path.startsWith("/mapjsapi/") || path.startsWith("/localimg/") || path.startsWith("/map/");
                 case "assets.tcgdex.net": case "images.pokemontcg.io": return true;
+                case "artworks-jp-n.ygoresources.com": return u.getQuery()==null && path.matches("/[0-9]+/[0-9]+/[0-9]+_[0-9]+\\.png");
                 case "cards.image.pokemonkorea.co.kr": return path.startsWith("/data/wmimages/");
                 case "www.pokemon-card.com": return path.startsWith("/assets/images/card_images/large/");
                 case "www.onepiece-cardgame.kr": return path.equals("/fileDownload");
