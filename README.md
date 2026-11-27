@@ -34,6 +34,8 @@
 
 ### A90 배포와 실기기 측정 기록
 
+Android 2.0.14(코드 24)에서는 **발매 일정 → 지난 발매**에서 원피스의 과거 상품을 지역별로 찾을 수 있다. 한국판 `OPK-01` ROMANCE DAWN은 2024년 4월 25일, 영어판은 2022년 12월 2일에 발매됐다. 한국판은 한 팩에 6장이 들어가며 공식 구성은 121종이다. 도감의 **수록 카드** 숫자는 허브에 등록된 인쇄본 수다. 한국판 상품명이 갱신된 뒤에도 저장해 둔 팩 주소에서 해당 수록 카드를 열 수 있다. [한국판 상품과 봉입 안내](https://www.onepiece-cardgame.kr/products/view.do?brdno=481) · [영어판 발매 정보](https://en.onepiece-cardgame.com/products/boosters/op01.php) · [2.0.14 APK와 서버](https://github.com/jsb3182/tcg_hub_platform/releases/tag/a90-2026.11.28.5)
+
 Android 2.0.13(코드 23)에서는 바이스 슈발츠 영문 `SAO/S47` Re: Edit·`SAO/S80` Vol.2와 리프트바운드 `OGN`·`UNL`의 팩 상세에서 **상품 출처**를 펼칠 수 있다. 영어판 발매일, 발행사 안내와 한국어 참고 문서가 연결된다. 예전 니벨아레나 팩 주소에서도 정정된 상품의 지역별 발매 일정을 확인할 수 있다. [APK·서버와 설치 방법](https://github.com/jsb3182/tcg_hub_platform/releases/tag/a90-2026.11.28.4)
 
 Android 2.0.12(코드 22)와 서버를 함께 배포했다. **발매 일정 → 수록 팩 찾기**에서 니벨아레나 `SB02`를 열면 스타터 카드 번호로 재록된 인쇄본까지 95건을 볼 수 있다. PC에서 발행사 인쇄본 1,525건의 수록 상품과 기존 덱·바인더 연결을 검사했다. [2.0.12 설치 파일과 체크섬](https://github.com/jsb3182/tcg_hub_platform/releases/tag/a90-2026.11.28.3)
