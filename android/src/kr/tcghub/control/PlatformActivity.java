@@ -133,7 +133,7 @@ public final class PlatformActivity extends LocalizedActivity {
                 if (!request.isForMainFrame()) return !allowed.resource(url);
                 if (allowed.adminPage(url)) { browser(PlatformActivity.this, origin.root + "admin"); return true; }
                 if (allowed.owns(url)) return false;
-                if (request.hasGesture() && !PublicSite.root(url).isEmpty()) browser(PlatformActivity.this, url);
+                if (PlatformOrigin.externalBrowserLink(url, request.hasGesture())) browser(PlatformActivity.this, url);
                 return true;
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {

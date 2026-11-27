@@ -13,6 +13,17 @@ public final class PlatformTest {
         PlatformOrigin publicHost = new PlatformOrigin("https://cards.example.org");
         require(publicHost.owns("https://cards.example.org:443/binder"));
         require(publicHost.adminPage("https://cards.example.org/admin?tab=operations"));
+        String notice = "http://nivelarena.co.kr/bbs/board.php?bo_table=notice&wr_id=198";
+        require(PlatformOrigin.externalBrowserLink(notice, true));
+        require(PlatformOrigin.externalBrowserLink(notice.replace("notice", "booster"), true));
+        require(!PlatformOrigin.externalBrowserLink(notice, false));
+        require(!publicHost.owns(notice) && !publicHost.resource(notice) && PublicSite.root(notice).isEmpty());
+        for (String invalid : new String[]{notice + "#other", notice + "&next=https://elsewhere.test",
+                notice.replace("198", "new"), notice.replace("notice", "user"),
+                notice.replace(".co.kr", ".co.kr.invalid"), notice.replace(".co.kr", ".co.kr:8080"),
+                notice.replace(".co.kr", ".co.kr@elsewhere.test")}) {
+            require(!PlatformOrigin.externalBrowserLink(invalid, true));
+        }
         require(publicHost.resource("https://tile.openstreetmap.org/13/8752/3882.png"));
         require(publicHost.resource("https://assets.tcgdex.net/ko/test.webp"));
         require(publicHost.resource("https://artworks-jp-n.ygoresources.com/1/2/4041_2.png"));

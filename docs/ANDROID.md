@@ -1,6 +1,6 @@
 # Android 플랫폼과 서버 운영
 
-`TCG 허브` 2.0.8는 Android 9 이상에서 카드 도감·바인더·덱·연습·소식·매장을 앱 안에 연다. 앱 아이콘으로 다시 열면 마지막에 직접 열었던 플랫폼으로 돌아간다.
+`TCG 허브` 2.0.9는 Android 9 이상에서 카드 도감·바인더·덱·연습·소식·매장을 앱 안에 연다. 앱 아이콘으로 다시 열면 마지막에 직접 열었던 플랫폼으로 돌아간다.
 
 **내 덱 → 새 덱 만들기 → 전체 레시피 캡처**에서 Android 파일 선택기로 레시피를 고른다. 분석 후 후보를 확인하고 원하는 덱으로 저장한다. 덱이나 팩의 **PNG 저장**, 내 덱 목록의 **JSON**·**Excel**을 누르면 Android에서 파일 이름과 저장 폴더를 선택할 수 있다. [캡처 형식과 인식 범위](RECIPE_CAPTURE.md)
 
@@ -31,10 +31,10 @@ A90에 Termux를 설치하고 한 번 연다. 첫 설치에서는 Ubuntu와 번�
 2. **Termux 열기**를 눌러 터미널에 붙여 넣고 Enter를 누른다. 명령은 설치 도우미와 서버 압축 파일을 각각 앱에 고정된 SHA-256과 대조한 뒤 설치한다. 다운로드나 설치가 중단되면 같은 명령으로 다시 진행한다.
 3. 설치 완료 주소가 표시되면 앱으로 돌아와 아래 절차로 제어 폴더를 한 번 연결한다. 이후 서버 시작·중지는 앱에서 할 수 있다. [제어 폴더 연결](#a90-제어-폴더를-처음-연결할-때)
 
-**Termux에서 직접 설치하는 방법**도 있다. A90 브라우저로 사용할 GitHub 릴리스를 열어 같은 태그의 `setup-termux.sh`와 파일의 SHA-256을 확인한다. 아래의 예시는 `a90-2026.11.27.4` 배포본을 휴대폰의 개인 폴더에 받는다. [릴리스 파일](https://github.com/jsb3182/tcg_hub_platform/releases)
+**Termux에서 직접 설치하는 방법**도 있다. A90 브라우저로 사용할 GitHub 릴리스를 열어 같은 태그의 `setup-termux.sh`와 파일의 SHA-256을 확인한다. 아래의 예시는 `a90-2026.11.27.5` 배포본을 휴대폰의 개인 폴더에 받는다. [릴리스 파일](https://github.com/jsb3182/tcg_hub_platform/releases)
 
 ```bash
-tag=a90-2026.11.27.4
+tag=a90-2026.11.27.5
 pkg install -y curl coreutils &&
   curl --proto '=https' --proto-redir '=https' -fL --retry 2 \
     "https://github.com/jsb3182/tcg_hub_platform/releases/download/$tag/setup-termux.sh" \
@@ -45,49 +45,27 @@ pkg install -y curl coreutils &&
 출력된 SHA-256이 릴리스에 표시된 값과 일치하면 아래 명령을 실행한다.
 
 ```bash
-bash "$HOME/setup-termux.sh" --release a90-2026.11.27.4
+bash "$HOME/setup-termux.sh" --release a90-2026.11.27.5
 ```
 
 Termux에서 설치가 끝나면 A90 브라우저로 `http://127.0.0.1:8080/`을 연다. 카드와 소식은 워커가 백그라운드에서 수집한다. `tcgctl media check-catalogs`를 실행하면 여섯 도감에 실제로 저장된 자동 수집 카드 수와 첫 수집 완료 여부를 볼 수 있다. 기존 로컬 배포의 백업은 `$HOME/tcg-backups/`에 보관된다.
 
 ## Windows PC에서 USB로 A90 도감 열기
 
-USB 케이블을 연결한 동안 PC 브라우저에서 A90의 공개 도감·소식·지도를 볼 수 있다. PC 주소는 `http://127.0.0.1:18085/`, A90 자체의 주소는 `http://127.0.0.1:8080/`이다. 로컬 회원가입·로그인, 바인더·덱 저장과 관리자 인증은 A90에서 진행한다.
+USB 케이블을 연결한 동안 PC 브라우저에서 A90의 공개 도감·소식·지도를 볼 수 있다. A90 자체의 주소는 `http://127.0.0.1:8080/`이다. 로컬 회원가입·로그인, 바인더·덱 저장과 관리자 인증은 A90에서 진행한다.
 
 1. A90에서 로컬 서버를 켜고 폰 브라우저에서 도감이 열리는지 확인한다. 신뢰하는 Windows PC에 Android SDK Platform-Tools를 준비하고, A90의 개발자 옵션에서 **USB 디버깅**을 켠다. 데이터 전송이 가능한 USB 케이블로 연결한 뒤 A90에서 이 PC의 디버깅을 허용한다. [공식 다운로드](https://developer.android.com/tools/releases/platform-tools) · [Android USB 연결 및 포트 전달](https://developer.android.com/tools/adb#forwardports)
-2. PowerShell에서 ADB와 대상 기기를 확인한다. 이미 실행 중인 ADB 서버가 있으면 그 서버와 같은 실행 파일을 사용한다. 아래 예시는 기본 ADB 서버 포트 `5037`을 사용한다. 설치된 도구의 경로가 다르면 `$adb`를 실제 `adb.exe` 경로로 지정한다.
+2. Windows PowerShell에서 서버 배포본을 푼 폴더 또는 저장소 루트를 열고 아래 명령을 실행한다. 서버가 준비되면 기본 브라우저에 도감이 열린다. [PC 연결 스크립트](../deploy/open-a90.ps1)
 
    ```powershell
-   $adbPort = 5037
-   $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-   $listener = Get-NetTCPConnection -LocalPort $adbPort -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
-   if ($listener) {
-       $owner = Get-Process -Id $listener.OwningProcess
-       if ($owner.ProcessName -ne 'adb') { throw "ADB 서버 포트를 다른 프로그램이 사용 중입니다." }
-       $adb = $owner.Path
-   }
-   & $adb -P $adbPort devices -l
+   .\deploy\open-a90.ps1
    ```
 
-3. 목록에서 A90 모델을 확인한다. 상태가 `device`인 A90 행의 맨 앞 일련번호를 입력한다. `unauthorized`라면 폰을 잠금 해제해 USB 디버깅 확인을 마친다.
+기본 PC 주소는 [127.0.0.1:18085](http://127.0.0.1:18085/)이다. 케이블을 다시 연결했을 때도 같은 명령을 쓴다. 도우미는 실행 중인 ADB와 기존 USB 연결을 확인한다. A90이 여러 대면 표시된 일련번호 중 사용할 기기를 `-Serial`로 고른다. PC 포트가 이미 다른 용도라면 `.\deploy\open-a90.ps1 -Port 18086`처럼 빈 포트를 지정한다.
 
-   ```powershell
-   $serial = Read-Host 'A90 일련번호'
-   & $adb -P $adbPort -s $serial forward --list
-   ```
+Windows PowerShell에서 로컬 스크립트 실행이 꺼져 있으면, 검증한 배포 폴더에서 `powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\deploy\open-a90.ps1`로 이번 실행에만 적용한다.
 
-   목록에 같은 일련번호와 `tcp:18085 tcp:8080`가 이미 있으면 바로 브라우저를 연다. 해당 매핑이 없고 PC 포트 18085가 비어 있으면 다음 명령으로 등록한다. 다른 기기나 프로그램이 18085를 사용 중이면 빈 포트를 골라 명령과 브라우저 주소를 함께 바꾼다.
-
-   ```powershell
-   & $adb -P $adbPort -s $serial forward --no-rebind tcp:18085 tcp:8080
-   Get-NetTCPConnection -LocalPort 18085 -State Listen | Select-Object LocalAddress,LocalPort
-   ```
-
-4. 수신 주소가 `127.0.0.1` 또는 `::1`인지 확인하고 PC에서 `http://127.0.0.1:18085/`를 연다. `0.0.0.0`이나 `::`가 나오면 아래 해제 명령을 실행한 뒤 기본 루프백 모드의 ADB를 사용한다. 케이블을 다시 연결하거나 PC·ADB를 재시작한 뒤에는 3단계에서 기존 매핑부터 확인한다. 사용을 마치면 이 연결만 해제할 수 있다.
-
-   ```powershell
-   & $adb -P $adbPort -s $serial forward --remove tcp:18085
-   ```
+별도 ADB를 쓰는 환경은 `-AdbPort 5065` 또는 `-AdbPath 'C:\Android\platform-tools\adb.exe'`로 지정한다. 지정한 포트에 ADB 서버가 이미 있으면 그 실행 파일을 사용한다. 연결만 검사하려면 `-NoBrowser`를 붙인다. A90이 보이지 않으면 데이터 케이블과 휴대폰의 USB 디버깅 승인 여부를 확인한다.
 
 ## A90 제어 폴더를 처음 연결할 때
 
