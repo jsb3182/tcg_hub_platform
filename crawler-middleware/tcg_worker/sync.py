@@ -362,7 +362,11 @@ def run(db, media, spool, stop, interval):
     from .card_readings import seed_curated_readings
     with db.transaction():
         seed_calendar(db)
-        import_wiki_cards(db)
+        try:
+            import_wiki_cards(db)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            # Keep the last verified rows available. The scheduled wiki source reports the failed refresh.
+            LOG.warning("Wiki index deferred (%s)", type(error).__name__)
         seed_curated_readings(db)
         supplements.configure(db)
     db.execute("""
