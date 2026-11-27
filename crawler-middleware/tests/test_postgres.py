@@ -219,6 +219,59 @@ class DatabaseTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     checked(invalid)
 
+    def test_onepiece_english_calendar_repairs_old_hints_and_finds_a_korean_first_catalog(self):
+        import json
+        from tcg_worker.catalog_sources.onepiece import CARD_LIST, Index, edition
+        from tcg_worker.catalog_sources.onepiece_rift_nivel_releases import SEED
+        from tcg_worker.release_calendar import checked, save
+        from tcg_worker.sync import save_cards
+
+        en, = [row for row in json.loads(SEED.read_text("utf-8")) if row["key"] == "en-op-01"]
+        kr, = [row for row in json.loads(SEED.read_text("utf-8")) if row["key"] == "kr-opk-01"]
+        with self.db.transaction(force_rollback=True):
+            db = self.db
+            idx = Index()
+            idx.add("OP01-003", "en", edition("Monkey.D.Luffy", None, None,
+                    "https://en.onepiece-cardgame.com/cardlist/?series=569101"), 0,
+                    "OP-01", "BOOSTER PACK -ROMANCE DAWN- [OP-01]", observed_code="OP-01")
+            idx.add("OP01-003", "ko", edition("몽키 D. 루피", None, None, CARD_LIST), 0,
+                    "OP-01", "[OPK-01] 부스터 팩 ROMANCE DAWN", observed_code="OP-01")
+            idx.add("OP01-003", "en", edition("Reprint", None, None,
+                    "https://en.onepiece-cardgame.com/cardlist/?series=569114"), 2,
+                    "OP-14", "BOOSTER PACK -COMBINED- [OP14-EB04]", observed_code="OP14-EB04")
+            cards = list(idx.records())
+            self.assertIn("ROMANCE DAWN", cards[0]["pack_labels"])
+            self.assertNotIn("COMBINED", cards[1]["pack_labels"])
+            sid = db.execute("select id from feed_source where provider='CATALOG' and source_key='ONEPIECE'").fetchone()[0]
+            save_cards(db, {"id": sid, "game_code": "ONEPIECE", "auto_publish": True}, cards)
+            pack, name = db.execute("select id,name from pack where game_code='ONEPIECE' and code='OP-01'").fetchone()
+            self.assertEqual(name, "[OPK-01] 부스터 팩 ROMANCE DAWN")
+            # Older live metadata had no catalog hints; startup seeding only fills the missing link.
+            save(db, [en])
+            en_id, = db.execute("select id from product_release where product_key='en-op-01' and region='EN'").fetchone()
+            rows = checked([en, kr])
+            self.assertEqual(save(db, rows, seed=True), 1)
+            read = "select catalog_code,catalog_name,from_seed,release_date::text,version from product_release where id=%s"
+            before = db.execute(read, (en_id,)).fetchone()
+            self.assertEqual(before[:4], ("OP-01", "ROMANCE DAWN", False, "2022-12-02"))
+            self.assertEqual(db.execute("select release_date::text from catalog_pack_date where pack_id=%s", (pack,)).fetchone(),
+                             ("2022-12-02",))
+            save(db, rows, seed=True)
+            self.assertEqual(db.execute(read, (en_id,)).fetchone(), before)
+            # A newer live date stays authoritative until the publisher itself is read.
+            db.execute("update product_release set release_date='2023-01-01',catalog_name=null where id=%s", (en_id,))
+            save(db, rows, seed=True)
+            self.assertEqual(db.execute(read, (en_id,)).fetchone()[1:4], (None, False, "2023-01-01"))
+            save(db, rows)
+            self.assertEqual(db.execute(read, (en_id,)).fetchone()[:4], before[:4])
+            db.execute("update product_release set manual=true,selected_pack_id=%s,catalog_name=null,release_date='2024-01-01' where id=%s",
+                       (pack, en_id))
+            edited = db.execute(read, (en_id,)).fetchone()
+            save(db, rows, seed=True)
+            save(db, rows)
+            self.assertEqual(db.execute(read, (en_id,)).fetchone(), edited)
+            self.assertEqual(db.execute("select selected_pack_id from product_release where id=%s", (en_id,)).fetchone(), (pack,))
+
     def test_catalog_check_requires_published_source_cards_and_a_finished_import_for_each_game(self):
         from tcg_worker.__main__ import check_catalogs
 

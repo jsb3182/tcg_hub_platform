@@ -43,7 +43,13 @@ class ReleaseProducts(unittest.TestCase):
                           "OP-01", "[OPK-01] 부스터 팩 ROMANCE DAWN"))
         self.assertEqual((en["region"], en["date"], en["url"]),
                          ("EN", "2022-12-02", "https://en.onepiece-cardgame.com/products/boosters/op01.php"))
-        self.assertNotIn("catalogCode", en)
+        self.assertEqual((en["catalogCode"], en["catalogName"]), ("OP-01", "ROMANCE DAWN"))
+        hybrid = next(r for r in rows if r["code"] == "OP14-EB04")
+        self.assertNotIn("catalogCode", hybrid)
+        without_hint = {k: v for k, v in en.items() if k not in ("catalogCode", "catalogName")}
+        for patch in ({"url": en["url"].replace("op01", "op02")}, {"names": {"en": "Other product"}},
+                      {"url": "https://example.invalid/products/boosters/op01.php"}):
+            self.assertNotIn("catalogCode", checked([{**without_hint, **patch}])[0])
 
     def test_paginated_products_follow_only_the_next_page_and_stop_at_disabled_link(self):
         kr_next = "/products.do?page=1&size=12&extraValue="

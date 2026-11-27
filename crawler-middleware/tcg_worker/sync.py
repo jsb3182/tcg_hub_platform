@@ -16,7 +16,7 @@ from psycopg.types.json import Jsonb
 
 from .catalog_news import collect_pack_dates, finish_yugioh_scan
 from .catalog_sources.rift_editions import preserve_deferred
-from .catalog_sources.onepiece import COLLECTOR, preserve_partial_korean
+from .catalog_sources.onepiece import COLLECTOR, SINGLE_PRODUCT, preserve_partial_korean
 from .feeds import FetchError, backoff, fetch_feed
 from .jobs import connect, process_once
 from . import supplements
@@ -128,7 +128,7 @@ def catalog_product_key(prefix, identity):
 
 
 def onepiece_numbered_sku(code):
-    return bool(code and re.fullmatch(r"(?:OP|ST|EB|PRB)-[0-9]{2}", code))
+    return bool(code and SINGLE_PRODUCT.fullmatch(code))
 
 
 def is_numbered_printing(card, code):
@@ -196,6 +196,7 @@ def save_cards(db, source, records):
             name = " ".join(raw_name.split())
             if numbered:
                 labels.add((pack_key, name))
+                labels.update((pack_key, label) for label in card.get("pack_labels", ()))
             if pack_key not in packs or name < packs[pack_key]["name"]:
                 packs[pack_key] = {"key": pack_key, "code": code, "name": name}
         cards[key] = {**card, "key": key, "pack_key": pack_key}
