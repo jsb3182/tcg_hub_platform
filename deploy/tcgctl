@@ -164,7 +164,12 @@ start_public_tunnel() {
   return 1
 }
 hold_writers() {
-  for member in tunnel worker api; do disable "$member"; done
+  local member
+  local writers=(tunnel worker api)
+  # A restarted runsv must see all writers disabled before supervising any of them.
+  for member in "${writers[@]}"; do touch "$svroot/tcg-$member/down"; done
+  ensure_supervisor
+  for member in "${writers[@]}"; do stop_service "$member"; done
 }
 add_service() {
   local svc=$1 user=$2 path="$svroot/tcg-$1" log="$PREFIX/var/log/tcg-$1"
