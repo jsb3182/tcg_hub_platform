@@ -48,7 +48,7 @@ class CatalogApi {
             """).param("game",game).query(Pack.class).list();
     }
 
-    @GetMapping("/cards")
+    @GetMapping(value="/cards",params="!ids")
     PageResult list(@RequestParam(defaultValue="") @Size(max=32) String game,
                     @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang,
                     @RequestParam(required=false) @Positive Long packId,
@@ -57,16 +57,27 @@ class CatalogApi {
                     @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
                     @RequestParam(defaultValue="24") @Min(1) @Max(100) int size) {
         var result = cards.search(game, packId, lang, rarity.strip(), q.strip(), PageRequest.of(page,size));
+        return new PageResult(withImages(result.getContent(),lang),page,size,result.getTotalElements());
+    }
+
+    @GetMapping(value="/cards",params="ids")
+    PageResult byIds(@RequestParam @Size(min=1,max=100) List<@Positive Long> ids,
+                     @RequestParam(defaultValue="") @Size(max=32) String game,
+                     @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) {
+        var found=cards.publishedByIds(ids,game,lang);
+        return new PageResult(withImages(found,lang),0,ids.size(),found.size());
+    }
+
+    private List<ListedCard> withImages(List<CardRepository.Summary> summaries,String lang){
         var images = new HashMap<Long,Image>();
-        if (!result.isEmpty()) {
-            var ids = result.getContent().stream().map(CardRepository.Summary::getId).toList();
+        if (!summaries.isEmpty()) {
+            var ids = summaries.stream().map(CardRepository.Summary::getId).toList();
             db.sql("select c.id" + LibraryImage.COLUMNS + " from card c " + LibraryImage.LOCALIZED_JOIN
                     + " where c.id in (:ids) and tile.sheet_id is not null")
                     .param("ids",ids).param("lang",lang).query((r,n) -> java.util.Map.entry(r.getLong("id"),LibraryImage.read(r)))
                     .list().forEach(entry -> images.put(entry.getKey(),entry.getValue()));
         }
-        var items = result.getContent().stream().map(card -> new ListedCard(card,images.get(card.getId()))).toList();
-        return new PageResult(items,page,size,result.getTotalElements());
+        return summaries.stream().map(card -> new ListedCard(card,images.get(card.getId()))).toList();
     }
 
     @GetMapping("/cards/{id}")

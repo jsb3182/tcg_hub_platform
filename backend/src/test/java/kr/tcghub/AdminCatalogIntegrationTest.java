@@ -150,6 +150,57 @@ class AdminCatalogIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test void reviewedTranslationStaysWithItsPrintingAcrossImportsAndWithdrawal() throws Exception {
+        long id=db.sql("""
+                insert into card(game_code,name,number,effect,status,specs,source_url)
+                values('ONEPIECE','Printed English Name','QA-TRANSLATION','English effect','PENDING',
+                 '{"language":"en"}','https://en.onepiece-cardgame.com/cardlist/') returning id
+                """).query(Long.class).single();
+        String endpoint=BASE+"/cards/"+id+"/translations";
+        String publicCard="/api/v1/cards/"+id;
+        var draft=json.createObjectNode().put("name","검수 전용 명칭").put("effect","검수한 효과입니다.")
+                .put("basis","TRANSLATED_NAME").put("sourceUrl","https://namu.wiki/w/QA").put("version",0);
+        http.perform(local(get(endpoint))).andExpect(status().isUnauthorized());
+        http.perform(local(put(endpoint+"/ko")).header("Authorization","Bearer "+jwt)
+                .content(json.writeValueAsBytes(draft))).andExpect(status().isForbidden());
+        save(put(endpoint+"/ko"),draft.deepCopy().put("basis","PRINTED_NAME"),400);
+        save(put(endpoint+"/ko"),draft.deepCopy().put("sourceUrl","javascript:void(0)"),400);
+        save(put(endpoint+"/ko"),draft.deepCopy().put("sourceUrl","https://user@example.org/a"),400);
+        save(put(endpoint+"/ko"),draft.deepCopy().put("basis","PRINTED_NAME")
+                .put("sourceUrl","https://onepiece-cardgame.kr.example.org/test"),400);
+        assertEquals(1,save(put(endpoint+"/ko"),draft,200).get("version").asInt());
+        save(put(endpoint+"/ko"),draft,409);
+        http.perform(get(publicCard)).andExpect(status().isNotFound());
+        db.sql("update card set status='PUBLISHED' where id=?").param(id).update();
+        http.perform(get(publicCard)).andExpect(jsonPath("$.name").value("검수 전용 명칭"))
+                .andExpect(jsonPath("$.nameBasis").value("TRANSLATED_NAME")).andExpect(jsonPath("$.effectLanguage").value("ko"))
+                .andExpect(jsonPath("$.effectBasis").value("REVIEWED_TRANSLATION"))
+                .andExpect(jsonPath("$.effectReferenceUrl").value("https://namu.wiki/w/QA"));
+        http.perform(get("/api/v1/cards").param("q","검수 전용 명칭")).andExpect(jsonPath("$.items[0].id").value(id));
+        http.perform(get("/api/v1/play/cards").param("game","ONEPIECE").param("q","검수 전용 명칭"))
+                .andExpect(jsonPath("$[0].effectBasis").value("REVIEWED_TRANSLATION"));
+        http.perform(get(publicCard).param("lang","en")).andExpect(jsonPath("$.name").value("Printed English Name"));
+        db.sql("""
+                update card set specs=specs||'{"names":{"ko":"새로 수집한 이름"},"sources":{"ko":"https://www.onepiece-cardgame.kr/cardlist/"}}'::jsonb
+                where id=?
+                """).param(id).update();
+        http.perform(get(publicCard)).andExpect(jsonPath("$.name").value("새로 수집한 이름"))
+                .andExpect(jsonPath("$.effect").value("검수한 효과입니다."));
+        draft.put("version",1).put("basis","PRINTED_NAME").put("sourceUrl","https://www.onepiece-cardgame.kr/cardlist/");
+        assertEquals(2,save(put(endpoint+"/ko"),draft,200).get("version").asInt());
+        http.perform(get(publicCard)).andExpect(jsonPath("$.nameBasis").value("PRINTED_NAME"))
+                .andExpect(jsonPath("$.effectBasis").value("REVIEWED_PRINTING"));
+        var withdraw=json.createObjectNode().put("version",2);
+        var removed=save(put(endpoint+"/ko"),withdraw,200);
+        assertEquals(3,removed.get("version").asInt());
+        http.perform(admin(get(endpoint))).andExpect(jsonPath("$[0].version").value(3));
+        http.perform(get(publicCard)).andExpect(jsonPath("$.name").value("새로 수집한 이름"))
+                .andExpect(jsonPath("$.effect").value("English effect"));
+        save(put(endpoint+"/ko"),draft,409);
+        db.sql("update card set status='REJECTED' where id=?").param(id).update();
+        save(put(endpoint+"/ko"),draft.put("version",3),409);
+    }
+
     @Test @Transactional(propagation=Propagation.NOT_SUPPORTED)
     void simultaneousSavesOfOneVersionCommitExactlyOneUpdate() throws Exception {
         long id=save(post(BASE+"/cards"),draft("YUGIOH","Concurrency"),201).get("id").asLong();

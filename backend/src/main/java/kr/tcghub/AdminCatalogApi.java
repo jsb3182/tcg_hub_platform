@@ -1,6 +1,7 @@
 package kr.tcghub;
 
 import java.nio.charset.StandardCharsets;
+import java.net.URI;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.*;
@@ -35,6 +36,15 @@ class AdminCatalogApi {
                     String status,long version,boolean editable,Long variantId) {}
     record Page<T>(List<T> items,long total,int page,int size) {}
     record EditState(String gameCode,long version,boolean editable) {}
+    record TranslationInput(@Size(max=320) String name,@Size(max=8000) String effect,@Size(max=2048) String sourceUrl,
+                            @Pattern(regexp="PRINTED_NAME|TRANSLATED_NAME") String basis,@NotNull @PositiveOrZero Long version) {}
+    record Translation(String lang,String name,String effect,String sourceUrl,String basis,long version) {}
+    private static final Map<String,Set<String>> PUBLISHERS=Map.of(
+            "YUGIOH",Set.of("yugioh-card.com","yugioh.co.kr"),
+            "POKEMON",Set.of("pokemonkorea.co.kr","pokemoncard.co.kr","pokemon-card.com","pokemon.com"),
+            "ONEPIECE",Set.of("onepiece-cardgame.kr","onepiece-cardgame.com"),
+            "WEISS",Set.of("ws-tcg.com"),"NIVEL",Set.of("nivelarena.co.kr"),
+            "RIFTBOUND",Set.of("playriftbound.com","riftbound.leagueoflegends.com"));
 
     private static final String PACK_FIELDS = """
             select p.id,p.game_code,p.name,p.code,p.release_date,p.release_label,p.metadata::text as metadata,
@@ -93,6 +103,58 @@ class AdminCatalogApi {
 
     @GetMapping("/cards/{id}")
     CardView card(Principal user,@PathVariable @Positive long id) { operator(user); return readCard(id); }
+
+    @GetMapping("/cards/{id}/translations")
+    List<Translation> translations(Principal user,@PathVariable @Positive long id) {
+        operator(user);
+        db.sql("select id from card where id=?").param(id).query(Long.class).optional().orElseThrow(AdminCatalogApi::missing);
+        return db.sql("select lang,name,effect,source_url,basis,version from card_translation where card_id=? order by lang")
+                .param(id).query(Translation.class).list();
+    }
+
+    @PutMapping("/cards/{id}/translations/{lang}")
+    @Transactional
+    Translation reviewTranslation(Principal user,@PathVariable @Positive long id,@PathVariable @Pattern(regexp="ko|en|ja") String lang,
+                                  @Valid @RequestBody TranslationInput input) {
+        long admin=operator(user);
+        record State(String gameCode,String status) {}
+        var card=db.sql("select game_code,status from card where id=? for update").param(id)
+                .query(State.class).optional().orElseThrow(AdminCatalogApi::missing);
+        if ("REJECTED".equals(card.status())) throw new ResponseStatusException(HttpStatus.CONFLICT,"반려된 카드입니다.");
+        long version=db.sql("select version from card_translation where card_id=? and lang=?")
+                .param(id).param(lang).query(Long.class).optional().orElse(0L);
+        if (version!=input.version()) throw new ResponseStatusException(HttpStatus.CONFLICT,"다른 사람이 저장한 번역을 확인해 주세요.");
+        String name=text(input.name()),effect=text(input.effect()),basis=null,url=null;
+        if (name!=null || effect!=null) {
+            basis=input.basis();
+            if (basis==null) throw bad("인쇄본 또는 검수 번역을 선택해 주세요.");
+            url=reviewSource(text(input.sourceUrl()),card.gameCode(),basis);
+        } else if (version==0) {
+            throw bad("이름 또는 효과를 입력해 주세요.");
+        }
+        var saved=db.sql("""
+                insert into card_translation(card_id,lang,name,effect,source_url,basis,version) values(?,?,?,?,?,?,1)
+                on conflict(card_id,lang) do update set name=excluded.name,effect=excluded.effect,
+                    source_url=excluded.source_url,basis=excluded.basis,version=card_translation.version+1
+                returning lang,name,effect,source_url,basis,version
+                """).param(id).param(lang).param(name).param(effect).param(url).param(basis).query(Translation.class).single();
+        audit(admin,"REVIEW_TRANSLATION_"+lang,id);
+        return saved;
+    }
+
+    private static String reviewSource(String url,String game,String basis) {
+        URI uri;
+        try { uri=URI.create(Objects.requireNonNullElse(url,"")); }
+        catch (IllegalArgumentException e) { throw bad("출처 웹 주소를 확인해 주세요."); }
+        if (!("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+                || uri.getHost()==null || uri.getRawUserInfo()!=null || url.indexOf('\\')>=0)
+            throw bad("카드 이름이나 효과를 확인한 웹 주소가 필요합니다.");
+        String host=uri.getHost().toLowerCase(Locale.ROOT);
+        if ("PRINTED_NAME".equals(basis) && PUBLISHERS.getOrDefault(game,Set.of()).stream()
+                .noneMatch(domain -> host.equals(domain) || host.endsWith("."+domain)))
+            throw bad("인쇄본 표기에는 해당 종목의 공식 카드 페이지를 연결해 주세요.");
+        return url;
+    }
 
     private PackView readPack(long id) {
         return db.sql(PACK_FIELDS+" from pack p where p.id=?").param(id).query(PackView.class).optional().orElseThrow(AdminCatalogApi::missing);

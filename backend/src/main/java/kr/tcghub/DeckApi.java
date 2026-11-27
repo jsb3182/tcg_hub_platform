@@ -33,7 +33,8 @@ class DeckApi {
                    long cards,long mainCount,long extraCount,long sideCount,boolean hasCover) {}
     record Page(List<Summary> items, long total,long totalCards) {}
     record Entry(long cardId, String section, int quantity, String name, String number, String packName,
-                 Integer curveValue, CatalogApi.Image image,Long variantId,String imageUrl,String type,Integer neuronArtwork) {}
+                 Integer curveValue, CatalogApi.Image image,Long variantId,String imageUrl,String type,Integer neuronArtwork,
+                 String language,String nameBasis,String nameReferenceUrl,String imageLanguage,String imageBasis,String imageSource) {}
     record Details(@com.fasterxml.jackson.annotation.JsonUnwrapped Header deck, DeckRules.Rule rule,List<Entry> entries) {}
     record History(int revision, OffsetDateTime savedAt, String name, String state, int cards) {}
     record HistoryPage(List<History> items,long total) {}
@@ -68,9 +69,8 @@ class DeckApi {
              from deck d join app_user u on u.id=d.owner_id
              where u.email=:email and u.enabled and (:q='' or
                  strpos(lower(concat_ws(' ',d.name,d.name_ja,d.name_en)),lower(:q))>0 or exists (
-                 select 1 from deck_entry e join card c on c.id=e.card_id where e.deck_id=d.id and
-                 strpos(lower(concat_ws(' ',c.name,c.original_name,c.number,c.specs->'names'->>'en',c.specs->'names'->>'ja',c.specs->'names'->>'ko')),lower(:q))>0))
-             """;
+                 select 1 from deck_entry e join card c on c.id=e.card_id
+             """+CardEdition.LEGACY_JOIN+" where e.deck_id=d.id and "+CardEdition.MATCH_NAME+")) ";
         var items=db.sql("select "+FIELDS+"""
               ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id) as cards
               ,(select coalesce(sum(quantity),0) from deck_entry where deck_id=d.id and section='MAIN') as main_count
@@ -90,8 +90,11 @@ class DeckApi {
     }
     private Details details(Header header) {return details(header,"ko");}
     private Details details(Header header,String lang) {
-        var entries=db.sql("select e.card_id,e.section,e.quantity,e.variant_id,e.neuron_artwork,"+CardEdition.NAME+" as name,c.number,p.name as pack_name,"+
-                "coalesce('https://artworks-jp-n.ygoresources.com'||n.image_path,c.specs->'images'->>art.lang) as image_url,"+
+        var entries=db.sql("select e.card_id,e.section,e.quantity,e.variant_id,e.neuron_artwork,"+CardEdition.NAME_FIELDS+",c.number,p.name as pack_name,"+
+                "case when e.variant_id is null then coalesce('https://artworks-jp-n.ygoresources.com'||n.image_path,art.url) end as image_url,"+
+                "case when e.neuron_artwork is not null then 'ja' when e.variant_id is null then art.lang end as image_lang,"+
+                "case when e.neuron_artwork is not null then 'SELECTED_ARTWORK' when e.variant_id is null then art.basis end as image_basis,"+
+                "case when e.neuron_artwork is not null then 'https://artworks-jp-n.ygoresources.com'||n.image_path when e.variant_id is null then art.source end as image_source,"+
                 "coalesce(c.specs->>'type',nullif(concat_ws(' · ',c.specs->>'k',c.specs->>'sub'),''),c.specs->>'card_type') as type,"+
                 "card_curve_value(c.game_code,c.specs) as curve_value"+LibraryImage.COLUMNS+
                 "from deck_entry e join card c on c.id=e.card_id left join pack p on p.id=c.pack_id "+
@@ -102,7 +105,8 @@ class DeckApi {
                         r.getString("number"),r.getString("pack_name"),r.getObject("curve_value",Integer.class),
                         r.getObject("neuron_artwork")==null ? LibraryImage.read(r) : null,
                         r.getObject("variant_id",Long.class),r.getString("image_url"),r.getString("type"),
-                        r.getObject("neuron_artwork",Integer.class))).list();
+                        r.getObject("neuron_artwork",Integer.class),r.getString("language"),r.getString("nameBasis"),
+                        r.getString("nameReferenceUrl"),r.getString("image_lang"),r.getString("image_basis"),r.getString("image_source"))).list();
         return new Details(header,rules.rule(header.gameCode(),header.format(),header.ruleVersion()),entries);
     }
     @GetMapping("/me/decks/{id}")

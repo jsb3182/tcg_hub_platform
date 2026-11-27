@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 class DeckNeedsApi {
-    record Item(long cardId,String name,String number,long required,long owned) {}
+    record Item(long cardId,String name,String number,long required,long owned,String language,String nameBasis,String nameReferenceUrl) {}
     record Page(List<Item> items,Long next) {}
     private final JdbcClient db;
     DeckNeedsApi(JdbcClient db){this.db=db;}
@@ -25,8 +25,8 @@ class DeckNeedsApi {
                 stock as (select b.card_id,sum(b.quantity) as owned from owner join binder_card b on b.owner_id=owner.id
                     join wanted w on w.card_id=b.card_id group by b.card_id)
                 select c.id as card_id,
-                """+CardEdition.NAME+"""
-                 as name,c.number,w.required,coalesce(s.owned,0) as owned
+                """+CardEdition.NAME_FIELDS+"""
+                 ,c.number,w.required,coalesce(s.owned,0) as owned
                 from wanted w join card c on c.id=w.card_id and c.status='PUBLISHED' left join stock s on s.card_id=c.id
                 """+CardEdition.JOIN+"""
                 where w.required>coalesce(s.owned,0) order by c.id limit 41

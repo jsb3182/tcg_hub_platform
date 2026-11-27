@@ -33,7 +33,8 @@ class ReleaseApi {
                     String rarity, List<String> rarities, String type, String subtype, String inclusion,
                     String product, String productDate, LocalDate releaseDate, String effect,
                     String effectLanguage, String imageUrl, String imageLanguage, CatalogApi.Image image,
-                    int variantCount, String nameBasis, String nameReferenceUrl) {}
+                    int variantCount, String nameBasis, String nameReferenceUrl, String imageBasis,
+                    String imageSource, String imageProduct, String productCode, String effectReferenceUrl, String effectBasis) {}
     record PackDetail(@JsonUnwrapped Header header, List<Printing> cards, int page, int size, boolean hasMore) {}
 
     private static final Set<String> PUBLIC_METADATA = Set.of("id","code","kind","jp","kr","cnt","note","sec","sx","wp","bgp");
@@ -145,7 +146,9 @@ class ReleaseApi {
                 row.getString("product"),row.getString("product_date"),row.getObject("release_date",LocalDate.class),
                 row.getString("effect"),row.getString("effectLanguage"),row.getString("imageUrl"),
                 row.getString("imageLanguage"),LibraryImage.read(row),variants.length,row.getString("nameBasis"),
-                row.getString("nameReferenceUrl"));
+                row.getString("nameReferenceUrl"),row.getString("imageBasis"),row.getString("imageSource"),
+                row.getString("imageProduct"),row.getString("productCode"),row.getString("effectReferenceUrl"),
+                row.getString("effectBasis"));
     }
 
     private static void addRarities(Set<String> rarities, String value, boolean splitCodes) {

@@ -19,7 +19,9 @@ class BinderApi {
                     @NotNull @Min(0) @Max(9999) Integer expectedQuantity) {}
     static final String EDITION="und|ko|en|ja", CONDITION="UNSPECIFIED|NM|LP|MP|HP|DMG";
     record OwnedCard(long cardId,String name,String gameCode,String number,String packName,int quantity,
-                     CatalogApi.Image image,String rarity,String edition,String condition,boolean tradable) {}
+                     CatalogApi.Image image,String rarity,String edition,String condition,boolean tradable,
+                     String language,String nameBasis,String nameReferenceUrl,String imageUrl,String imageLanguage,
+                     String imageBasis,String imageSource) {}
     record Stats(String gameCode,long uniqueCards,long copies) {}
     record Page(List<OwnedCard> items, long total, long copies) {}
     record Count(int quantity) {}
@@ -33,7 +35,7 @@ class BinderApi {
               @RequestParam(defaultValue="9999") @Min(1) @Max(9999) int maxQuantity,
               @RequestParam(defaultValue="") @Pattern(regexp="|"+EDITION) String edition,
               @RequestParam(defaultValue="") @Pattern(regexp="|"+CONDITION) String condition,
-              @RequestParam(required=false) Boolean tradable,
+              @RequestParam(required=false) Boolean tradable,@RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang,
               @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
               @RequestParam(defaultValue="24") @Min(1) @Max(100) int size) {
         if (minQuantity>maxQuantity) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
@@ -45,22 +47,22 @@ class BinderApi {
                 where u.email=:email and u.enabled and (:game='' or c.game_code=:game)
                 and (:rarity='' or c.rarity=:rarity) and (:edition='' or b.edition=:edition)
                 and (:condition='' or b.condition=:condition) and b.quantity between :min and :max
-                and (:q='' or strpos(lower(c.name || ' ' || coalesce(c.number,'')),lower(:q))>0
-                    or exists(select from jsonb_each_text(case when jsonb_typeof(c.specs->'names')='object'
-                        then c.specs->'names' else '{}'::jsonb end) n where strpos(lower(n.value),lower(:q))>0))
-                """;
+                """+" and (:q='' or "+CardEdition.MATCH_NAME+") ";
         var args=new HashMap<String,Object>();
         args.put("email",user.getName()); args.put("game",game); args.put("rarity",rarity); args.put("q",q.strip());
         args.put("edition",edition); args.put("condition",condition); args.put("min",minQuantity); args.put("max",maxQuantity);
         if (tradable!=null) { args.put("tradable",tradable); filter+=" and b.tradable=:tradable "; }
-        var totals = db.sql("select count(*),coalesce(sum(b.quantity),0) "+from+filter)
+        var totals = db.sql("select count(*),coalesce(sum(b.quantity),0) "+from+CardEdition.LEGACY_JOIN+filter)
                 .params(args).query((r,n)->new long[]{r.getLong(1),r.getLong(2)}).single();
-        var items = db.sql("select c.id,c.name,c.game_code,c.number,c.rarity,p.name as pack_name,b.quantity,b.edition,b.condition,b.tradable"+
-                LibraryImage.COLUMNS+from+LibraryImage.JOIN+filter+
+        var items = db.sql("select c.id,"+CardEdition.NAME_FIELDS+",c.game_code,c.number,c.rarity,p.name as pack_name,b.quantity,b.edition,b.condition,b.tradable,"+
+                "art.url as image_url,art.lang as image_lang,art.basis as image_basis,art.source as image_source"+
+                LibraryImage.COLUMNS+from+CardEdition.JOIN+LibraryImage.LOCALIZED_JOIN+filter+
                 " order by b.updated_at desc,b.card_id,b.edition,b.condition,b.tradable limit :size offset :offset")
-                .params(args).param("size",size).param("offset",(long)page*size).query((r,n)->new OwnedCard(r.getLong("id"),r.getString("name"),
+                .params(args).param("lang",lang).param("size",size).param("offset",(long)page*size).query((r,n)->new OwnedCard(r.getLong("id"),r.getString("name"),
                         r.getString("game_code"),r.getString("number"),r.getString("pack_name"),r.getInt("quantity"),LibraryImage.read(r),
-                        r.getString("rarity"),r.getString("edition"),r.getString("condition"),r.getBoolean("tradable"))).list();
+                        r.getString("rarity"),r.getString("edition"),r.getString("condition"),r.getBoolean("tradable"),
+                        r.getString("language"),r.getString("nameBasis"),r.getString("nameReferenceUrl"),r.getString("image_url"),
+                        r.getString("image_lang"),r.getString("image_basis"),r.getString("image_source"))).list();
         return new Page(items,totals[0],totals[1]);
     }
 

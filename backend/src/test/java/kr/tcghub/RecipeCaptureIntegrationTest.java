@@ -44,7 +44,7 @@ class RecipeCaptureIntegrationTest {
                     details.entries().get(1).imageUrl());
             org.junit.jupiter.api.Assertions.assertEquals(local,details.entries().get(2).variantId());
         }
-        var backup=exports.page(owner,0).items().get(0);
+        var backup=exports.page(owner,0,"ko").items().get(0);
         org.junit.jupiter.api.Assertions.assertEquals(2,backup.entries().get(1).neuronArtwork());
         var replay=decks.importCode(owner,decks.code(owner,result.deck().id()));
         org.junit.jupiter.api.Assertions.assertEquals(reopened.entries(),replay.entries());
