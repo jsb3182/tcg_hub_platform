@@ -645,6 +645,7 @@ class DatabaseTests(unittest.TestCase):
 
         source = Path(os.environ["TCG_TEST_LEGACY"])
         with self.db.transaction(force_rollback=True):
+            upcoming_ids = dict(self.db.execute("SELECT code,id FROM pack WHERE starts_with(legacy_key,'publisher:na-tcg:premiere:')"))
             stats = import_catalog(self.db, source, self.media)
             self.assertEqual((stats["packs"], stats["cards"], stats["sheets"]), (23, 994, 82))
             raw = self.db.execute("""
@@ -676,7 +677,10 @@ class DatabaseTests(unittest.TestCase):
                 GROUP BY e.language ORDER BY e.language NULLS LAST
             """).fetchall()
             self.assertEqual(editions, [("en",57,57), ("ja",846,892), (None,1,1)])
-            self.assertEqual(self.db.execute("SELECT count(*) FROM pack WHERE game_code='YUGIOH'").fetchone()[0], 23)
+            self.assertEqual(self.db.execute("SELECT count(*) FROM pack WHERE starts_with(legacy_key,'legacy:')").fetchone()[0], 23)
+            premiere = self.db.execute("SELECT code,id FROM pack WHERE metadata @> '{\"sec\":true,\"wp\":true}'").fetchall()
+            self.assertEqual(len(premiere), 5)
+            self.assertEqual(dict(premiere), upcoming_ids)
             keys = self.db.execute("""
                 SELECT DISTINCT s.storage_key,s.retired FROM image_sheet s JOIN card_variant v ON v.sheet_id=s.id
                 JOIN card c ON c.id=v.card_id WHERE c.game_code='YUGIOH'

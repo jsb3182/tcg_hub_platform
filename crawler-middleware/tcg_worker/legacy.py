@@ -132,12 +132,20 @@ def import_catalog(db, source: Path, root: Path):
             if pack.get("bg"):
                 banner = publish(root, "banners", banner_path(source, pack["bg"]).read_bytes())
             pack_key = "legacy:" + pack["id"]
+            details = (pack["name"], exact_date(pack.get("jp")), pack.get("kr") or pack.get("jp"),
+                       banner, Jsonb({k: v for k, v in pack.items() if k != "cards"}))
+            if pack.get("wp") is True and pack.get("sec") is True and pack.get("code"):
+                db.execute(
+                    """UPDATE pack SET legacy_key=%s, name=%s, release_date=%s, release_label=%s,
+                              banner_key=%s, metadata=%s
+                         WHERE legacy_key=%s AND NOT EXISTS (SELECT 1 FROM pack WHERE legacy_key=%s)""",
+                    (pack_key, *details, "publisher:na-tcg:premiere:" + pack["code"], pack_key),
+                )
             pack_id = db.execute(
-                """INSERT INTO pack(game_code,name,code,release_date,release_label,banner_key,metadata,legacy_key)
+                """INSERT INTO pack(game_code,name,release_date,release_label,banner_key,metadata,code,legacy_key)
                    VALUES ('YUGIOH',%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT(legacy_key) DO UPDATE SET legacy_key=EXCLUDED.legacy_key RETURNING id""",
-                (pack["name"], pack.get("code"), exact_date(pack.get("jp")), pack.get("kr") or pack.get("jp"),
-                 banner, Jsonb({k: v for k, v in pack.items() if k != "cards"}), pack_key),
+                (*details, pack.get("code"), pack_key),
             ).fetchone()[0]
             for ordinal, card in enumerate(pack["cards"]):
                 specs = {k: v for k, v in card.items()

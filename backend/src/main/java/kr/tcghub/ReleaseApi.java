@@ -25,10 +25,11 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1")
 @Transactional(readOnly = true)
 class ReleaseApi {
+    record OfficialProduct(String englishName, LocalDate launchDate, LocalDate otsDate, int setSize, String sourceUrl) {}
     record Header(long id, String gameCode, String code, String name, LocalDate releaseDate,
                   String releaseLabel, String bannerUrl, String group, JsonNode metadata,
                   long total, long newCount, long reprintCount, long newArtCount, long productCount,
-                  String firstProductDate, String lastProductDate, String latestProduct) {}
+                  String firstProductDate, String lastProductDate, String latestProduct, OfficialProduct officialProduct) {}
     record Printing(long id, String name, String originalName, String language, String number,
                     String rarity, List<String> rarities, String type, String subtype, String inclusion,
                     String product, String productDate, LocalDate releaseDate, String effect,
@@ -50,8 +51,10 @@ class ReleaseApi {
                    case when p.metadata->>'sec' is distinct from 'true' then 'SCHEDULE'
                         when p.metadata->>'wp'='true' then 'PREMIERE'
                         when p.metadata->>'sx'='l' then 'ARCHIVE' else 'DISTRIBUTION' end as release_group,
-                   totals.*
+                   n.english_name,n.launch_date,n.ots_date,n.set_size,n.source_url,totals.*
               from pack p
+              left join yugioh_na_product n on p.game_code='YUGIOH' and n.code=p.code
+                    and p.metadata @> '{"sec":true,"wp":true}'
               cross join lateral (
                 select count(*) as total,
                        count(*) filter(where inclusion='NEW') as new_count,
@@ -130,7 +133,10 @@ class ReleaseApi {
                 row.getObject("release_date",LocalDate.class),row.getString("release_label"),row.getString("banner_url"),
                 row.getString("release_group"),metadata,row.getLong("total"),row.getLong("new_count"),
                 row.getLong("reprint_count"),row.getLong("new_art_count"),row.getLong("product_count"),
-                row.getString("first_product_date"),row.getString("last_product_date"),row.getString("latest_product"));
+                row.getString("first_product_date"),row.getString("last_product_date"),row.getString("latest_product"),
+                row.getString("source_url")==null ? null : new OfficialProduct(row.getString("english_name"),
+                    row.getObject("launch_date",LocalDate.class),row.getObject("ots_date",LocalDate.class),
+                    row.getInt("set_size"),row.getString("source_url")));
     }
 
     private static Printing printing(ResultSet row) throws SQLException {
