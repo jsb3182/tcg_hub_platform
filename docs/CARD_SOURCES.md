@@ -58,6 +58,16 @@
 
 원피스 덱 검증은 한국 대회 금지 카드와 금지 페어, 2026년 7월 해제된 두 카드, 11월 13일 추가된 금지 카드를 반영한다. [한국 공식 금지·제한 목록](https://www.onepiece-cardgame.kr/topics/view.do?brdno=1171)
 
+## 유희왕 한국 수록 근거
+
+카드 상세에서 같은 코나미 카드 ID의 한국판 수록 번호와 한국 공식 카드 페이지를 열 수 있다. 인쇄 번호의 링크는 현재 자료를 확인할 때 사용한 YAML Yugi 파일을 연다. 다른 나라의 인쇄본·일러스트를 보고 있을 때에도 도감에 표시된 원래 카드 번호는 유지한다. 한국 수록 번호를 확인할 수 없는 카드는 이 항목을 비워 둔다. [YAML Yugi 카드 자료와 이용 조건](https://github.com/DawnbrandBots/yaml-yugi)
+
+날짜는 YGOJSON의 **한국** 지역 상품에 같은 코나미 ID와 전체 수록 번호가 함께 실린 경우에만 제공한다. 확인한 상품 가운데 가장 이른 발매일이며, 해당 카드의 공식 최초 발매일이나 대회 사용 가능일은 별도로 확인해야 한다. 2026년 11월 27일 검증에서 한국 수록 번호가 확인된 고유 카드 13,866장 중 13,072장에 날짜가 있었고, 794장은 번호만 확인됐다. 예를 들어 푸른 눈의 백룡의 `LOB-K001` 수록 상품은 2003년 12월 9일에 발매됐다. [한국 공식 카드 페이지의 수록 목록](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=4007&ope=2&request_locale=ko) · [대조한 YGOJSON 상품](https://github.com/iconmaster5326/YGOJSON/blob/ab5016e14cc6c3296a85d52de2c8b61b9db55cfa/sets/240fad99-f00a-41ed-99e9-26656d0d677c.json)
+
+국내 대회의 금지·제한은 대원미디어가 공지한다. 국내 공지와 NEURON 한국어 목록은 같은 2026년 10월 1일 기준으로도 금지 카드 집계가 서로 다르다. YGOJSON이 재배포한 자료는 4월 7일판이며 YAML Yugi의 지역별 제한 데이터는 한국 전체 목록을 제공하지 않는다. 현행 국내 대회는 한국 공식 공지와 개별 대회 규정을 직접 확인할 수 있다. 앱에서 선택할 수 있는 OCG 검사 지역은 일본이다. [한국 공식 리미트 레귤레이션](https://www.yugioh.co.kr/site/limit_regulation.php) · [한국어 NEURON 목록](https://www.db.yugioh-card.com/yugiohdb/forbidden_limited.action?request_locale=ko) · [YAML Yugi 지역별 제공 범위](https://github.com/DawnbrandBots/yaml-yugi-limit-regulation)
+
+상품 날짜 색인은 YGOJSON 작성자와 Yugipedia 기여자가 정리한 사실 자료에서 한국 상품 구성·날짜만 추출해 줄였다. 원본 카드 본문과 이미지는 포함하지 않는다. 이 파생 색인을 CC BY-SA 4.0으로 제공한다. 재현 시 YGOJSON의 2026-04-07 `aggregate.zip`과 `crawler-middleware/tools/build_ygo_kr_products.py`를 사용한다. 스크립트는 릴리스에 게시된 전체 SHA-256을 확인하고 동일한 압축 색인을 생성한다. [YGOJSON 배포 방법 및 출처](https://github.com/iconmaster5326/YGOJSON) · [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+
 ## 리프트바운드 공개 배포
 
 앱 전용 키로 운영하려면 Riot 개발자 포털에 앱을 등록하고 공식 `riftbound-content-v1`의 `GET /riftbound/content/v1/contents`에서 카드 자료를 받아야 한다. 공식 명세는 기본 언어를 영어로 안내한다. 2026년 11월 25일 아시아 엔드포인트에 키 없이 요청했을 때 HTTP 401이 반환됐다. 현재 설치의 카드 본문과 판본 ID는 RiftHunt에서 왔으므로, 키 발급 후 실제 공식 응답으로 판본을 대조할 때까지 기존 바인더와 덱의 카드 ID를 보존한다. [공식 API 명세](https://developer.riotgames.com/apis#riftbound-content-v1/GET_getContent) · [Riot의 카드 자료·앱 등록 요건](https://developer.riotgames.com/policies/riftbound)

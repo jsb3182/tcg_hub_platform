@@ -71,6 +71,25 @@ class ReleaseApiIntegrationTest {
         assertEquals("Promo B",row.path("latestProduct").asText());
     }
 
+    @Test void premiereAnnouncementSeparatesNorthAmericanProductFactsFromCataloguedPrintings() throws Exception {
+        long id=db.sql("""
+                select id from pack where game_code='YUGIOH' and code='MZMC' and metadata @> '{"sec":true,"wp":true}'
+                """).query(Long.class).single();
+        var pack=json.readTree(api.perform(get("/api/v1/packs/"+id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.group").value("PREMIERE"))
+                .andExpect(jsonPath("$.officialProduct.englishName").value("Maze of Machines"))
+                .andExpect(jsonPath("$.officialProduct.setSize").value(153))
+                .andExpect(jsonPath("$.officialProduct.otsDate").value("2027-03-17"))
+                .andExpect(jsonPath("$.officialProduct.launchDate").value("2027-03-19"))
+                .andExpect(jsonPath("$.officialProduct.sourceUrl").value("https://www.yugioh-card.com/en/products/mzmc/"))
+                .andReturn().getResponse().getContentAsByteArray());
+        assertEquals(db.sql("select count(*) from card where pack_id=? and status='PUBLISHED'").param(id)
+                .query(Long.class).single().longValue(),pack.path("total").asLong());
+        long other=db.sql("insert into pack(game_code,code,name) values('YUGIOH','MZMC','Separate product listing') returning id")
+                .query(Long.class).single();
+        api.perform(get("/api/v1/packs/"+other)).andExpect(jsonPath("$.officialProduct").isEmpty());
+    }
+
     @Test void boundedDetailReturnsLocalizedCardsAndDoesNotSplitEnglishRarityNames() throws Exception {
         long pack=pack("Detail pack","legacy:release-test-detail","{}");
         long first=db.sql("""

@@ -4,6 +4,7 @@ from itertools import chain
 from urllib.parse import quote, urlsplit
 
 from psycopg.types.json import Jsonb
+from .catalog_sources.ygo_kr_print import korean_prints, save_korean_prints
 
 
 class LegacyEditions:
@@ -14,6 +15,7 @@ class LegacyEditions:
         self.yaml_complete = False
         self.allow_english_bootstrap = allow_english_bootstrap
         self.limit_checks = {}
+        self.korean_snapshot = None
 
     @classmethod
     def from_database(cls, db, source_id=None):
@@ -47,6 +49,7 @@ class LegacyEditions:
         # rarities or a second provider confirming the same ID need no duplicate.
 
     def observe_yaml(self, revision, cards):
+        self.korean_snapshot = (revision, korean_prints(cards))
         for cid, canonical in cards.items():
             for entry in chain((canonical,), canonical.get("alternates", ())):
                 names = entry["names"]
@@ -81,6 +84,8 @@ class LegacyEditions:
         # Called in the source's final transaction after every YGOPRODeck page succeeded.
         if not self.yaml_complete:
             return
+        if self.korean_snapshot:
+            save_korean_prints(db, *self.korean_snapshot)
         evidence = [dict(matched_number=number, matched_name=name, **value)
                     for (number, name), (_, value) in self.matches.items()]
         db.execute("""
