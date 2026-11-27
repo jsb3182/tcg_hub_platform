@@ -15,6 +15,8 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from .catalog_news import collect_pack_dates, finish_yugioh_scan
+from .catalog_sources.rift_editions import preserve_deferred
+from .catalog_sources.onepiece import preserve_partial_korean
 from .feeds import FetchError, backoff, fetch_feed
 from .jobs import connect, process_once
 
@@ -164,6 +166,10 @@ def save_cards(db, source, records):
                 packs[pack_key] = {"key": pack_key, "code": code, "name": name}
         cards[key] = {**card, "key": key, "pack_key": pack_key}
 
+    if game == "RIFTBOUND":
+        preserve_deferred(db, cards)
+    if game == "ONEPIECE":
+        preserve_partial_korean(db, cards)
     if packs:
         db.execute("""
             INSERT INTO pack AS p(legacy_key,game_code,name,code)

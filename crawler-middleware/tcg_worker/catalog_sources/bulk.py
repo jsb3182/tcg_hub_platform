@@ -5,10 +5,12 @@ import re
 import tarfile
 import tempfile
 import zipfile
+from collections import Counter
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote, urlencode
 
 from .card_names import PokemonNames, pokemon_edition, pokemon_effect, pokemon_with_name_references, ygo_names
+from .rift_editions import add_korean_edition, galleries, printing_identity
 
 def document(path):
     with path.open(encoding="utf-8-sig") as stream:
@@ -151,6 +153,8 @@ def riftbound(http):
     sets = {row["id"]: row for row in result["sets"]}
     if not result["cards"]:
         raise ValueError("Riftbound catalog is empty")
+    editions = galleries(http, result["cards"])
+    unique = Counter(printing_identity(card) for card in result["cards"])
     for card in result["cards"]:
         group = sets[card["set"]]
         name = card["name"]
@@ -160,12 +164,14 @@ def riftbound(http):
         if not number:
             num = card.get("num")
             number = str(num) if num is not None else card.get("id")
-        yield {"external_id": "en:" + card["printing_id"], "pack_code": group["id"], "pack_name": group["name"],
+        record = {"external_id": "en:" + card["printing_id"], "pack_code": group["id"], "pack_name": group["name"],
                "number": number, "name": name, "original_name": name, "rarity": card.get("rarity"),
                "effect": card.get("text"), "release_date": group.get("released"),
                "specs": {"language": "en", **selected(card, ("variant", "num", "type", "supertype", "energy",
                                                                "might", "power", "domains", "tags", "cleanName", "artist", "finishes"))},
                "source_url": "https://api.rifthunt.com/cards/" + quote(card["printing_id"], safe="")}
+        add_korean_edition(record, card, editions, unique)
+        yield record
 
 
 def yugioh(http, legacy=None):

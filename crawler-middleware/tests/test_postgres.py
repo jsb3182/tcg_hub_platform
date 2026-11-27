@@ -126,6 +126,26 @@ class DatabaseTests(unittest.TestCase):
                                          (sid,)).fetchall()
             self.assertEqual(provenance, [(code, "OP-14", "https://example.org/ko", 2) for code in ("EB-01", "OP-14")])
 
+    def test_partial_onepiece_scan_keeps_verified_korean_name_text_and_print(self):
+        from tcg_worker.catalog_sources.onepiece import CARD_LIST, Index, edition
+        from tcg_worker.sync import save_cards
+        index = Index()
+        index.add("ST01-001","en",edition("English","Effect",None,"https://example.org/en"),0,"ST-01")
+        first = list(index.records())
+        index.add("ST01-001","ko",edition("시험 카드","인쇄된 효과",None,CARD_LIST+"?series=ST-01"),0,"ST-01")
+        with self.db.transaction(force_rollback=True):
+            sid = self.db.execute("SELECT id FROM feed_source WHERE provider='CATALOG' AND game_code='ONEPIECE'").fetchone()[0]
+            source = {"id":sid,"game_code":"ONEPIECE","auto_publish":True}
+            save_cards(self.db,source,list(index.records()))
+            query = """SELECT id,name,effect,specs->'names'->>'en',specs->'nameBasis'->>'ko' FROM card
+                       WHERE legacy_key='catalog:ONEPIECE:ST-01:ST01-001'"""
+            before = self.db.execute(query).fetchone()
+            save_cards(self.db,source,[{**first[0],"korean_incomplete":True}])
+            self.assertEqual(before,self.db.execute(query).fetchone())
+            self.assertEqual(before[1:],("시험 카드","인쇄된 효과","English","PRINTED_NAME"))
+            save_cards(self.db,source,first)
+            self.assertEqual(self.db.execute(query).fetchone()[1],"English")
+
     def test_rifthunt_reimport_preserves_printings_and_personal_library(self):
         from unittest.mock import Mock
         from tcg_worker.catalog_sources.bulk import riftbound
