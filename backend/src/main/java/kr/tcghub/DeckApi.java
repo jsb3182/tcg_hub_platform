@@ -21,29 +21,40 @@ class DeckApi {
     record Save(@NotBlank @Size(max=100) String name, @NotBlank @Size(max=32) String gameCode,
                 @NotBlank @Pattern(regexp="DRAFT|COMPLETE") String state, @PositiveOrZero int revision,
                 boolean shared, @NotNull @Size(max=300) List<@NotNull @Valid Line> entries,
-                @Size(max=100) String nameJa,@Size(max=100) String nameEn) {
+                @Size(max=100) String nameJa,@Size(max=100) String nameEn, @Pattern(regexp="OCG|TCG|") String region) {
         Save(String name,String gameCode,String state,int revision,boolean shared,List<Line> entries) {
-            this(name,gameCode,state,revision,shared,entries,null,null);
+            this(name,gameCode,state,revision,shared,entries,null,null,null);
+        }
+        Save(String name,String gameCode,String state,int revision,boolean shared,List<Line> entries,String nameJa,String nameEn) {
+            this(name,gameCode,state,revision,shared,entries,nameJa,nameEn,null);
         }
     }
     record Header(long id, String name, String gameCode, String format, int ruleVersion, String state,
-                  int revision, OffsetDateTime updatedAt, UUID shareToken,String nameJa,String nameEn) {}
+                  int revision, OffsetDateTime updatedAt, UUID shareToken,String nameJa,String nameEn,String region) {}
     record Summary(long id, String name, String gameCode, String format, int ruleVersion, String state,
-                   int revision, OffsetDateTime updatedAt, UUID shareToken,String nameJa,String nameEn,
+                   int revision, OffsetDateTime updatedAt, UUID shareToken,String nameJa,String nameEn,String region,
                    long cards,long mainCount,long extraCount,long sideCount,boolean hasCover) {}
     record Page(List<Summary> items, long total,long totalCards) {}
     record Entry(long cardId, String section, int quantity, String name, String number, String packName,
                  Integer curveValue, CatalogApi.Image image,Long variantId,String imageUrl,String type,Integer neuronArtwork,
                  String language,String nameBasis,String nameReferenceUrl,String imageLanguage,String imageBasis,String imageSource) {}
-    record Details(@com.fasterxml.jackson.annotation.JsonUnwrapped Header deck, DeckRules.Rule rule,List<Entry> entries) {}
+    record Details(@com.fasterxml.jackson.annotation.JsonUnwrapped Header deck, DeckRules.Rule rule,List<Entry> entries,
+                   YugiohLimits.Report regionalLimits) {}
+    record Checking(@NotBlank @Pattern(regexp="OCG|TCG") String region, @NotNull @Size(max=300) List<@NotNull @Valid Line> entries) {}
     record History(int revision, OffsetDateTime savedAt, String name, String state, int cards) {}
     record HistoryPage(List<History> items,long total) {}
-    private static final String FIELDS="d.id,d.name,d.game_code,d.format,d.rule_version,d.state,d.revision,d.updated_at,d.share_token,d.name_ja,d.name_en";
+    private static final String FIELDS="d.id,d.name,d.game_code,d.format,d.rule_version,d.state,d.revision,d.updated_at,d.share_token,d.name_ja,d.name_en,d.region";
     private final JdbcClient db;
     private final DeckRules rules;
     private final ObjectMapper json;
     private final DeckCodes codes;
-    DeckApi(JdbcClient db, DeckRules rules, ObjectMapper json,DeckCodes codes) {this.db=db;this.rules=rules;this.json=json;this.codes=codes;}
+    private final YugiohLimits limits;
+    DeckApi(JdbcClient db, DeckRules rules, ObjectMapper json,DeckCodes codes,YugiohLimits limits) {
+        this.db=db;this.rules=rules;this.json=json;this.codes=codes;this.limits=limits;
+    }
+
+    @PostMapping("/me/decks/yugioh-limits")
+    YugiohLimits.Report regionalLimits(@Valid @RequestBody Checking check) { return limits.check(check.region(),check.entries()); }
 
     @GetMapping("/me/decks/{id}/code")
     DeckCodes.Code code(Principal user,@PathVariable @Positive long id) {return codes.encode(owned(user,id,false));}
@@ -91,7 +102,7 @@ class DeckApi {
     private Details details(Header header) {return details(header,"ko");}
     private Details details(Header header,String lang) {
         var entries=db.sql("select e.card_id,e.section,e.quantity,e.variant_id,e.neuron_artwork,"+CardEdition.NAME_FIELDS+",c.number,p.name as pack_name,"+
-                "case when e.variant_id is null then coalesce('https://artworks-jp-n.ygoresources.com'||n.image_path,art.url) end as image_url,"+
+                "case when e.neuron_artwork is not null then 'https://artworks-jp-n.ygoresources.com'||n.image_path when e.variant_id is null then art.url end as image_url,"+
                 "case when e.neuron_artwork is not null then 'ja' when e.variant_id is null then art.lang end as image_lang,"+
                 "case when e.neuron_artwork is not null then 'SELECTED_ARTWORK' when e.variant_id is null then art.basis end as image_basis,"+
                 "case when e.neuron_artwork is not null then 'https://artworks-jp-n.ygoresources.com'||n.image_path when e.variant_id is null then art.source end as image_source,"+
@@ -107,7 +118,9 @@ class DeckApi {
                         r.getObject("variant_id",Long.class),r.getString("image_url"),r.getString("type"),
                         r.getObject("neuron_artwork",Integer.class),r.getString("language"),r.getString("nameBasis"),
                         r.getString("nameReferenceUrl"),r.getString("image_lang"),r.getString("image_basis"),r.getString("image_source"))).list();
-        return new Details(header,rules.rule(header.gameCode(),header.format(),header.ruleVersion()),entries);
+        var lines = entries.stream().map(e->new Line(e.cardId(),e.section(),e.quantity())).toList();
+        return new Details(header,rules.rule(header.gameCode(),header.format(),header.ruleVersion()),entries,
+                           limits.check(header.region(),lines));
     }
     @GetMapping("/me/decks/{id}")
     Details get(Principal user,@PathVariable @Positive long id,@RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) {
@@ -130,12 +143,14 @@ class DeckApi {
     Details create(Principal user,@RequestBody @Valid Save data) {
         if(data.revision()!=0) throw new ResponseStatusException(HttpStatus.CONFLICT);
         var rule=rules.current(data.gameCode());
+        var region=YugiohLimits.selection(data.gameCode(),data.region(),null);
+        if (data.state().equals("COMPLETE")) limits.requireComplete(limits.check(region,data.entries()));
         rules.validate(rule,data.entries(),data.state().equals("COMPLETE"));
         long id=db.sql("""
-            insert into deck(owner_id,game_code,name,format,rule_version,state,share_token,name_ja,name_en)
-            select id,?,?,'CONSTRUCTED',?,?,?,coalesce(?,''),coalesce(?,'') from app_user where email=? and enabled returning id
+            insert into deck(owner_id,game_code,name,format,rule_version,state,share_token,name_ja,name_en,region)
+            select id,?,?,'CONSTRUCTED',?,?,?,coalesce(?,''),coalesce(?,''),? from app_user where email=? and enabled returning id
             """).param(data.gameCode()).param(data.name().strip()).param(rule.version()).param(data.state())
-                .param(data.shared()?UUID.randomUUID():null).param(data.nameJa()).param(data.nameEn()).param(user.getName()).query(Long.class).optional().orElseThrow(DeckApi::missing);
+                .param(data.shared()?UUID.randomUUID():null).param(data.nameJa()).param(data.nameEn()).param(region).param(user.getName()).query(Long.class).optional().orElseThrow(DeckApi::missing);
         return writeEntries(user,id,rule,data.entries());
     }
 
@@ -146,13 +161,15 @@ class DeckApi {
         if(before.revision()!=data.revision()) throw new ResponseStatusException(HttpStatus.CONFLICT);
         if(!before.gameCode().equals(data.gameCode())) throw new DeckRules.Invalid("저장한 덱은 게임을 변경할 수 없습니다.");
         var rule=rules.rule(before.gameCode(),before.format(),before.ruleVersion());
+        var region=YugiohLimits.selection(data.gameCode(),data.region(),before.region());
+        if (data.state().equals("COMPLETE")) limits.requireComplete(limits.check(region,data.entries()));
         rules.validate(rule,data.entries(),data.state().equals("COMPLETE"));
         // A deck created before V10 gets its initial snapshot on its first write.
         if(!db.sql("select exists(select 1 from deck_revision where deck_id=? and revision=?)")
                 .param(id).param(before.revision()).query(Boolean.class).single()) snapshot(details(before));
         UUID token=data.shared()?(before.shareToken()!=null?before.shareToken():UUID.randomUUID()):null;
-        db.sql("update deck set name=?,state=?,share_token=?,name_ja=coalesce(?,name_ja),name_en=coalesce(?,name_en),revision=revision+1,updated_at=clock_timestamp() where id=?")
-                .param(data.name().strip()).param(data.state()).param(token).param(data.nameJa()).param(data.nameEn()).param(id).update();
+        db.sql("update deck set name=?,state=?,share_token=?,name_ja=coalesce(?,name_ja),name_en=coalesce(?,name_en),region=?,revision=revision+1,updated_at=clock_timestamp() where id=?")
+                .param(data.name().strip()).param(data.state()).param(token).param(data.nameJa()).param(data.nameEn()).param(region).param(id).update();
         db.sql("delete from deck_entry where deck_id=?").param(id).update();
         return writeEntries(user,id,rule,data.entries());
     }
@@ -184,6 +201,7 @@ class DeckApi {
                     .put("revision",details.deck().revision()).put("cards",details.entries().stream().mapToInt(Entry::quantity).sum());
             saved.set("entries",json.valueToTree(details.entries()));
             saved.put("nameJa",details.deck().nameJa()).put("nameEn",details.deck().nameEn());
+            saved.put("region",details.deck().region());
             db.sql("insert into deck_revision(deck_id,revision,saved_at,snapshot) values(?,?,?,cast(? as jsonb))")
                     .param(details.deck().id()).param(details.deck().revision()).param(details.deck().updatedAt())
                     .param(json.writeValueAsString(saved)).update();

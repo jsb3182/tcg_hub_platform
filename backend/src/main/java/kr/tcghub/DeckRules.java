@@ -8,7 +8,10 @@ import org.springframework.stereotype.Component;
 @Component
 class DeckRules {
     record Section(String section, Integer minCards, Integer maxCards) {}
-    record Rule(String gameCode, String format, int version, Integer maxCopiesPerCard, String source, List<Section> sections) {}
+    record Rule(String gameCode, String format, int version, Integer maxCopiesPerCard, String source, List<Section> sections) {
+        @com.fasterxml.jackson.annotation.JsonProperty
+        public List<String> regions() { return "YUGIOH".equals(gameCode) ? List.of("OCG","TCG") : List.of(); }
+    }
     record Line(@Positive long cardId, @NotBlank @Size(max=64) String section,
                 @Min(1) @Max(999) int quantity, @Positive Long variantId,
                 @Positive @Max(32767) Integer neuronArtwork) {

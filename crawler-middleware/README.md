@@ -48,3 +48,13 @@ DB 연결은 배포 환경의 `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPAS
 ```
 
 PostGIS가 이미 설치된 **전용 테스트 DB**의 DSN을 `TCG_TEST_DSN`으로 지정하면 임시 스키마를 만들어 DB 연동 테스트도 수행한다. `TCG_TEST_LEGACY`에 원본 폴더 경로를 지정하면 두 번 가져온 후의 카드·변형 수와 미디어 파일을 검증한다.
+
+## 유희왕 지역별 덱 수량 검증
+
+덱 편집기의 **OCG(일본)**은 2026년 10월 1일 시행한 일본 금제표를, **TCG Advanced**는 10월 19일 시행한 금제표를 기준으로 한다. 한국 OCG는 일본과 적용 카드가 다르다. 적용일은 API의 `effectiveOn`, 공식 원문 링크는 `sourceUrl`에서 확인한다. [일본 OCG 10월 원문](https://www.yugioh-card.com/japan/event/limitregulation/?list=202610) · [TCG Advanced 10월 원문](https://www.yugioh-card.com/en/limited/list_2026-10-19/)
+
+V32의 카드 식별자와 허용 수량은 Project Ignis의 숫자 패스코드와 YAML Yugi의 코나미 카드 ID(CID)를 대조하여 생성했다. 검증일은 2026년 11월 27일이다. 공식 표와 일치한 OCG 금지·제한·준제한 카드는 각각 94·95·13종이고 TCG는 156·93·7종이다. 동일 카드의 다른 그림에 붙은 내부 번호는 한 CID에 한 번만 센다. 공식 NEURON은 운영자의 원문 확인 링크로 제공한다. [Project Ignis 고정 리비전](https://github.com/ProjectIgnis/LFLists/tree/1c126747bf9f424d56df9ec2367e09051bb4872d) · [YAML Yugi 고정 리비전](https://github.com/DawnbrandBots/yaml-yugi/tree/2355f8324797b38596dbf31eb21711f411299882/data/cards)
+
+유희왕 정상 수집은 공개 Project Ignis 지역 파일 두 개를 하루 동안 캐시한다. 배포 때 검증한 SHA-256과 일치하면 파일을 실제 내려받은 날짜로 확인 기록을 갱신한다. 파일 변경·조회 실패·마지막 확인 후 7일 경과 시 `UNAVAILABLE`로 표시하고 이전 판정의 시행일을 유지한다. 변경된 파일은 새 공식 시행일과 **전체** CID·수량을 독립 대조한 후 다음 마이그레이션에 담는다. 이 경로는 공식 사이트에 예약 요청을 보내지 않는다.
+
+덱 미리보기는 메인·엑스트라·사이드에서 같은 카드를 합산한다. 공식 제한표에 없으면 해당 지역 발매일·포맷이 있는 수집 카드 또는 그 CID와 대조된 기존 카드를 확인한다. 개별 카드 확인이 안 되면 `PARTIAL`과 `unknownCardIds`를 반환한다. 지역을 지정한 덱은 금제 위반이나 미확인 항목이 있어도 초안으로 보관할 수 있다. 지역 미지정 덱은 저장 당시의 일반 구성 규칙을 유지한다.

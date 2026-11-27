@@ -283,6 +283,9 @@ def sync_source(source, stop):
                 if source["provider"] == "CATALOG" and source["source_key"] == "YUGIOH":
                     if editions is not None:
                         editions.reconcile(db)
+                        if editions.limit_checks:
+                            from .yugioh_limits import save_checks
+                            save_checks(db, editions.limit_checks)
                     cursor["news"] = finish_yugioh_scan(db, sid, releases)
                 if page is not None:
                     added = save_news(db, source, page.items)

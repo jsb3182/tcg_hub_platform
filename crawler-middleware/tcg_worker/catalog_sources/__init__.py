@@ -17,5 +17,7 @@ def iter_catalog(game_code, *, legacy_editions=None):
     with http.scan(game_code):
         if game_code == "YUGIOH" and legacy_editions is not None:
             yield from yugioh(http, legacy_editions)
+            from ..yugioh_limits import check_files
+            legacy_editions.limit_checks = check_files(http)
         else:
             yield from _ADAPTERS[game_code](http)

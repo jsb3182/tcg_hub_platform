@@ -45,12 +45,26 @@ class RecipeCaptureIntegrationTest {
             org.junit.jupiter.api.Assertions.assertEquals(local,details.entries().get(2).variantId());
         }
         var backup=exports.page(owner,0,"ko").items().get(0);
+        org.junit.jupiter.api.Assertions.assertNull(backup.region());
         org.junit.jupiter.api.Assertions.assertEquals(2,backup.entries().get(1).neuronArtwork());
         var replay=decks.importCode(owner,decks.code(owner,result.deck().id()));
         org.junit.jupiter.api.Assertions.assertEquals(reopened.entries(),replay.entries());
         api.perform(get("/api/v1/cards/capture-identities").param("ids","4041"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].artworks['2']").value(
                         "https://artworks-jp-n.ygoresources.com/0/40/41_2.png"));
+    }
+    @Test void batchExportKeepsTheTournamentRegionOfAnEmptyDraft() {
+        var owner=(java.security.Principal) () -> "region-" + fixture + "@example.invalid";
+        long user=db.sql("insert into app_user(email,password_hash) values(?,'unused') returning id")
+                .param(owner.getName()).query(Long.class).single();
+        db.sql("""
+                insert into deck(owner_id,game_code,name,format,rule_version,state,region)
+                select ?,'YUGIOH','OCG draft','CONSTRUCTED',max(version),'DRAFT','OCG'
+                from deck_rule where game_code='YUGIOH' and format='CONSTRUCTED'
+                """).param(user).update();
+        var draft=exports.page(owner,0,"ja").items().get(0);
+        org.junit.jupiter.api.Assertions.assertEquals("OCG",draft.region());
+        org.junit.jupiter.api.Assertions.assertTrue(draft.entries().isEmpty());
     }
     @Test void validationRejectsWrongCidAndMixedLocalAndOfficialArtwork() {
         var owner=(java.security.Principal) () -> "recipe-" + fixture + "@example.invalid";
