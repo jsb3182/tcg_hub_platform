@@ -6,6 +6,7 @@ from urllib.error import HTTPError
 
 from bs4 import BeautifulSoup
 from tcg_worker.catalog_sources import onepiece_rift_nivel_releases as source
+from tcg_worker.release_calendar import checked
 
 
 class Pages:
@@ -32,6 +33,42 @@ class ReleaseProducts(unittest.TestCase):
         self.assertNotIn("catalogCode", by_key["NIVEL", "kr-bt08"])
         self.assertIn("웨이브 투 유", by_key["NIVEL", "kr-bt08"]["catalogName"])
         self.assertNotIn("catalogName", by_key["ONEPIECE", "kr-opk-15"])
+
+    def test_first_booster_keeps_its_korean_and_english_editions_separate(self):
+        rows = checked(r for r in json.loads(source.SEED.read_text("utf-8")) if r["game"] == "ONEPIECE")
+        kr = next(r for r in rows if r["key"] == "kr-opk-01")
+        en = next(r for r in rows if r["key"] == "en-op-01")
+        self.assertEqual((kr["date"], kr["url"], kr["catalogCode"], kr["catalogName"]),
+                         ("2024-04-25", "https://www.onepiece-cardgame.kr/products/view.do?brdno=481",
+                          "OP-01", "[OPK-01] 부스터 팩 ROMANCE DAWN"))
+        self.assertEqual((en["region"], en["date"], en["url"]),
+                         ("EN", "2022-12-02", "https://en.onepiece-cardgame.com/products/boosters/op01.php"))
+        self.assertNotIn("catalogCode", en)
+
+    def test_paginated_products_follow_only_the_next_page_and_stop_at_disabled_link(self):
+        kr_next = "/products.do?page=1&size=12&extraValue="
+        en_next = "?page=2&subcategory=boosters"
+        pages = Pages({
+            source.OP_KR: f'<a class="pagi_next" href="{kr_next}">다음</a>',
+            source.urljoin(source.OP_KR, kr_next): '''<a class="desc_wrap" href="products/view.do?brdno=481">
+                <span class="cate">BOOSTERS</span><span class="tit">[OPK-01] 부스터 팩 ROMANCE DAWN</span>
+                <span class="date">2024-04-25</span></a>''',
+            source.OP_EN: f'<a class="pagerColNext" href="{en_next}"></a>',
+            source.urljoin(source.OP_EN, en_next): f'''<a class="linkListColItem" href="boosters/op01.php">
+                <span class="linkListColCat">BOOSTERS</span><span class="linkListColTitle">BOOSTER PACK -ROMANCE DAWN- [OP-01]</span>
+                <p class="linkListColDate"><span class="head">Release Date</span><time datetime="2022-12-02"></time></p></a>
+                <a class="pagerColNext disable" href="{en_next}"></a>''',
+        })
+        self.assertEqual([(r["key"], r["date"]) for r in source.onepiece(pages)],
+                         [("kr-opk-01", "2024-04-25"), ("en-op-01", "2022-12-02")])
+        self.assertEqual(pages.requested, list(pages.pages))
+        for bad_link in (kr_next.replace("page=1", "page=0"), kr_next + "&unrelated=x",
+                         "https://elsewhere.invalid" + kr_next):
+            with self.subTest(bad_link=bad_link):
+                invalid = Pages({source.OP_KR: f'<a class="pagi_next" href="{bad_link}">다음</a>'})
+                with self.assertRaisesRegex(ValueError, "pagination"):
+                    list(source.onepiece(invalid))
+                self.assertEqual(invalid.requested, [source.OP_KR])
 
     def test_onepiece_accepts_dated_products_and_checks_product_host(self):
         def en(label, url):

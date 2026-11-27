@@ -61,8 +61,27 @@ def record(game, region, key, code, name, day, url):
             "name": name, "names": {"ko" if region == "KR" else "en": name}, "date": day.isoformat(), "url": url}
 
 
-def onepiece(pages):
-    for a in pages.page(OP_KR).select("a.desc_wrap[href]"):
+def product_pages(pages, start, next_selector, first_page, filters):
+    expected = urlsplit(start)
+    url = start
+    for page_number in range(first_page, first_page + 32):
+        page = pages.page(url)
+        yield page
+        link = page.select_one(next_selector)
+        if not link:
+            return
+        url = urljoin(start, link["href"])
+        parts = urlsplit(url)
+        if ((parts.scheme, parts.netloc, parts.path, parts.fragment) !=
+                (expected.scheme, expected.netloc, expected.path, "") or
+                parse_qs(parts.query, keep_blank_values=True) !=
+                {**filters, "page": [str(page_number + 1)]}):
+            raise ValueError("Unexpected One Piece product pagination link")
+    raise ValueError("One Piece product index exceeds its page limit")
+
+
+def korean_product_rows(page):
+    for a in page.select("a.desc_wrap[href]"):
         if text(a.select_one(".cate")) not in ("BOOSTERS", "DECKS"):
             continue
         url = urljoin(OP_KR, a["href"])
@@ -70,7 +89,10 @@ def onepiece(pages):
         day = dated(text(a.select_one(".date")))
         if title and day and re.fullmatch(r"https://www\.onepiece-cardgame\.kr/products/view\.do\?brdno=\d+", url):
             yield record("ONEPIECE", "KR", title[1].lower(), title[1], title[2], day, url)
-    for a in pages.page(OP_EN).select("a.linkListColItem[href]"):
+
+
+def english_product_rows(page):
+    for a in page.select("a.linkListColItem[href]"):
         title = re.fullmatch(r".*?\s-\s*(.+?)\s*-\s*\[([A-Z0-9-]+)\]", text(a.select_one(".linkListColTitle")))
         url = urljoin(OP_EN, a["href"])
         when = a.select_one(".linkListColDate time[datetime]")
@@ -79,6 +101,13 @@ def onepiece(pages):
                 text(a.select_one(".linkListColDate .head")) == "Release Date" and
                 re.fullmatch(r"https://en\.onepiece-cardgame\.com/products/[a-z0-9/_-]+(?:\.html|\.php|/)", url)):
             yield record("ONEPIECE", "EN", title[2].lower(), title[2], title[1], day, url)
+
+
+def onepiece(pages):
+    for page in product_pages(pages, OP_KR, "a.pagi_next[href]", 0, {"size": ["12"], "extraValue": [""]}):
+        yield from korean_product_rows(page)
+    for page in product_pages(pages, OP_EN, "a.pagerColNext[href]:not(.disable)", 1, {"subcategory": ["boosters"]}):
+        yield from english_product_rows(page)
 
 
 def roadmap_rows(page, url):

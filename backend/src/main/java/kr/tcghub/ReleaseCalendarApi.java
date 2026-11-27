@@ -28,7 +28,8 @@ class ReleaseCalendarApi {
             select min(p.id) as pack_id from visible_catalog_pack p
             where p.game_code=e.game_code and (p.id=current_catalog_pack(e.selected_pack_id) or (e.selected_pack_id is null and not e.manual and (e.catalog_code is not null or e.catalog_name is not null)
               and (e.catalog_code is null or upper(p.code)=upper(e.catalog_code))
-              and (e.catalog_name is null or lower(p.name)=lower(e.catalog_name))
+              and (e.catalog_name is null or lower(p.name)=lower(e.catalog_name) or (p.game_code='ONEPIECE' and exists
+                   (select from onepiece_pack_label l where l.pack_id=p.id and lower(l.name)=lower(e.catalog_name))))
               and case when e.game_code='YUGIOH' and starts_with(e.product_key,'na-premiere:')
                     then p.metadata @> '{"wp":true,"sec":true}' else starts_with(p.legacy_key,'catalog:') end))
             having count(*)=1

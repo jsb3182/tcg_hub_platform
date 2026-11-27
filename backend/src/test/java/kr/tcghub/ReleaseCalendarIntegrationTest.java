@@ -60,4 +60,30 @@ class ReleaseCalendarIntegrationTest {
         api.perform(get(URL).param("q","MZMC").param("game","YUGIOH").param("period","all"))
             .andExpect(jsonPath("$.items[0].catalogPackId").isNumber()).andExpect(jsonPath("$.items[0].region").value("NA"));
     }
+
+    @Test void onePieceRegionalCalendarTitleAndPreviousPackUrlResolveToTheSamePrintings() throws Exception {
+        long pack=db.sql("""
+            insert into pack(game_code,code,name,legacy_key) values('ONEPIECE','OP-98','Fixture base','catalog:ONEPIECE:OP-98') returning id
+            """).query(Long.class).single();
+        long previous=db.sql("""
+            insert into pack(game_code,code,name,legacy_key,superseded_by)
+            values('ONEPIECE','OP-98','별도 수록 이름',onepiece_numbered_pack_key('OP-98'),?) returning id
+            """).param(pack).query(Long.class).single();
+        db.sql("insert into onepiece_pack_label(pack_id,name) values(?,'별도 수록 이름')").param(pack).update();
+        db.sql("insert into card(game_code,pack_id,name,status) values('ONEPIECE',?,'Fixture card','PUBLISHED')").param(pack).update();
+        db.sql("""
+            insert into product_release(game_code,product_key,region,name,release_date,source_url,catalog_code,catalog_name,manual,selected_pack_id)
+            values('ONEPIECE','fixture:regional','KR','Fixture regional','2089-02-03','https://example.invalid','OP-98','별도 수록 이름',false,null),
+                  ('ONEPIECE','fixture:selected','KR','Fixture manual','2089-02-02','https://example.invalid',null,null,true,?)
+            """).param(previous).update();
+        for (long id : new long[]{pack,previous}) {
+            api.perform(get(URL).param("packId",String.valueOf(id)).param("period","all"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.items[0].catalogPackId").value(pack)).andExpect(jsonPath("$.items[0].catalogCount").value(1))
+                .andExpect(jsonPath("$.items[1].catalogPackId").value(pack));
+        }
+        db.sql("insert into pack(game_code,code,name,legacy_key) values('ONEPIECE','OP-98','별도 수록 이름','catalog:ONEPIECE:unrelated-fixture')").update();
+        api.perform(get(URL).param("packId",String.valueOf(pack)).param("period","all"))
+            .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].productKey").value("fixture:selected"));
+    }
 }
