@@ -20,6 +20,7 @@ CARD_LIST = KOREA + "/cardlist.do"
 OPTCG = "https://optcgapi.com/api/"
 COLLECTOR = re.compile(r"((?:OP|ST|EB|PRB)[0-9]{2}-[0-9]{3}|P-[0-9]{3})(?:_[a-z0-9]+)?", re.I)
 PACK = re.compile(r"(OP|ST|EB|PRB)K?-?([0-9]{2})", re.I)
+SINGLE_PRODUCT = re.compile(r"(?:OP|ST|EB|PRB)-[0-9]{2}")
 COLOR = {"적색": "red", "녹색": "green", "청색": "blue", "자색": "purple", "흑색": "black", "황색": "yellow"}
 KIND = {"리더": "leader", "캐릭터": "character", "이벤트": "event", "스테이지": "stage", "두웅!!": "don"}
 
@@ -43,10 +44,11 @@ class Index:
         self.editions = defaultdict(dict)
         self.printings = defaultdict(dict)
         self.products = defaultdict(dict)
+        self.product_labels = defaultdict(set)
         self.rules = defaultdict(dict)
         self.korean_incomplete = False
 
-    def add(self, number, lang, value, priority, product=None, product_name=None, **facts):
+    def add(self, number, lang, value, priority, product=None, product_name=None, *, observed_code=None, **facts):
         if not value.get("name"):
             return
         value = {**value, "editionProduct": product}
@@ -62,6 +64,14 @@ class Index:
                 group[lang] = rank, value
         if product_name:
             self.products[product][lang] = product_name
+            if product == observed_code and SINGLE_PRODUCT.fullmatch(product or ""):
+                self.product_labels[product].add(product_name)
+                # The English publisher's card index wraps the original title in a product type and SKU.
+                if lang == "en" and value.get("source", "").startswith("https://en.onepiece-cardgame.com/cardlist/"):
+                    label = re.fullmatch(r"(?:BOOSTER PACK|EXTRA BOOSTER|PREMIUM BOOSTER|STARTER DECK)\s+-\s*(.+?)\s*-\s*\["
+                                         + re.escape(product) + r"\]", product_name, flags=re.I)
+                    if label:
+                        self.product_labels[product].add(label[1])
         for key, field in facts.items():
             if field not in (None, [], ""):
                 self.rules[number].setdefault(key, field)
@@ -85,6 +95,7 @@ class Index:
             name = next((product_names[k] for k in ("ko", "en", "ja") if k in product_names), product)
             info = self.rules[number]
             yield {"external_id": f"{product}:{number}", "pack_code": product, "pack_name": name,
+                   "pack_labels": sorted(self.product_labels[product]),
                    "korean_incomplete": self.korean_incomplete,
                    "number": number, "name": card["name"], "original_name": translations.get("en", card)["name"],
                    "effect": card.get("text"), "rarity": info.get("rarity"), "release_date": None,
@@ -109,6 +120,7 @@ def koala(index, http):
 
     cards = {r["key"]: code(r.get("number")) for r in lines("cards")}
     for site, lang in (("jp", "ja"), ("en", "en")):
+        publisher_index = "https://www.onepiece-cardgame.com/cardlist/" if lang == "ja" else "https://en.onepiece-cardgame.com/cardlist/"
         products = {r["key"]: r for r in lines("products/" + site)}
         packs = defaultdict(list)
         for link in lines("printing_products/" + site):
@@ -136,6 +148,7 @@ def koala(index, http):
                           0 if pr.get("variant") == "base" else 2,
                           pack_code(product["code"]) if product and product.get("code") else None,
                           product.get("name") if product and product.get("code") else None,
+                          observed_code=product.get("code") if product and source.startswith(publisher_index) else None,
                           type=obs.get("category"), colors=obs.get("colors"), cost=obs.get("cost"),
                           power=obs.get("power"), rarity=pr.get("rarity"))
 
@@ -157,6 +170,7 @@ def optcg(index, http):
             link = OPTCG + endpoint + "/" if don else OPTCG + ("decks/card/" if endpoint == "allSTCards" else "sets/card/") + number + "/"
             index.add(number, "en", edition(row["card_name"], row.get("card_text"), image, link),
                       1 if ident.upper() == number else 3, pack_code(row.get("set_id")), row.get("set_name"),
+                      observed_code=row.get("set_id"),
                       type="don" if don else str(row.get("card_type") or "").lower(),
                       colors=[x.lower().strip() for x in re.split(r"[,/]", row.get("card_color") or "") if x.strip()],
                       life=row.get("life"), cost=row.get("card_cost"), power=row.get("card_power"), rarity=row.get("rarity"))
@@ -205,10 +219,12 @@ def korean_page(index, body, source, series):
         pack = values.get("cardGet") or series
         effect = "\n".join(values[k] for k in ("cardText", "cardTrigger") if values.get(k) not in (None, "", "-"))
         product = pack_code(pack)
+        bracket = re.match(r"^\[(OP|ST|EB|PRB)K-([0-9]{2})\]", pack or "")
         value = edition(values.get("cardName"), effect, url, source)
         value["regionalFacts"] = korean_facts(values, product, source)
         index.add(number, "ko", value,
                   0 if number == printing.upper() else 2, product, pack,
+                  observed_code="-".join(bracket.groups()) if bracket else None,
                   type=KIND.get(values.get("cardType")), colors=[COLOR[c.strip()] for c in values.get("cardColor", "").split(",") if c.strip() in COLOR])
     next_link = soup.select_one("a.pagi_next[href]")
     if not next_link:

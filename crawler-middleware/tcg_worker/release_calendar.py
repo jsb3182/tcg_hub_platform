@@ -59,6 +59,15 @@ def checked(rows, game=None):
             product = re.fullmatch(r"(OP|ST|EB|PRB)K-(\d{2})", code)
             if product:
                 item.update(catalogCode="-".join(product.groups()), catalogName=f"[{code}] {row['name']}")
+        elif row["game"] == "ONEPIECE" and row["region"] == "EN":
+            code = row.get("code") or ""
+            slug = code.replace("-", "").lower()
+            if (re.fullmatch(r"(?:OP|EB|PRB|ST)-[0-9]{2}", code)
+                    and row["key"] == "en-" + code.lower() and names.get("en") == row["name"]
+                    and url.netloc == "en.onepiece-cardgame.com" and not (url.query or url.fragment)
+                    and re.fullmatch(r"/products/(?:boosters/|decks/)?" + slug + r"(?:\.php|\.html|/)", url.path)):
+                # A few verified catalog titles differ in punctuation or include "Extra Booster".
+                item.update(catalogCode=code, catalogName=row.get("catalogName") or row["name"])
         if identity in items and items[identity] != item:
             raise ValueError("Conflicting release dates or source identities")
         items[identity] = item
@@ -86,7 +95,7 @@ def fetch(game):
 def save(db, rows, *, seed=False):
     if not rows:
         return 0
-    return db.execute("""
+    added = db.execute("""
         WITH incoming AS MATERIALIZED (
             SELECT game AS game_code,key AS product_key,region,code,name,names,date AS release_date,
                    url AS source_url,"catalogCode" AS catalog_code,"catalogName" AS catalog_name
@@ -110,6 +119,24 @@ def save(db, rows, *, seed=False):
         )
         SELECT count(*) FROM written LEFT JOIN previous USING(game_code,product_key,region) WHERE previous.id IS NULL
     """,(Jsonb(rows),seed)).fetchone()[0]
+    if seed:
+        # A seed may repair missing catalog hints on the identical live announcement, even offline.
+        # Keep the operator's selection and the live publisher metadata and precedence.
+        hints = [row for row in rows if row["game"] == "ONEPIECE" and row["region"] == "EN"
+                 and row.get("catalogCode") and row.get("catalogName")]
+        if hints:
+            db.execute("""
+                UPDATE product_release p SET catalog_code=i."catalogCode",catalog_name=i."catalogName"
+                FROM jsonb_to_recordset(%s) i(key text,code text,name text,url text,date date,
+                                               "catalogCode" text,"catalogName" text)
+                WHERE p.game_code='ONEPIECE' AND p.region='EN' AND p.product_key=i.key
+                  AND NOT p.manual AND NOT p.from_seed AND p.selected_pack_id IS NULL
+                  AND (p.code,p.name,p.source_url,p.release_date)=(i.code,i.name,i.url,i.date)
+                  AND (p.catalog_code IS NULL OR p.catalog_code=i."catalogCode")
+                  AND (p.catalog_name IS NULL OR p.catalog_name=i."catalogName")
+                  AND (p.catalog_code IS NULL OR p.catalog_name IS NULL)
+                """, (Jsonb(hints),))
+    return added
 
 
 def seed_calendar(db):
