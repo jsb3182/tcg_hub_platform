@@ -39,7 +39,7 @@ CATEGORICAL = {"attribute", "race", "type", "color"}
 PUBLISHERS = {
     "POKEMON": {"pokemoncard.co.kr", "www.pokemoncard.co.kr"},
     "WEISS": {"ws-tcg.com", "en.ws-tcg.com"},
-    "ONEPIECE": {"www.onepiece-cardgame.kr", "www.onepiece-cardgame.com", "en.onepiece-cardgame.com"},
+    "ONEPIECE": {"onepiece-cardgame.kr", "www.onepiece-cardgame.kr", "www.onepiece-cardgame.com", "en.onepiece-cardgame.com"},
     "RIFTBOUND": {"riftbound.leagueoflegends.com"},
     "NIVEL": {"nivelarena.co.kr", "www.nivelarena.co.kr"},
 }
@@ -66,7 +66,15 @@ def checked(row):
     url = https(row["url"])
     if url.hostname != "namu.wiki" or not url.path.startswith("/w/") or unquote(url.path[3:]) != title or url.query or url.fragment:
         raise ValueError("The document URL must identify its exact NamuWiki title")
-    verified = https(row["verificationUrl"])
+    verification = string(row["verificationUrl"], 2048)
+    if game == "NIVEL" and verification.startswith("http://"):
+        # The publisher serves its card board over HTTP. Match the exact article used by our catalog.
+        article = re.fullmatch(r"http://nivelarena\.co\.kr/bbs/board\.php\?bo_table=cardlists&wr_id=([1-9][0-9]*)", verification)
+        if not article or row["match"].get("catalogKey") != "catalog:NIVEL:ko:" + article[1]:
+            raise ValueError("The Nivel publisher URL must match the catalog article")
+        verified = urlsplit(verification)
+    else:
+        verified = https(verification)
     https(row["snapshotUrl"])
     snapshot_date = date.fromisoformat(row["snapshotDate"])
     if snapshot_date.isoformat() != row["snapshotDate"]:

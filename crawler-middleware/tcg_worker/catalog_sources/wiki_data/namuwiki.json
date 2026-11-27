@@ -3121,5 +3121,236 @@
         "레어도 U"
       ]
     }
+  },
+  {
+    "game": "ONEPIECE",
+    "title": "몽키 D. 루피/원피스 카드 게임",
+    "url": "https://namu.wiki/w/%EB%AA%BD%ED%82%A4%20D.%20%EB%A3%A8%ED%94%BC/%EC%9B%90%ED%94%BC%EC%8A%A4%20%EC%B9%B4%EB%93%9C%20%EA%B2%8C%EC%9E%84",
+    "snapshotDate": "2026-08-29",
+    "snapshotUrl": "https://archive.org/details/namuwiki-data-dump-20260829",
+    "snapshotRow": 418900,
+    "articleSha256": "ead3684778c3317a3039a58c6e199bfcbd9216c1b4d616994205d1c995634d60",
+    "language": "ko",
+    "names": {
+      "ko": "몽키 D. 루피"
+    },
+    "match": {
+      "catalogKey": "catalog:ONEPIECE:ST-01:ST01-001",
+      "number": "ST01-001"
+    },
+    "facts": {
+      "life": 5,
+      "power": 5000
+    },
+    "verificationUrl": "https://www.onepiece-cardgame.kr/cardlist.do?blockIcons=&categories=&colors=&freewords=ST01-001&illustrations=&page=0&series=all&size=20",
+    "printingNumber": "ST01-001",
+    "details": {
+      "packs": [
+        "[STK-01] 스타트 덱 밀짚모자 일당"
+      ]
+    }
+  },
+  {
+    "game": "ONEPIECE",
+    "title": "몽키 D. 루피/원피스 카드 게임",
+    "url": "https://namu.wiki/w/%EB%AA%BD%ED%82%A4%20D.%20%EB%A3%A8%ED%94%BC/%EC%9B%90%ED%94%BC%EC%8A%A4%20%EC%B9%B4%EB%93%9C%20%EA%B2%8C%EC%9E%84",
+    "snapshotDate": "2026-08-29",
+    "snapshotUrl": "https://archive.org/details/namuwiki-data-dump-20260829",
+    "snapshotRow": 418900,
+    "articleSha256": "ead3684778c3317a3039a58c6e199bfcbd9216c1b4d616994205d1c995634d60",
+    "language": "ko",
+    "names": {
+      "ko": "몽키 D. 루피"
+    },
+    "match": {
+      "catalogKey": "catalog:ONEPIECE:OP-01:OP01-003",
+      "number": "OP01-003"
+    },
+    "facts": {
+      "life": 4,
+      "power": 5000
+    },
+    "verificationUrl": "https://onepiece-cardgame.kr/cardlist.do?categories=&colors=&freewords=OP01-003&illustrations=&series=all",
+    "printingNumber": "OP01-003",
+    "details": {
+      "packs": [
+        "[OPK-01] 부스터 팩 ROMANCE DAWN"
+      ]
+    }
+  },
+  {
+    "game": "NIVEL",
+    "title": "니벨아레나/금지·제한",
+    "url": "https://namu.wiki/w/%EB%8B%88%EB%B2%A8%EC%95%84%EB%A0%88%EB%82%98/%EA%B8%88%EC%A7%80%C2%B7%EC%A0%9C%ED%95%9C",
+    "snapshotDate": "2026-08-29",
+    "snapshotUrl": "https://archive.org/details/namuwiki-data-dump-20260829",
+    "snapshotRow": 1324221,
+    "articleSha256": "339eec30ae60b27b4b7608ca78e8c451f9c690b40952eeb6267acb614ed62639",
+    "language": "ko",
+    "names": {
+      "ko": "창공의 일리나브"
+    },
+    "match": {
+      "catalogKey": "catalog:NIVEL:ko:551",
+      "number": "BT04-073"
+    },
+    "facts": {},
+    "verificationUrl": "http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=551",
+    "printingNumber": "BT04-073",
+    "details": {
+      "packs": [
+        "에픽세븐 니벨아레나 부스터 팩 BT04 <혹한의 날들>"
+      ]
+    }
+  },
+  {
+    "game": "NIVEL",
+    "title": "니벨아레나/금지·제한",
+    "url": "https://namu.wiki/w/%EB%8B%88%EB%B2%A8%EC%95%84%EB%A0%88%EB%82%98/%EA%B8%88%EC%A7%80%C2%B7%EC%A0%9C%ED%95%9C",
+    "snapshotDate": "2026-08-29",
+    "snapshotUrl": "https://archive.org/details/namuwiki-data-dump-20260829",
+    "snapshotRow": 1324221,
+    "articleSha256": "339eec30ae60b27b4b7608ca78e8c451f9c690b40952eeb6267acb614ed62639",
+    "language": "ko",
+    "names": {
+      "ko": "내면의 존재"
+    },
+    "match": {
+      "catalogKey": "catalog:NIVEL:ko:546",
+      "number": "BT04-076"
+    },
+    "facts": {},
+    "verificationUrl": "http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=546",
+    "printingNumber": "BT04-076",
+    "details": {
+      "packs": [
+        "에픽세븐 니벨아레나 부스터 팩 BT04 <혹한의 날들>"
+      ]
+    }
+  },
+  {
+    "game": "NIVEL",
+    "title": "니벨아레나/금지·제한",
+    "url": "https://namu.wiki/w/%EB%8B%88%EB%B2%A8%EC%95%84%EB%A0%88%EB%82%98/%EA%B8%88%EC%A7%80%C2%B7%EC%A0%9C%ED%95%9C",
+    "snapshotDate": "2026-08-29",
+    "snapshotUrl": "https://archive.org/details/namuwiki-data-dump-20260829",
+    "snapshotRow": 1324221,
+    "articleSha256": "339eec30ae60b27b4b7608ca78e8c451f9c690b40952eeb6267acb614ed62639",
+    "language": "ko",
+    "names": {
+      "ko": "꽤 아플걸."
+    },
+    "match": {
+      "catalogKey": "catalog:NIVEL:ko:798",
+      "number": "BT05-015"
+    },
+    "facts": {},
+    "verificationUrl": "http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=798",
+    "printingNumber": "BT05-015",
+    "details": {
+      "packs": [
+        "이터널 리턴 니벨아레나 부스터 팩 BT05 <마츠리>"
+      ]
+    }
+  },
+  {
+    "game": "NIVEL",
+    "title": "니벨아레나/금지·제한",
+    "url": "https://namu.wiki/w/%EB%8B%88%EB%B2%A8%EC%95%84%EB%A0%88%EB%82%98/%EA%B8%88%EC%A7%80%C2%B7%EC%A0%9C%ED%95%9C",
+    "snapshotDate": "2026-08-29",
+    "snapshotUrl": "https://archive.org/details/namuwiki-data-dump-20260829",
+    "snapshotRow": 1324221,
+    "articleSha256": "339eec30ae60b27b4b7608ca78e8c451f9c690b40952eeb6267acb614ed62639",
+    "language": "ko",
+    "names": {
+      "ko": "레드 플레이버"
+    },
+    "match": {
+      "catalogKey": "catalog:NIVEL:ko:886",
+      "number": "SB01-004"
+    },
+    "facts": {},
+    "verificationUrl": "http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=886",
+    "printingNumber": "SB01-004",
+    "details": {
+      "packs": [
+        "승리의 여신: 니케 니벨아레나 스페셜 부스터 팩 2025 SB01"
+      ]
+    }
+  },
+  {
+    "game": "NIVEL",
+    "title": "니벨아레나/금지·제한",
+    "url": "https://namu.wiki/w/%EB%8B%88%EB%B2%A8%EC%95%84%EB%A0%88%EB%82%98/%EA%B8%88%EC%A7%80%C2%B7%EC%A0%9C%ED%95%9C",
+    "snapshotDate": "2026-08-29",
+    "snapshotUrl": "https://archive.org/details/namuwiki-data-dump-20260829",
+    "snapshotRow": 1324221,
+    "articleSha256": "339eec30ae60b27b4b7608ca78e8c451f9c690b40952eeb6267acb614ed62639",
+    "language": "ko",
+    "names": {
+      "ko": "팀 바니걸 결성"
+    },
+    "match": {
+      "catalogKey": "catalog:NIVEL:ko:885",
+      "number": "SB01-005"
+    },
+    "facts": {},
+    "verificationUrl": "http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=885",
+    "printingNumber": "SB01-005",
+    "details": {
+      "packs": [
+        "승리의 여신: 니케 니벨아레나 스페셜 부스터 팩 2025 SB01"
+      ]
+    }
+  },
+  {
+    "game": "NIVEL",
+    "title": "니벨아레나/금지·제한",
+    "url": "https://namu.wiki/w/%EB%8B%88%EB%B2%A8%EC%95%84%EB%A0%88%EB%82%98/%EA%B8%88%EC%A7%80%C2%B7%EC%A0%9C%ED%95%9C",
+    "snapshotDate": "2026-08-29",
+    "snapshotUrl": "https://archive.org/details/namuwiki-data-dump-20260829",
+    "snapshotRow": 1324221,
+    "articleSha256": "339eec30ae60b27b4b7608ca78e8c451f9c690b40952eeb6267acb614ed62639",
+    "language": "ko",
+    "names": {
+      "ko": "페인 이터"
+    },
+    "match": {
+      "catalogKey": "catalog:NIVEL:ko:853",
+      "number": "SB01-014"
+    },
+    "facts": {},
+    "verificationUrl": "http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=853",
+    "printingNumber": "SB01-014",
+    "details": {
+      "packs": [
+        "승리의 여신: 니케 니벨아레나 스페셜 부스터 팩 2025 SB01"
+      ]
+    }
+  },
+  {
+    "game": "NIVEL",
+    "title": "니벨아레나/금지·제한",
+    "url": "https://namu.wiki/w/%EB%8B%88%EB%B2%A8%EC%95%84%EB%A0%88%EB%82%98/%EA%B8%88%EC%A7%80%C2%B7%EC%A0%9C%ED%95%9C",
+    "snapshotDate": "2026-08-29",
+    "snapshotUrl": "https://archive.org/details/namuwiki-data-dump-20260829",
+    "snapshotRow": 1324221,
+    "articleSha256": "339eec30ae60b27b4b7608ca78e8c451f9c690b40952eeb6267acb614ed62639",
+    "language": "ko",
+    "names": {
+      "ko": "타락의 유열 샬럿"
+    },
+    "match": {
+      "catalogKey": "catalog:NIVEL:ko:664",
+      "number": "ST08-014"
+    },
+    "facts": {},
+    "verificationUrl": "http://nivelarena.co.kr/bbs/board.php?bo_table=cardlists&wr_id=664",
+    "printingNumber": "ST08-014",
+    "details": {
+      "packs": [
+        "이터널 리턴 니벨아레나 스타터 덱 ST08 <애니버서리>"
+      ]
+    }
   }
 ]

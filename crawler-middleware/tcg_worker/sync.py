@@ -125,8 +125,9 @@ def product_identity(code, name):
 def existing_product_keys(db, game, prefix, records):
     # Earlier imports keyed packs by code. Keep each numeric ID for the product that row represents.
     codes = {card.get("pack_code") for card in records}
+    pack_table = "visible_catalog_pack" if game == "NIVEL" else "pack"
     rows = db.execute(
-        """SELECT legacy_key,code,name FROM pack WHERE game_code=%s AND starts_with(legacy_key,%s)
+        f"""SELECT legacy_key,code,name FROM {pack_table} WHERE game_code=%s AND starts_with(legacy_key,%s)
            AND (game_code='NIVEL' OR NOT starts_with(legacy_key,%s))
            AND (code=ANY(%s::text[]) OR (code IS NULL AND %s)) ORDER BY id""",
         (game, prefix, prefix + "product:", [code for code in codes if code is not None], None in codes),
