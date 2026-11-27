@@ -2,6 +2,7 @@ package kr.tcghub;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -27,6 +28,59 @@ class ReleaseApiIntegrationTest {
     private long pack(String name, String key, String metadata) {
         return db.sql("insert into pack(game_code,name,legacy_key,metadata) values('YUGIOH',?,?,cast(? as jsonb)) returning id")
                 .param(name).param(key).param(metadata).query(Long.class).single();
+    }
+
+    @Test void wikiProductReferencesRequireTheExactCatalogEditionAndMarket() throws Exception {
+        record Edition(String game, String code, String name, String date, String url, String hash) {}
+        var editions = List.of(
+                new Edition("RIFTBOUND", "OGN", "Origins", "2025-10-31",
+                        "https://playriftbound.com/en-us/news/announcements/how-to-buy-riftbound/",
+                        "12bbc81f1b2423158bf4807b87c8f35e525ebb6b8ac1786e1cd5dff3fc9eb935"),
+                new Edition("RIFTBOUND", "UNL", "Unleashed", "2026-05-08",
+                        "https://playriftbound.com/en-us/news/announcements/the-unleashed-overview/",
+                        "ead1cbce54dee9bce1aaa6ee072a21fc7a090b018074990427e72ce3d5f9934d"),
+                new Edition("WEISS", "SAO/S47", "Sword Art Online Re: Edit", "2017-04-28",
+                        "https://en.ws-tcg.com/products/bp-sao-re/",
+                        "b4d16e16e7c3747a6de3282a7b2425d2345bacdc55968b8a7a58ce3af98fc7e6"),
+                new Edition("WEISS", "SAO/S80", "Sword Art Online -Alicization- Vol.2", "2021-11-05",
+                        "https://en.ws-tcg.com/products/bp-sao-al2/",
+                        "bab5af02e15b2d5e9aed25f1267604f467eab450d97e33a722cd976628a638a4")
+        );
+        for (var e : editions) {
+            String prefix = "catalog:" + e.game() + ":";
+            for (String key : List.of(prefix + e.code(), prefix + "product:" + e.hash())) {
+                long id = catalogFixture(e.game(),e.code(),e.name(),key);
+                boolean weiss = e.game().equals("WEISS");
+                api.perform(get("/api/v1/packs/" + id).param("lang", "ja").param("size","1"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.wikiProductReference.region").value("EN"))
+                        .andExpect(jsonPath("$.wikiProductReference.productName").value(e.name()))
+                        .andExpect(jsonPath("$.wikiProductReference.releaseDate").value(e.date()))
+                        .andExpect(jsonPath("$.wikiProductReference.verificationUrl").value(e.url()))
+                        .andExpect(jsonPath("$.wikiProductReference.title").value(weiss ? "바이스 슈발츠" : "리프트바운드"))
+                        .andExpect(jsonPath("$.wikiProductReference.snapshotRow").value(weiss ? 1667755 : 266848))
+                        .andExpect(jsonPath("$.wikiProductReference.snapshotDate").value("2026-08-29"));
+            }
+        }
+        long relabeled = db.sql("update pack set name='Origins (다른 판본)' where legacy_key='catalog:RIFTBOUND:OGN' returning id")
+                .query(Long.class).single();
+        api.perform(get("/api/v1/packs/" + relabeled))
+                .andExpect(jsonPath("$.wikiProductReference").doesNotHaveJsonPath());
+        for (long id : List.of(
+                catalogFixture("WEISS","SAO/S47","PR Card 【Schwarz Side】",
+                        "catalog:WEISS:product:3177ac0f3b8c2440eabca84669bd0a08b61e526aa8df2c80e034a2ba72af7886"),
+                catalogFixture("WEISS","SAO/S47","별도 일본어판","catalog:WEISS:test:ja"),
+                catalogFixture("WEISS","SAO/S47","Sword Art Online Re: Edit","catalog:WEISS:other-edition"),
+                catalogFixture("RIFTBOUND","OGN","Origins","manual:test-wiki-origins"))) {
+            api.perform(get("/api/v1/packs/" + id)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.wikiProductReference").doesNotHaveJsonPath());
+        }
+    }
+
+    private long catalogFixture(String game,String code,String name,String key) {
+        return db.sql("select id from pack where legacy_key=?").param(key).query(Long.class).optional()
+                .orElseGet(() -> db.sql("insert into pack(game_code,code,name,legacy_key) values(?,?,?,?) returning id")
+                        .param(game).param(code).param(name).param(key).query(Long.class).single());
     }
 
     @Test void allSixGamesExposeAllPagesAndOnlyDocumentedInclusionsAndRarities() throws Exception {
