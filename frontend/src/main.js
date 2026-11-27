@@ -35,6 +35,11 @@ const router = createRouter({
   },
 })
 const privateRoutes = new Set(['login','binder','decks','deck-new','deck-edit','admin'])
+router.beforeEach(to=>{
+  if (to.hash.startsWith('#pack-') && ['/','/index.html'].includes(to.path)) {
+    return {name:'releases',query:to.query,hash:to.hash,replace:true}
+  }
+})
 router.beforeEach(async (to, from) => {
   if (location.origin !== 'http://localhost:8080' ||
       !(privateRoutes.has(to.name) || (to.name === 'play' && to.query.deck))) return

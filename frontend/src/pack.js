@@ -1,6 +1,14 @@
 import { locale, t } from './i18n'
+import {rarityBadges} from './cardRarity'
+
+export function shortRarity(card){return rarityBadges(card,locale.value).map(r=>r.code || r.label).join(' · ')}
 
 const labels = {
+  '원문·출처':['Original text and sources','原文・出典'],
+  '이 언어의 카드명 미등록':['No name in this language','この言語のカード名は未登録です'],
+  '이 언어의 효과 텍스트 미등록':['No effect text in this language','この言語の効果テキストは未登録です'],
+  '이 언어의 이미지 미등록':['No image in this language','この言語の画像は未登録です'],
+  '카드명을 복사했습니다.':['Card name copied.','カード名をコピーしました。'],
   '카드명 표시':['Show card names','カード名を表示'],
   '뉴런 일러스트':['Neuron artwork','ニューロンのイラスト'],'저장한 그림':['Saved artwork','保存したイラスト'],
   '한국어':['Korean','韓国語'], '영어':['English','英語'], '일본어':['Japanese','日本語'],
@@ -29,6 +37,19 @@ const labels = {
   '기존 도감 원문':['Original-language name from the catalog','既存図鑑の原文名'],
   '나무위키에서 검색':['Search NamuWiki','ナムウィキで検索'],
   '발매 일정':['Release schedule','発売スケジュール'], '수록 카드':['Cards in this set','収録カード'],
+  '모든 종목':['All games','すべてのゲーム'],'모든 지역':['All regions','すべての地域'],
+  '발매 지역':['Release region','発売地域'],'지역 미확인':['Region unconfirmed','地域未確認'],
+  '한국':['Korea','韓国'],'일본':['Japan','日本'],'북미':['North America','北米'],
+  '영어판':['English edition','英語版'],'전 세계':['Worldwide','全世界'],'유럽':['Europe','欧州'],'중국':['China','中国'],
+  'TCG판 (국가 미지정)':['TCG edition (country unspecified)','TCG版（国指定なし）'],
+  '발매 정보 출처':['Release source','発売情報の出典'],'팩 도감':['Set catalog','パック図鑑'],
+  '팩 상세':['Set details','商品詳細'],
+  '발매 예정':['Upcoming','発売予定'],'지난 발매':['Past releases','発売済み'],'날짜 전체':['All dates','全期間'],
+  '기준일':['As of','基準日'],'일정 보기':['Schedule view','スケジュール表示'],'일정':['Releases','発売情報'],
+  '조건에 맞는 발매 일정이 없습니다.':['No release dates match these filters.','条件に合う発売情報はありません。'],
+  '등록된 발매 예정 일정이 없습니다.':['No upcoming releases are listed.','発売予定はまだ登録されていません。'],
+  '지역별 발매 일정':['Regional releases','地域別発売日'],
+  '지역별 일정을 불러오지 못했습니다.':['Could not load regional releases.','地域別発売日を読み込めませんでした。'],
   '신규':['New','新規'], '재록':['Reprints','再録'], '신규 일러스트':['New artwork','新規イラスト'],
   '미분류':['Unclassified','未分類'], '종류 미확인':['Type unknown','種類不明'], '레어도 미확인':['Rarity unknown','レアリティ不明'],
   '카드 배열':['Card gallery','カード一覧'], '수록 구분':['Printing','収録区分'], '카드 종류':['Card type','カードの種類'],
@@ -58,6 +79,11 @@ export function pt(key) {
 }
 export const inclusions = {NEW:'신규',REPRINT:'재록',NEW_ART:'신규 일러스트'}
 export const unknown = '__unknown__'
+export const releaseRegions={KR:'한국',JP:'일본',NA:'북미',EN:'영어판',EU:'유럽',GLOBAL:'전 세계',CN:'중국',TCG:'TCG판 (국가 미지정)'}
+export function regionName(code){return pt(releaseRegions[code] || '지역 미확인')}
+export function releaseName(event){
+  return event.names?.[locale.value] || event.name || event.code || event.productKey
+}
 export function packTitle(pack) {
   return locale.value !== 'ko' && pack.officialProduct ? pack.officialProduct.englishName : pt(pack.name)
 }

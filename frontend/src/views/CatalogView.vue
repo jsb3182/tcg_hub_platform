@@ -4,6 +4,7 @@ import { t as uiText, locale, gameName, supportedLanguage } from '../i18n'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { mediaPath, request } from '../api'
+import {pt, inclusions, shortRarity} from '../pack'
 import CardDetails from '../components/CardDetails.vue'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
 import ArtworkCredit from '../components/ArtworkCredit.vue'
@@ -16,12 +17,12 @@ const packs = ref([])
 const result = ref({ items: [], total: 0 })
 const activeGame = computed(() => param('game'))
 const selectedPack = computed(() => packs.value.find(pack => String(pack.id) === param('packId')))
-const filters = reactive({ q: '', packId: '', rarity: '' })
+const filters = reactive(filtersFromRoute())
 const filtersOpen = ref(false)
 const needsPacks = computed(() => filtersOpen.value || Boolean(param('packId')))
 const packError = ref('')
 const packLoading = ref(false)
-const advancedCount = computed(() => Number(Boolean(param('packId'))) + Number(Boolean(param('rarity'))))
+const advancedCount = computed(() => ['packId','rarity','inclusion','ygoType'].filter(key=>param(key)).length)
 const resultsTitle = computed(() => param('q') || advancedCount.value ? uiText("검색 결과") : activeGame.value ? gameName(activeGame.value) : uiText("전체 카드"))
 const loading = ref(true)
 const error = ref('')
@@ -30,11 +31,11 @@ const reload = ref(0)
 const pageSize = 24
 const page = computed(() => Math.max(0, Math.min(1000000, Number.parseInt(param('page'), 10) || 0)))
 const pageCount = computed(() => Math.ceil(result.value.total / pageSize))
-const hasSearchConditions = computed(() => Boolean(param('q') || param('packId') || param('rarity') || page.value))
+const hasSearchConditions = computed(() => Boolean(param('q') || advancedCount.value || page.value))
 
 function param(key) { return typeof route.query[key] === 'string' ? route.query[key] : '' }
 function filtersFromRoute() {
-  return { q: param('q'), packId: param('packId'), rarity: param('rarity') }
+  return { q: param('q'), packId: param('packId'), rarity: param('rarity'), inclusion:param('inclusion'), ygoType:param('ygoType') }
 }
 function navigate(changes) {
   const values = { ...route.query, page: '', ...changes }
@@ -42,10 +43,11 @@ function navigate(changes) {
   router.push({ name: 'catalog', query })
 }
 function apply() {
-  navigate({ q: filters.q.trim(), packId: filters.packId, rarity: filters.rarity.trim() })
+  navigate({ ...filters, q: filters.q.trim(), rarity: filters.rarity.trim() })
 }
 function chooseGame(game) {
-  navigate({ game, packId: '', q: filters.q.trim(), rarity: filters.rarity.trim() })
+  const ygo = !game || game==='YUGIOH'
+  navigate({ game, packId: '', q: filters.q.trim(), rarity: filters.rarity.trim(), inclusion:ygo?filters.inclusion:'', ygoType:ygo?filters.ygoType:'' })
 }
 function goPage(index) {
   navigate({page:index ? String(index):''})
@@ -78,7 +80,7 @@ watch([() => route.fullPath, reload,locale], async (_, __, onCleanup) => {
   const controller = new AbortController()
   onCleanup(() => controller.abort())
   const query = new URLSearchParams({ page: String(page.value), size: String(pageSize),lang:locale.value })
-  for (const key of ['q', 'game', 'packId', 'rarity']) if (param(key)) query.set(key, param(key))
+  for (const key of ['q', 'game', 'packId', 'rarity','inclusion','ygoType']) if (param(key)) query.set(key, param(key))
   loading.value = true
   error.value = ''
   try { result.value = await request('/cards?' + query, { signal: controller.signal }) }
@@ -87,7 +89,6 @@ watch([() => route.fullPath, reload,locale], async (_, __, onCleanup) => {
 }, { immediate: true })
 
 function reset() {
-  Object.assign(filters, { q: '', packId: '', rarity: '' })
   router.push({ name: 'catalog' })
 }
 
@@ -117,6 +118,14 @@ function reset() {
       <option v-for="pack in packs" :key="pack.id" :value="String(pack.id)">{{ pack.name }}</option>
     </select></label>
     <label>{{ $t("레어도") }}<input v-model="filters.rarity" maxlength="64" :placeholder="$t('예: UR')" /></label>
+    <template v-if="!activeGame || activeGame==='YUGIOH'">
+      <label>{{ pt('수록 구분') }}<select v-model="filters.inclusion"><option value="">{{ $t('전체') }}</option>
+        <option v-for="(label,value) in inclusions" :key="value" :value="value">{{ pt(label) }}</option>
+      </select></label>
+      <label>{{ gameName('YUGIOH') }} · {{ pt('카드 종류') }}<select v-model="filters.ygoType"><option value="">{{ $t('전체') }}</option>
+        <option v-for="(label,value) in {MONSTER:'몬스터',SPELL:'마법',TRAP:'함정'}" :key="value" :value="value">{{ pt(label) }}</option>
+      </select></label>
+    </template>
     <button type="submit" class="secondary">{{ $t("필터 적용") }}</button>
   </form>
   <div v-if="metaError || packError" class="inline-error" role="alert">{{ metaError ? $t("게임 목록") : $t("팩 목록") }}{{ $t("을 불러오지 못했습니다.") }}
@@ -148,10 +157,11 @@ function reset() {
           <summary>
             <span class="card-leading">
               <LibraryThumbnail v-slot="{art}" :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card">
-                <span class="card-title"><strong :lang="card.language || ''">{{ card.name || card.originalName || $t("이름 미정") }}</strong>
+                <span class="card-title"><strong :class="{'closed-card-name':card.language!==locale}" :lang="card.language || ''">{{ card.name || card.originalName || $t("이름 미정") }}</strong>
+                <strong v-if="card.language!==locale" class="expanded-card-name">{{ card.number || $t('이름 미정') }}</strong>
                 <CardTextCredit :card="card"/>
                 <small v-if="card.packName">{{ card.packName }}</small>
-                <small class="card-id-mobile">{{ [card.number,card.rarity].filter(Boolean).join(' · ') }}</small>
+                <small class="card-id-mobile">{{ [card.number,shortRarity(card)].filter(Boolean).join(' · ') }}</small>
                 <small v-if="art && (art.language!==locale || art.reference)" class="catalog-edition">
                   <ArtworkCredit :language="art.language" :label-image="!supportedLanguage(art.language)" :printing="art.reference ? card : null" automatic disable-link/>
                 </small>
@@ -159,7 +169,7 @@ function reset() {
               </LibraryThumbnail>
             </span>
             <span class="card-code">{{ card.number }}</span>
-            <span class="card-rarity">{{ card.rarity }}</span><span class="chevron" aria-hidden="true"></span>
+            <span class="card-rarity">{{ shortRarity(card) }}</span><span class="chevron" aria-hidden="true"></span>
           </summary>
           <CardDetails :card-id="card.id" lazy />
         </details>
@@ -171,3 +181,6 @@ function reset() {
       </nav>
     </section>
 </template>
+<style scoped>
+.card-row:not([open]) .expanded-card-name,.card-row[open] .closed-card-name{display:none}
+</style>

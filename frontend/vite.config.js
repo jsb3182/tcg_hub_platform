@@ -36,7 +36,7 @@ export default defineConfig({
           {
             urlPattern: ({ sameOrigin, url, request }) =>
               sameOrigin && !request.headers.has('authorization') &&
-              /^\/api\/v1\/(?:games|releases|(?:packs|cards)(?:\/\d+)?)$/.test(url.pathname),
+              /^\/api\/v1\/(?:games|releases|release-calendar|(?:packs|cards)(?:\/\d+)?)$/.test(url.pathname),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'tcg-public-catalog-v1',
