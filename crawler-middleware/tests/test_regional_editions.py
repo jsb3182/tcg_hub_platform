@@ -1,9 +1,52 @@
 import unittest
 
-from tcg_worker.catalog_sources.onepiece import Index, edition, korean_page
+from tcg_worker.catalog_sources.onepiece import Index, edition, korean_facts, korean_page, preserve_partial_korean
 from tcg_worker.catalog_sources.card_names import PokemonNames, pokemon_edition, pokemon_effect
 
 class EditionTests(unittest.TestCase):
+    def test_onepiece_korean_facts_follow_the_selected_printed_edition(self):
+        index = Index()
+        number = "EB01-003"
+        original = "https://en.onepiece-cardgame.com/cardlist/"
+        official = "https://www.onepiece-cardgame.kr/cardlist.do?series=OPK-14"
+        index.add(number, "en", edition("Card", "Effect", None, original), 0, "EB-01", "Original", power=6000)
+        page = """<div class=card_sch_list><button class=item>
+            <p class=cardNumber>EB01-003_P2<p class=cardName>시험 카드<p class=cardGet>[OPK-14] 부스터
+            <p class=cardType>캐릭터<p class=cardAttr>참격<p class=cardPoint>신세계/시험 해적단
+            <p class=life>3<p class=power>5000<p class=cardCounter>0</button></div>"""
+        korean_page(index, page, official, "")
+        rows = list(index.records())
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            self.assertEqual(row["specs"]["regionalFacts"], {"ko": {
+                "sourceUrl": official, "productCode": "OP-14", "attribute": "참격",
+                "traits": ["신세계", "시험 해적단"], "cost": 3, "power": 5000, "counter": 0
+            }})
+            self.assertEqual(row["specs"]["power"], 6000)
+        leader = korean_facts({"cardType": "리더", "life": "4", "cardPoint": "-", "cardCounter": "-"}, "PROMO", official)
+        self.assertEqual(leader, {"life": 4, "sourceUrl": official})
+        self.assertEqual(korean_facts({"cardType": "불명", "life": "3", "power": "?"}, None, official), {})
+
+    def test_partial_korean_enrichment_preserves_old_edition_identity(self):
+        official = "https://www.onepiece-cardgame.kr/cardlist.do?page=1"
+        old = {"names": {"ko": "시험"}, "sources": {"ko": official}, "productCode": "EB-01",
+               "nameBasis": {"ko": "PRINTED_NAME"}, "regionalFacts": {
+                   "ko": {"sourceUrl": official, "productCode": "EB-01", "life": 4}}}
+        key = "catalog:ONEPIECE:EB-01:EB01-003"
+        number = "EB01-003"
+        card = {"number": number, "korean_incomplete": True, "specs": {"productCode": "EB-01", "names": {"en": "Test"}}}
+
+        class Previous:
+            def execute(self, query, params):
+                return self
+
+            def fetchall(self):
+                return [(key, number, old)]
+
+        preserve_partial_korean(Previous(), {key: card})
+        self.assertEqual(card["specs"]["regionalFacts"], old["regionalFacts"])
+        self.assertEqual(card["specs"]["names"], {"en": "Test", "ko": "시험"})
+
     def test_official_onepiece_fields_use_direct_text_and_ignore_unrelated_image_urls(self):
         body="""<div class="card_sch_list"><button class="item">
         <p class="cardNumber">OP01-001<p class="cardName">시험 리더<p class="cardText">효과

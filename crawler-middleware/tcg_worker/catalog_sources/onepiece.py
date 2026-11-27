@@ -79,6 +79,8 @@ class Index:
             korean = translations.get("ko", {})
             if korean.get("source", "").startswith(CARD_LIST) and korean.get("editionProduct") not in (None,"PROMO"):
                 fields["nameBasis"] = {"ko": "PRINTED_NAME" if korean["editionProduct"] == product else "RELATED_PRINTING"}
+            if korean.get("regionalFacts"):
+                fields["regionalFacts"] = {"ko": korean["regionalFacts"]}
             product_names = self.products[product]
             name = next((product_names[k] for k in ("ko", "en", "ja") if k in product_names), product)
             info = self.rules[number]
@@ -160,6 +162,31 @@ def optcg(index, http):
                       life=row.get("life"), cost=row.get("card_cost"), power=row.get("card_power"), rarity=row.get("rarity"))
 
 
+def korean_facts(values, product, source):
+    facts = {}
+    attribute = values.get("cardAttr", "").strip()
+    if attribute and attribute != "-":
+        facts["attribute"] = attribute
+    traits = [v.strip() for v in values.get("cardPoint", "").split("/") if v.strip() not in ("", "-")]
+    if traits:
+        facts["traits"] = list(dict.fromkeys(traits))
+    # The official detail popup displays its single "life" field as 라이프 only
+    # for leaders; the other card types use the 코스트 label.
+    kind = KIND.get(values.get("cardType"))
+    numbers = {"power": "power", "counter": "cardCounter"}
+    if kind:
+        numbers["life" if kind == "leader" else "cost"] = "life"
+    for key, source_key in numbers.items():
+        raw = values.get(source_key, "")
+        if re.fullmatch(r"[0-9]{1,6}", raw):
+            facts[key] = int(raw)
+    if facts:
+        facts["sourceUrl"] = source
+        if product and product != "PROMO":
+            facts["productCode"] = product
+    return facts
+
+
 def korean_page(index, body, source, series):
     soup = BeautifulSoup(body, "html.parser")
     cards = soup.select(".card_sch_list button.item")
@@ -177,8 +204,11 @@ def korean_page(index, body, source, series):
             url = None
         pack = values.get("cardGet") or series
         effect = "\n".join(values[k] for k in ("cardText", "cardTrigger") if values.get(k) not in (None, "", "-"))
-        index.add(number, "ko", edition(values.get("cardName"), effect, url, source),
-                  0 if number == printing.upper() else 2, pack_code(pack), pack,
+        product = pack_code(pack)
+        value = edition(values.get("cardName"), effect, url, source)
+        value["regionalFacts"] = korean_facts(values, product, source)
+        index.add(number, "ko", value,
+                  0 if number == printing.upper() else 2, product, pack,
                   type=KIND.get(values.get("cardType")), colors=[COLOR[c.strip()] for c in values.get("cardColor", "").split(",") if c.strip() in COLOR])
     next_link = soup.select_one("a.pagi_next[href]")
     if not next_link:
@@ -299,7 +329,7 @@ def preserve_partial_korean(db, cards):
         if (current.get("names") or {}).get("ko") and not (old_exact and (current.get("nameBasis") or {}).get("ko")=="RELATED_PRINTING"):
             continue
         merged = {**current}
-        for field in ("names","texts","sources","images","imageSources","imageProducts","nameBasis"):
+        for field in ("names","texts","sources","images","imageSources","imageProducts","nameBasis","regionalFacts"):
             languages = dict(current.get(field) or {})
             languages.pop("ko",None)
             if "ko" in (prior.get(field) or {}):
