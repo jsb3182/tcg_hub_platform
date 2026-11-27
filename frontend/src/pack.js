@@ -119,6 +119,7 @@ const labels = {
   '북미 공인점 선행 발매':['North America OTS release','北米公認店先行発売'],
   '공식 상품 구성':['Publisher set size','公式商品収録枚数'],
   '공식 상품 안내':['Official product page','公式商品ページ'],
+  '상품 출처':['Product sources','商品情報の出典'],
   '도감 등록 전':['No catalog entries yet','図鑑未登録'],
   '수록 상품':['Product','収録商品'], '종류':['Type','種類'], '몬스터':['Monster','モンスター'], '마법':['Spell','魔法'], '함정':['Trap','罠'],
   '남은 카드 불러오기':['Load remaining cards','残りのカードを読み込む'], '카드 불러오는 중…':['Loading cards…','カードを読み込み中…'],
