@@ -10,6 +10,36 @@ from bs4 import BeautifulSoup
 ORIGIN = "http://nivelarena.co.kr"
 BOARD = ORIGIN + "/bbs/board.php?bo_table=cardlists"
 DETAIL = ORIGIN + "/skin/board/card_list_new/get_info.php"
+ART_ROOT = ORIGIN + "/data/file/cardlists/"
+ART_FILE = re.compile(r"[A-Za-z0-9_-]+\.(?:jpe?g|png|webp)", re.ASCII | re.IGNORECASE)
+
+
+def matching_thumbnail(original, thumbnail):
+    """Match the publisher's thumbnail to the same card-face filename."""
+    if not isinstance(original, str) or not original.startswith(ART_ROOT):
+        return False
+    filename = original[len(ART_ROOT):]
+    if not ART_FILE.fullmatch(filename) or filename.startswith("thumb-") or not isinstance(thumbnail, str):
+        return False
+    stem = filename.rsplit(".", 1)[0]
+    return bool(re.fullmatch(re.escape(ART_ROOT + "thumb-" + stem) +
+                             r"_[1-9][0-9]{0,3}x[1-9][0-9]{0,3}\.(?:jpe?g|png|webp)", thumbnail))
+
+
+def board_art(node):
+    link = node.select_one(".gall_img a[href]")
+    image = node.select_one(".gall_img img[src]")
+    thumb = image.get("src", "") if image else ""
+    if not thumb.startswith(ART_ROOT) or not ART_FILE.fullmatch(thumb[len(ART_ROOT):]):
+        return None
+    # The official detail viewer splits this exact link into its picture filename
+    # and article ID. Card numbers alone also identify alternate artworks.
+    if link and link["href"] == node["data-info"]:
+        filename, _, article = link["href"].rpartition("♬")
+        original = ART_ROOT + filename
+        if article.isascii() and article.isdecimal() and matching_thumbnail(original, thumb):
+            return original, thumb
+    return thumb, None
 
 
 class Text(HTMLParser):
@@ -104,11 +134,9 @@ def nivel(http):
         ids.extend(listed)
         for node in BeautifulSoup(body, "html.parser").select("li[data-info]"):
             ident = node["data-info"].rpartition("♬")[2]
-            picture = node.select_one(".gall_img img[src]")
-            if picture and ident.isdecimal():
-                thumb = picture["src"]
-                if re.fullmatch(r"http://nivelarena\.co\.kr/data/file/cardlists/[\w.-]+\.(?:jpg|jpeg|png)", thumb, re.I):
-                    artwork[ident] = thumb
+            picture = board_art(node)
+            if ident.isdecimal() and picture:
+                artwork[ident] = picture
     if len(set(ids)) != int(total[1].replace(",", "")) or len(ids) != len(set(ids)):
         raise ValueError("Nivel listing changed during pagination, retry after the cache expires")
     for index, ident in enumerate(ids):
@@ -117,7 +145,10 @@ def nivel(http):
         body = http.get(DETAIL, post=post, ttl=(1 if index < 40 else 30) * 86400, size=128000, delay=delay)
         record = parse_detail(body.read_text("utf-8-sig"), ident)
         if ident in artwork:
-            record["specs"].update(images={"ko": artwork[ident]}, imageSources={"ko": record["source_url"]})
+            primary, thumbnail = artwork[ident]
+            record["specs"].update(images={"ko": primary}, imageSources={"ko": record["source_url"]})
+            if thumbnail:
+                record["specs"]["nivelThumbnail"] = thumbnail
             if record["pack_code"]:
                 record["specs"]["imageProducts"] = {"ko": record["pack_code"]}
         yield record

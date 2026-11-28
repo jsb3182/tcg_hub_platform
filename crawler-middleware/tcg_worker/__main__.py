@@ -42,6 +42,10 @@ def main():
     artwork = commands.add_parser("cache-card-art", help="Run one bounded batch of local card image downloads.")
     artwork.add_argument("--game", choices=("YUGIOH","POKEMON","WEISS","NIVEL","RIFTBOUND","ONEPIECE"))
     commands.add_parser("seed-ygo-kr-prints", help="Populate the empty Korean printing index from the existing local catalog cache.")
+    weiss = commands.add_parser("seed-weiss-readings",help="Apply complete Korean rules for published English Weiss cards locally.")
+    weiss.add_argument("--memory",type=Path,help="optional locally prepared and trusted .jsonl.gz model memory")
+    weiss.add_argument("--sha256",help="expected digest of the supplied translation memory")
+    weiss.add_argument("--draft-limit",type=int,default=0,help="also process this many pending cards using the local model")
     commands.add_parser("import-wiki-cards", help="Import verified card facts from a NamuWiki snapshot index.").add_argument("file", nargs="?", type=Path)
     commands.add_parser("seed-release-calendar", help="Import the bundled regional release announcements without a network request.")
     probe = commands.add_parser("check-feed", help="Read a source without storing posts. A configured X worker shares its rate limit.")
@@ -70,6 +74,39 @@ def main():
         return
 
     from .jobs import connect, enqueue, process_once
+
+    if args.command == "seed-weiss-readings":
+        if bool(args.memory)!=bool(args.sha256) or not 0<=args.draft_limit<=20000:
+            parser.error("--memory requires --sha256; --draft-limit must be 0–20000")
+        from .card_readings import fill_readings, seed_curated_readings
+        from .translation import model_directory, OfflineTranslator, TRANSLATION_LOCK
+        from .weiss_readings import seed_all
+        from .weiss_memory import import_memory
+        stop=threading.Event()
+        for sig in (signal.SIGINT,signal.SIGTERM):
+            signal.signal(sig,lambda *_:stop.set())
+        model=None
+        def get_model():
+            nonlocal model
+            if model is None:
+                model=OfflineTranslator(model_directory())
+            return model
+        with connect() as db:
+            db.autocommit=True
+            if not db.execute("SELECT pg_try_advisory_lock(%s)",(TRANSLATION_LOCK,)).fetchone()[0]:
+                parser.exit(3,"The local translation lane is busy. Retry after its current batch.\n")
+            added=import_memory(db,args.memory,args.sha256) if args.memory else 0
+            with db.transaction():
+                seed_curated_readings(db)
+            report=seed_all(db,stop,use_memory=True)
+            attempted=0
+            while attempted<args.draft_limit and not stop.is_set():
+                count=fill_readings(db,get_model,stop,min(6,args.draft_limit-attempted),weiss_only=True)
+                if not count:
+                    break
+                attempted+=count
+            print(json.dumps({**report,"memoryAdded":added,"draftRowsProcessed":attempted}))
+        return
 
     if args.command == "cache-card-art":
         from .local_art import batch, GAMES

@@ -120,7 +120,7 @@ class ReleaseApi {
         return db.sql(HEADER + """
                  where starts_with(p.legacy_key,'legacy:') or p.release_date is not null
                     or nullif(btrim(p.release_label),'') is not null
-                    or exists(select from product_release e where e.selected_pack_id is not null and current_catalog_pack(e.selected_pack_id)=p.id)
+                    or p.id in (select coalesce(s.superseded_by,s.id) from product_release e join pack s on s.id=e.selected_pack_id)
                  order by p.id
                 """).query((r,n) -> header(r)).list();
     }
