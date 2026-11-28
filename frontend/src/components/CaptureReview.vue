@@ -9,7 +9,7 @@ import CardTextCredit from './CardTextCredit.vue'
 import ImageFilePicker from './ImageFilePicker.vue'
 import {localizedCards,nameFields} from '../cardLabels'
 import {useSession} from '../stores/session'
-import {pt} from '../pack'
+import {facetLabel,pt} from '../pack'
 const props=defineProps({game:{type:String,default:'YUGIOH'},zones:Array})
 const session=useSession(),method=ref('neuron'),fileChoice=ref(null),preview=ref('')
 const grid=computed(()=>props.game!=='YUGIOH' || method.value==='grid')
@@ -115,7 +115,7 @@ function apply(){
           </button>
           <div v-if="active===r.key" class="capture-correct">
             <div class="capture-candidates"><button v-for="(c,i) in r.candidates" :key="[c.cardId,c.variantId,c.artworkIndex].join('-')" type="button" :aria-label="caption(c).name+' '+(i+1)" @click="select(r,c)">
-              <LibraryThumbnail :image="c.image" :src="c.imageUrl"/><span :lang="caption(c).language || ''">{{ caption(c).name }}</span><small>{{ c.number }} {{ c.rarity }} {{ c.neuronArtwork ? t('일러스트')+' '+c.neuronArtwork : '' }}</small>
+              <LibraryThumbnail :image="c.image" :src="c.imageUrl"/><span :lang="caption(c).language || ''">{{ caption(c).name }}</span><small>{{ c.number }} {{ facetLabel('rarity',c.rarity,game) }} {{ c.neuronArtwork ? t('일러스트')+' '+c.neuronArtwork : '' }}</small>
             </button></div>
             <div class="capture-edits"><label>{{ t('구역') }}<select v-model="r.section"><option v-for="k in sections" :key="k" :value="k">{{ sectionLabel(k) }}</option></select></label>
               <label>{{ t('수량') }}<input v-model.number="r.quantity" type="number" min="1" max="999"></label></div>
