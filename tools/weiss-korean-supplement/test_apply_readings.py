@@ -1,12 +1,18 @@
 """Run with the worker on PYTHONPATH. TCG_TEST_DSN enables the temporary PostgreSQL tables."""
 from collections import defaultdict
+import gzip
+from hashlib import sha256
+import json
 import os
+from pathlib import Path
+import tempfile
 import unittest
 
 import psycopg
 from psycopg.errors import LockNotAvailable
 
 from apply_readings import apply, load_readings, TRANSLATION_LOCK
+from restore_219 import RELEASE_SHA, restore
 
 
 class DatasetTests(unittest.TestCase):
@@ -19,6 +25,29 @@ class DatasetTests(unittest.TestCase):
             "가벼운 놀림, 나카노 이치카",
         )
         self.assertTrue(all("id" not in row and "evidence" in row for row in rows))
+
+    @unittest.skipUnless(os.environ.get("TCG_TEST_WEISS_ZIP") and os.environ.get("TCG_TEST_WEISS_GENERATED"),
+                         "set TCG_TEST_WEISS_ZIP and TCG_TEST_WEISS_GENERATED for the full offline reconstruction")
+    def test_full_memory_reconstruction_and_unrecognized_drift(self):
+        archive = Path(os.environ["TCG_TEST_WEISS_ZIP"])
+        generated = Path(os.environ["TCG_TEST_WEISS_GENERATED"])
+        data = restore(archive, generated)
+        self.assertEqual(sha256(data).hexdigest(), RELEASE_SHA)
+        lines = gzip.decompress(data).decode().splitlines()
+        self.assertEqual(len(lines)-1, 37754)
+        delta = Path(__file__).with_name("memo-219-delta.jsonl").read_text(encoding="utf8")
+        keys = dict(map(json.loads, delta.splitlines()))
+        for i in range(1, len(lines)):
+            row = json.loads(lines[i])
+            if row[4] not in keys:
+                row[3] = "별도 생성값"
+                lines[i] = json.dumps(row, ensure_ascii=False, separators=(",", ":"))
+                break
+        with tempfile.TemporaryDirectory() as temp:
+            modified = Path(temp) / "other.gz"
+            modified.write_bytes(gzip.compress(("\n".join(lines)+"\n").encode()))
+            with self.assertRaisesRegex(ValueError, "outside the verified reconstruction delta"):
+                restore(archive, modified)
 
 
 @unittest.skipUnless(os.environ.get("TCG_TEST_DSN"), "set TCG_TEST_DSN to a disposable PostgreSQL database")
