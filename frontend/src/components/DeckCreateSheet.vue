@@ -8,13 +8,17 @@ import {pt} from '../pack'
 import {prepareDeckPicture,storeDeckPictures} from '../deckPictures'
 import DeckBanner from './DeckBanner.vue'
 import CaptureReview from './CaptureReview.vue'
+import LibraryThumbnail from './LibraryThumbnail.vue'
+import ImageFilePicker from './ImageFilePicker.vue'
 const props=defineProps({game:String,ordinal:Number}),router=useRouter(),session=useSession()
 const panel=ref(null),chosenGame=ref(''),name=ref(''),nameEn=ref(''),nameJa=ref(''),entries=ref([]),rule=ref(null),ruleRetry=ref(0)
 const pending=ref(false),busy=ref(false),cover=ref(null),preview=ref(''),error=ref(''),created=ref(null),open=ref(false)
+const coverName=ref(''),preparingCover=ref(false)
+let coverRevision=0
 const emit=defineEmits(['closed'])
 const validEntries=computed(()=>entries.value.every(e=>Number.isInteger(e.quantity)&&e.quantity>=1&&e.quantity<=999))
 const deck=computed(()=>({name:name.value.trim()||pt('새 덱'),nameEn:nameEn.value,nameJa:nameJa.value,gameCode:chosenGame.value,entries:entries.value,cards:entries.value.reduce((n,e)=>n+e.quantity,0)}))
-function clearCover(){if(preview.value)URL.revokeObjectURL(preview.value);preview.value='';cover.value=null}
+function clearCover(){coverRevision++;preparingCover.value=false;coverName.value='';if(preview.value)URL.revokeObjectURL(preview.value);preview.value='';cover.value=null}
 function show(){clearCover();name.value='';nameJa.value='';nameEn.value='';entries.value=[];error.value='';created.value=null;pending.value=false;chosenGame.value=props.game||'YUGIOH';open.value=true;panel.value.showModal()}
 function close(){if(busy.value)return;if(!created.value && (name.value||nameJa.value||nameEn.value||entries.value.length||cover.value||pending.value) && !window.confirm(pt('저장하지 않은 변경을 취소할까요?')))return;panel.value.close()}
 function closed(){open.value=false;clearCover();emit('closed')}
@@ -43,13 +47,20 @@ watch([open,chosenGame,ruleRetry],async([active,g],_,clean)=>{
   catch(e){if(!abort.signal.aborted)error.value=e.message}
 })
 onBeforeUnmount(clearCover)
-async function picture(event){
-  const file=event.target.files[0];if(!file)return
-  try{const jpeg=await prepareDeckPicture(file,'cover');if(!open.value)return;clearCover();cover.value=jpeg;preview.value=URL.createObjectURL(jpeg)}
-  catch{error.value=pt('이미지를 읽지 못했습니다.')}finally{event.target.value=''}
+async function picture(file){
+  const revision=++coverRevision
+  preparingCover.value=true
+  error.value=''
+  try{
+    const jpeg=await prepareDeckPicture(file,'cover')
+    if(revision!==coverRevision)return
+    if(preview.value)URL.revokeObjectURL(preview.value)
+    cover.value=jpeg;coverName.value=file.name;preview.value=URL.createObjectURL(jpeg)
+  }catch{if(revision===coverRevision)error.value=pt('이미지를 읽지 못했습니다.')}
+  finally{if(revision===coverRevision)preparingCover.value=false}
 }
 async function create(){
-  if(busy.value||pending.value||!name.value.trim()||!rule.value||!validEntries.value)return
+  if(busy.value||pending.value||preparingCover.value||!name.value.trim()||!rule.value||!validEntries.value)return
   busy.value=true;error.value=''
   try{
     if(!created.value)created.value=await session.authenticatedRequest('/me/decks',{method:'POST',body:{name:name.value.trim(),nameJa:nameJa.value.trim(),nameEn:nameEn.value.trim(),gameCode:chosenGame.value,revision:0,state:'DRAFT',shared:false,
@@ -66,21 +77,30 @@ async function create(){
     <label>{{ pt('한국어 이름 (필수)') }}<input v-model="name" lang="ko" required maxlength="100" :disabled="!!created||busy"></label>
     <label>{{ pt('일본어 이름') }}<input v-model="nameJa" lang="ja" maxlength="100" :disabled="!!created||busy"></label>
     <label>{{ pt('영어 이름') }}<input v-model="nameEn" lang="en" maxlength="100" :disabled="!!created||busy"></label>
-    <details v-if="!created"><summary>{{ pt('덱 레시피 캡처') }}</summary><CaptureReview v-if="rule" :game="chosenGame" :zones="rule.sections.map(s=>s.section)" @pending="v=>pending=v" @apply="addRows" @suggest="v=>{if(!name)name=v}"/></details>
+    <CaptureReview v-if="rule && !created" :game="chosenGame" :zones="rule.sections.map(s=>s.section)" @pending="v=>pending=v" @apply="addRows" @suggest="v=>{if(!name)name=v}"/>
     <details v-if="entries.length && rule && !created" class="staged-cards" open>
       <summary>{{ pt('확인한 카드') }} · {{ entries.length }}</summary>
-      <div v-for="(row,i) in entries" :key="i"><strong>{{ row.name || row.number }} <small>{{ row.number }}</small></strong>
+      <div v-for="(row,i) in entries" :key="i"><div class="staged-printing">
+        <LibraryThumbnail :image="row.image" :src="row.variantId && row.image ? undefined : row.imageUrl" :language="row.imageLanguage" :printing="row" placeholder/>
+        <strong>{{ row.name || row.number }} <small v-if="row.name">{{ row.number }}</small></strong>
+      </div>
         <label>{{ t('구역') }}<select v-model="row.section" :disabled="busy"><option v-for="s in rule.sections" :key="s.section" :value="s.section">{{ sectionLabel(s.section) }}</option></select></label>
         <label>{{ t('수량') }}<input type="number" v-model.number="row.quantity" min="1" max="999" :disabled="busy"></label>
         <button class="text-button" type="button" :disabled="busy" @click="entries.splice(i,1)">{{ t('이 항목 제외') }}</button>
       </div>
     </details>
-    <label>{{ pt('대표 이미지') }}<input type="file" accept="image/png,image/jpeg,image/webp" :disabled="busy" @change="picture"></label>
+    <div><span class="cover-label">{{ pt('대표 이미지') }}</span>
+      <ImageFilePicker :label="pt('대표 이미지')" :action="pt(cover ? '대표 이미지 변경' : '대표 이미지 선택')" :name="coverName" :disabled="busy" @select="picture"/>
+    </div>
     <DeckBanner :deck="deck" :image="preview" :ordinal="ordinal"/>
     <p v-if="error" role="alert">{{ error }} <button v-if="!rule" class="text-button" @click="ruleRetry++">{{ pt('다시 시도') }}</button></p>
-  </div><footer><button class="secondary" :disabled="busy" @click="close">{{ pt('취소') }}</button><button class="primary" :disabled="busy||pending||!rule||!validEntries||!name.trim()" @click="create">{{ pt(created?'다시 시도':'만들기') }}</button></footer>
+  </div><footer><button class="secondary" :disabled="busy" @click="close">{{ pt('취소') }}</button><button class="primary" :disabled="busy||pending||preparingCover||!rule||!validEntries||!name.trim()" @click="create">{{ pt(created?'다시 시도':'만들기') }}</button></footer>
   </section></dialog></template>
 <style scoped>
+.staged-printing{display:flex;align-items:center;gap:10px;min-width:0;flex-basis:100%}
+.staged-printing small{display:block}
+.sheet-fields :deep(.capture-panel){margin:0}
+.cover-label{display:block;margin-block-end:4px;font-size:.875rem}
 .staged-cards>div{display:flex;gap:7px;flex-wrap:wrap;align-items:end;padding:.55rem 0;border-top:1px solid var(--bd)}.staged-cards strong{flex-basis:100%;overflow-wrap:anywhere}.staged-cards strong small{color:var(--mu);font-weight:400}.staged-cards label{display:grid;min-width:0;font-size:.8rem}.staged-cards input,.staged-cards select{min-height:40px;max-width:9rem}.staged-cards input{width:4.4rem}
 .create-sheet{margin:auto auto 0;width:min(560px,100%);max-width:100%;max-height:88vh;padding:0;border:1px solid var(--bd);border-radius:18px 18px 0 0;background:var(--sf);color:var(--tx)}.create-sheet::backdrop{background:rgb(12 18 30/.45)}
 .create-sheet header,.create-sheet footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:var(--sf);position:sticky;z-index:1}.create-sheet header{top:0;border-bottom:1px solid var(--bd)}.create-sheet header h2{margin:0;font-size:1.25rem}.create-sheet header button{border-radius:50%;min-width:40px;min-height:40px}.create-sheet footer{bottom:0;border-top:1px solid var(--bd);padding-bottom:max(12px,env(safe-area-inset-bottom))}.create-sheet footer button{flex:1}

@@ -11,6 +11,7 @@ import LibraryThumbnail from '../components/LibraryThumbnail.vue'
 import ArtworkCredit from '../components/ArtworkCredit.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
 import RiftEffectSummary from '../components/RiftEffectSummary.vue'
+import CatalogGallery from '../components/CatalogGallery.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +19,8 @@ const games = ref([])
 const packs = ref([])
 const result = ref({ items: [], total: 0 })
 const activeGame = computed(() => param('game'))
+const gallery = computed(() => param('view') === 'gallery')
+const withImage = computed(() => param('withImage') === 'true')
 const selectedPack = computed(() => packs.value.find(pack => String(pack.id) === param('packId')))
 const filters = reactive(filtersFromRoute())
 const filtersOpen = ref(Boolean(param('releaseYear') || param('traitKey')))
@@ -39,7 +42,7 @@ const reload = ref(0)
 const pageSize = 24
 const page = computed(() => Math.max(0, Math.min(1000000, Number.parseInt(param('page'), 10) || 0)))
 const pageCount = computed(() => Math.ceil(result.value.total / pageSize))
-const hasSearchConditions = computed(() => Boolean(param('q') || advancedCount.value || page.value))
+const hasSearchConditions = computed(() => Boolean(param('q') || advancedCount.value || withImage.value || page.value))
 
 function param(key) { return typeof route.query[key] === 'string' ? route.query[key] : '' }
 function filtersFromRoute() {
@@ -63,7 +66,13 @@ function goPage(index) {
   navigate({page:index ? String(index):''})
   document.getElementById('results-heading')?.focus()
 }
-watch(() => route.query, () => Object.assign(filters, filtersFromRoute()), { immediate: true })
+function changeView(useGallery) {
+  const query = { ...route.query }
+  if (useGallery) query.view = 'gallery'
+  else delete query.view
+  router.replace({ name:'catalog', query })
+}
+watch(() => JSON.stringify(filtersFromRoute()), () => Object.assign(filters, filtersFromRoute()))
 watch([activeGame,filtersOpen,()=>filters.traitKey,facetRetry],async([game,open,key],previous,cleanup)=>{
   const abort=new AbortController();cleanup(()=>abort.abort())
   if(previous?.[0]!==game)facetOptions.value={years:[],traitKeys:[],values:[]}
@@ -99,21 +108,30 @@ watch([activeGame, needsPacks, reload], async ([game, needed], _, cleanup) => {
   } catch (cause) { if (!controller.signal.aborted) packError.value = cause.message }
   finally { if (!controller.signal.aborted) packLoading.value = false }
 }, {immediate:true})
-watch([() => route.fullPath, reload,locale], async (_, __, onCleanup) => {
+const searchQuery = computed(() => {
+  const query = new URLSearchParams({ page:String(page.value), size:String(pageSize), lang:locale.value })
+  for (const key of ['q','game','packId','rarity','inclusion','ygoType','releaseYear','traitKey','traitValue']) {
+    if (param(key)) query.set(key,param(key))
+  }
+  if (withImage.value) query.set('withImage','true')
+  return query.toString()
+})
+watch([searchQuery, reload], async ([query], __, onCleanup) => {
   if (route.name !== 'catalog') return
   const controller = new AbortController()
   onCleanup(() => controller.abort())
-  const query = new URLSearchParams({ page: String(page.value), size: String(pageSize),lang:locale.value })
-  for (const key of ['q','game','packId','rarity','inclusion','ygoType','releaseYear','traitKey','traitValue']) if (param(key)) query.set(key,param(key))
   loading.value = true
   error.value = ''
-  try { result.value = await request('/cards?' + query, { signal: controller.signal }) }
+  try {
+    const data = await request('/cards?' + query, { signal: controller.signal })
+    if (!controller.signal.aborted) result.value = data
+  }
   catch (cause) { if (!controller.signal.aborted) error.value = cause.message }
   finally { if (!controller.signal.aborted) loading.value = false }
 }, { immediate: true })
 
 function reset() {
-  router.push({ name: 'catalog' })
+  router.push({ name: 'catalog', query:gallery.value ? { view:'gallery' } : {} })
 }
 
 </script>
@@ -184,12 +202,23 @@ function reset() {
         <button v-if="hasSearchConditions" class="text-button" @click="reset">{{ $t("검색 초기화") }}</button>
         <span v-else-if="!loading && !error && result.items.length" class="result-range">{{ page * pageSize + 1 }}–{{ page * pageSize + result.items.length }} {{ $t("표시") }}</span>
       </div>
+      <div class="catalog-display">
+        <label class="picture-filter">
+          <input type="checkbox" :checked="withImage" @change="navigate({withImage:$event.target.checked ? 'true' : ''})">
+          {{ pt('사진 있는 카드') }}
+        </label>
+        <div class="view-switch" role="group" :aria-label="pt('보기 방식')">
+          <button type="button" :aria-pressed="!gallery" @click="changeView(false)">{{ pt('목록') }}</button>
+          <button type="button" :aria-pressed="gallery" @click="changeView(true)">{{ pt('배열') }}</button>
+        </div>
+      </div>
       <p v-if="loading" class="state" role="status">{{ $t("카드를 불러오는 중입니다.") }}</p>
       <div v-else-if="error" class="state" role="alert"><p>{{ error }}</p><button type="button" class="secondary" @click="reload++">{{ $t("다시 시도") }}</button></div>
       <div v-else-if="!result.items.length" class="state">
         <p>{{ hasSearchConditions ? $t("검색 조건에 맞는 카드가 없습니다.") : $t("등록된 카드가 없습니다.") }}</p>
         <button v-if="Object.keys(route.query).length" type="button" class="secondary" @click="reset">{{ $t("전체 카드 보기") }}</button>
       </div>
+      <CatalogGallery v-else-if="gallery" :cards="result.items" :query="route.query" />
       <div v-else class="catalog-list">
         <div v-for="card in result.items" :key="card.id" class="catalog-entry"><details class="card-row">
           <summary>
@@ -226,4 +255,16 @@ function reset() {
 .catalog-entry{position:relative}.catalog-entry+.catalog-entry{border-top:1px solid var(--bd)}.catalog-entry>.card-row>summary{padding-right:5rem}
 .catalog-open{position:absolute;inset-inline-end:11px;top:10px;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:4px;font-size:.82rem;font-weight:600}
 .card-row:not([open]) .expanded-card-name,.card-row[open] .closed-card-name{display:none}
+.catalog-display,.view-switch,.picture-filter{display:flex;align-items:center}
+.catalog-display{justify-content:space-between;gap:12px;margin-block:0 14px}
+.picture-filter{gap:8px;min-height:44px;font-size:.875rem;cursor:pointer}
+.picture-filter input{width:17px;height:17px;min-height:0;margin:0;accent-color:var(--ac)}
+.view-switch{gap:2px;padding:2px;background:var(--bg);border:1px solid var(--bd);border-radius:8px}
+.view-switch button{min-height:40px;padding:0 14px;border:0;border-radius:5px;background:transparent;color:var(--mu);font-size:.875rem}
+.view-switch button[aria-pressed=true]{background:var(--tx);color:var(--sf);font-weight:650}
+.catalog-games{flex-wrap:wrap;overflow:visible}
+@media(max-width:600px){
+  .catalog-games{gap:4px}
+  .catalog-games button{min-height:44px;padding-inline:10px}
+}
 </style>

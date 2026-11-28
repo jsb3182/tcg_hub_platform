@@ -5,6 +5,10 @@ import {traitValueLabel} from './cardDetailLocale'
 export function shortRarity(card){return rarityBadges(card,locale.value).map(r=>r.code || r.label).join(' · ')}
 
 const labels = {
+  '사진 있는 카드':['Cards with images','画像のあるカード'], '보기 방식':['Display mode','表示形式'],
+  '목록':['List','リスト'], '배열':['Gallery','一覧'],
+  '레시피 이미지 선택':['Choose recipe image','レシピ画像を選択'], '다른 캡처 선택':['Choose another screenshot','別の画像を選択'],
+  '대표 이미지 선택':['Choose cover image','カバー画像を選択'], '대표 이미지 변경':['Change cover image','カバー画像を変更'],
   '커뮤니티 신고':['Community reports','コミュニティの通報'],'처리 상태':['Review status','対応状況'],'검토 대기':['Awaiting review','審査待ち'],
   '숨김 처리':['Hidden','非公開にした通報'],'공개 유지':['Keep visible','公開を維持'],'신고 대상 숨기기':['Hide reported content','通報対象を非公開にする'],
   '게시글 신고':['Reported post','投稿への通報'],'댓글 신고':['Reported comment','コメントへの通報'],'신고 사유':['Report reason','通報理由'],

@@ -6,6 +6,7 @@ import { request } from '../api'
 import CatalogPicker from './CatalogPicker.vue'
 import LibraryThumbnail from './LibraryThumbnail.vue'
 import CardTextCredit from './CardTextCredit.vue'
+import ImageFilePicker from './ImageFilePicker.vue'
 import {localizedCards,nameFields} from '../cardLabels'
 import {useSession} from '../stores/session'
 import {pt} from '../pack'
@@ -17,7 +18,8 @@ const validLayout=computed(()=>[layout.columns,layout.rows].every(Number.isInteg
   layout.rows>=1 && layout.rows<=15 && layout.rows*layout.columns<=120 &&
   [layout.left,layout.top,layout.right,layout.bottom].every(v=>Number.isFinite(v)&&v>=0&&v<=100) && layout.left<layout.right && layout.top<layout.bottom)
 const emit=defineEmits(['apply','suggest','pending'])
-const input=ref(null), rows=ref([]),error=ref(''),busy=ref(false), active=ref(null), search=ref(false), progress=ref('')
+const rows=ref([]),error=ref(''),busy=ref(false), active=ref(null), search=ref(false), progress=ref('')
+const fileName=ref('')
 const sections=computed(()=>props.zones?.length?props.zones:['MAIN','EXTRA','SIDE'])
 const counts=computed(()=>Object.fromEntries(sections.value.map(s=>[s,rows.value.filter(r=>r.section===s).reduce((n,r)=>n+(Number(r.quantity)||0),0)])))
 const pending=computed(()=>rows.value.reduce((n,r)=>n+(r.confirmed?0:Number(r.quantity)||0),0))
@@ -38,14 +40,13 @@ watch([reviewIds,locale,labelRetry],async([ids,lang],previous,cleanup)=>{
 })
 function caption(card){return labels.value.get(card?.cardId) || card}
 let control=null
-function clearSource(){fileChoice.value=null;if(preview.value)URL.revokeObjectURL(preview.value);preview.value=''}
+function clearSource(){fileName.value='';fileChoice.value=null;if(preview.value)URL.revokeObjectURL(preview.value);preview.value=''}
 onBeforeUnmount(()=>{control?.abort();clearSource()})
-function cancel(){control?.abort();control=null;busy.value=false;rows.value=[];error.value='';active.value=null;search.value=false;clearSource();if(input.value)input.value.value='';emit('pending',false)}
+function cancel(){control?.abort();control=null;busy.value=false;rows.value=[];error.value='';active.value=null;search.value=false;clearSource();emit('pending',false)}
 watch([()=>props.game,method],cancel)
-async function read(event) {
-  const file=event.target.files[0]
-  if(!file)return
+async function read(file) {
   cancel()
+  fileName.value=file.name
   if(grid.value){fileChoice.value=file;preview.value=URL.createObjectURL(file);emit('pending',true);return}
   await run(file)
 }
@@ -90,9 +91,9 @@ function apply(){
 }
 </script>
 <template>
-  <section class="capture-panel"><h2>{{ grid?pt('덱 레시피 캡처'):t('뉴런 덱 레시피 가져오기') }}</h2>
+  <section class="capture-panel"><h2>{{ pt('덱 레시피 캡처') }}</h2>
     <label v-if="game==='YUGIOH'">{{ pt('캡처 형식') }}<select v-model="method" :disabled="busy||rows.length"><option value="neuron">NEURON</option><option value="grid">{{ pt('격자 지정') }}</option></select></label>
-    <label>{{ t('전체 레시피 캡처') }}<input ref="input" type="file" accept="image/png,image/jpeg,image/webp" @change="read"></label>
+    <ImageFilePicker :label="t('전체 레시피 캡처')" :action="pt(fileName ? '다른 캡처 선택' : '레시피 이미지 선택')" :name="fileName" @select="read"/>
     <div v-if="grid && fileChoice && !rows.length" class="grid-import">
       <div class="grid-preview"><img :src="preview" alt=""><div v-if="validLayout" class="grid-overlay" :style="{left:layout.left+'%',top:layout.top+'%',right:100-layout.right+'%',bottom:100-layout.bottom+'%',backgroundSize:(100/layout.columns)+'% '+(100/layout.rows)+'%'}"></div></div>
       <fieldset :disabled="busy"><legend>{{ pt('카드 영역') }}</legend><label v-for="(label,key) in {columns:'가로 칸',rows:'세로 칸',left:'왼쪽 (%)',top:'위 (%)',right:'오른쪽 (%)',bottom:'아래 (%)'}" :key="key">{{ pt(label) }}<input type="number" v-model.number="layout[key]" :min="['columns','rows'].includes(key)?1:0" :max="key==='columns'?12:key==='rows'?15:100"></label></fieldset>
@@ -129,7 +130,10 @@ function apply(){
   </section>
 </template>
 <style scoped>
-.capture-row.review-pending{border-inline-start:3px solid var(--ac);padding-inline-start:.5rem}.match-arrow{color:var(--mu)}
+.capture-panel>.image-file-picker{margin-block:8px}
+.review-pending .capture-match{background:var(--bg);padding-inline:.5rem}
+.review-pending .capture-match small{font-weight:650}
+.match-arrow{color:var(--mu)}
 .grid-preview{position:relative;width:fit-content;max-width:100%;margin:8px 0}.grid-preview img{display:block;max-width:100%;max-height:225px;width:auto}.grid-overlay{position:absolute;border:1px solid var(--ac);background-image:linear-gradient(to right,var(--ac) 1px,transparent 1px),linear-gradient(to bottom,var(--ac) 1px,transparent 1px);pointer-events:none}
 .grid-import fieldset{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;border:0;margin:0 0 .6rem;padding:0}.grid-import fieldset input{width:100%}
 .capture-panel{border-block:1px solid var(--bd);padding-block:1rem;margin-block:1rem}.capture-panel h2{font-size:1.08rem}.capture-panel h3{font-size:1rem}.capture-row{border-bottom:1px solid var(--bd)}.capture-match{display:flex;width:100%;text-align:start;gap:.65rem;align-items:center;border:0;background:transparent;color:var(--tx);padding:.55rem 0}.capture-match>img,.capture-match :deep(.lib-thumbnail){width:2.5rem;max-height:3.6rem;object-fit:contain;flex:0 0 2.5rem}.capture-match span{min-width:0}.capture-match small,.capture-candidates small{display:block;color:var(--mu)}.capture-correct{padding:.5rem 0}.capture-candidates{display:flex;overflow:auto;gap:.45rem}.capture-candidates button{flex:0 0 7rem;padding:.45rem;border:1px solid var(--bd);background:var(--sf);color:var(--tx);border-radius:5px;font-size:.82rem}.capture-candidates :deep(.lib-thumbnail){display:block;width:3.4rem;margin:0 auto .3rem}.capture-edits{display:flex;gap:.7rem;align-items:end}.capture-edits input{width:5rem}.capture-panel input[type=file]{max-width:100%}

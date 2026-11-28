@@ -89,6 +89,9 @@ try {
      effectBasis:'NAMUWIKI_KO',effectReferenceUrl:wiki.url,specs:{wikiReferences:[wiki]},variants:[],prices:[{variantId:1,provider:'QA Source',market:'QA Market',currency:'KRW',amount:3500,sourceUrl:'https://example.invalid/snapshot',observedAt:'2026-11-01T00:00:00Z'}]})
    if(api==='cards/55')return json({...atlasCard(lang),id:55,imageUrl:'/media/fixture.webp',imageLanguage:'en',specs:{},variants:atlasVariants})
    if(api==='cards/56')return json({...atlasCard(lang),id:56,imageUrl:'/media/fixture.webp',imageLanguage:lang,imageBasis:'CARD_REFERENCE',imageSource:'https://example.invalid/prints/'+lang+'/art',effectBasis:lang==='ko'?'REVIEWED_TRANSLATION':'REVIEWED_PRINTING',specs:{names:{[lang]:'Obsolete unreviewed name'}},variants:atlasVariants})
+   if(api==='cards/62')return json({...card,id:62,gameCode:'RIFTBOUND',variants:[],
+     specs:{images:{ja:'/media/print-ja.webp',en:'/media/print-en.webp',ko:'https://publisher.example.invalid/uncached.png'}}})
+   if(api==='cards/63')return json({...card,id:63,imageUrl:null,variants:[],specs:{}})
    if(/^cards\/(58|59|60|61)$/.test(api)){
      const id=Number(api.slice(6)),images={ko:'/media/print-ko.webp',en:'/media/print-en.webp'}
      const source='https://example.invalid/prints/'+lang
@@ -160,7 +163,7 @@ try {
    if(api==='news')return json({items:[{id:3,title:titles[lang],originalTitle:'Practice card',originalLanguage:'en',originalSummary:'Original summary',summary:'Original summary',contentLanguage:lang,summaryLanguage:'en',translationStatus:lang==='en'?'ORIGINAL':'TRANSLATED',gameCode:'ONEPIECE',sourceUrl:'https://example.invalid/news/3'}],total:1})
    errors.push('Unknown route '+api);return json({},404)
   }
-  if(['/media/fixture.webp','/media/print-ko.webp','/media/print-en.webp'].includes(path))return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2ZkAAAAASUVORK5CYII=','base64')})
+  if(['/media/fixture.webp','/media/print-ko.webp','/media/print-en.webp','/media/print-ja.webp'].includes(path))return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2ZkAAAAASUVORK5CYII=','base64')})
   const file=(path.startsWith('/assets/')||extname(path))?path.slice(1):'index.html'
   try{return await route.fulfill({contentType:mime[extname(file)],body:await readFile(join(dist,file))})}catch{return route.fulfill({status:404,body:''})}
  })
@@ -169,6 +172,32 @@ try {
  const visible=e=>e.waitFor({state:'visible'})
  const fits=async()=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),360)
  const picker=page.locator('.card-reader .illustration')
+ for(const width of [360,1280]){
+   await page.setViewportSize({width,height:800})
+   await go('/cards/62?lang=ko')
+   await visible(picker.getByText('이 언어의 이미지 미등록'))
+   await picker.getByRole('button',{name:'다른 판본 사진 보기'}).click()
+   assert.equal(await page.locator('.reader-source[open]').count(),0)
+   const alternate=picker
+   const trigger=alternate.getByRole('button',{name:'연습용 카드 이미지 확대'})
+   await visible(trigger)
+   assert.ok(await trigger.evaluate(el=>el===document.activeElement))
+   await trigger.press('Enter')
+   const zoom=alternate.locator('dialog[open]')
+   await visible(zoom)
+   assert.equal(await zoom.locator('img').getAttribute('src'),origin+'/media/print-ja.webp')
+   await zoom.press('ArrowRight')
+   assert.equal(await zoom.locator('img').getAttribute('src'),origin+'/media/print-en.webp')
+   await zoom.press('Escape')
+   await zoom.waitFor({state:'hidden'})
+   await picker.getByRole('button',{name:'다른 판본 닫기'}).click()
+   await visible(picker.getByText('이 언어의 이미지 미등록'))
+   await go('/cards/63?lang=ja')
+   await visible(picker.getByText('画像未登録',{exact:true}))
+   assert.equal(await picker.getByRole('button').count(),0)
+   assert.ok((await picker.boundingBox()).height<50)
+ }
+ await page.setViewportSize({width:360,height:800})
  for(const lang of ['ko','en']){
    await go('/cards/58?lang='+lang)
    const picture=picker.locator('.localized-card img')
@@ -270,7 +299,7 @@ try {
  await visible(sources.locator('.edition-note').getByText('言語未確認',{exact:true}))
  await sources.locator('.illustration button.atlas').click()
  await position(page.getByRole('dialog').locator('.atlas'),'66.6667% 0%')
- await page.getByRole('dialog').getByRole('button').click()
+ await page.getByRole('dialog').getByRole('button',{name:'閉じる',exact:true}).click()
  await go('/cards/54?lang=ko')
  await visible(page.locator('.card-reader .atlas.missing'))
  assert.equal(await page.getByText(wiki.title,{exact:true}).count(),0)
