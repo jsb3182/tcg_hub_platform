@@ -5,10 +5,11 @@ import re
 from urllib.parse import urlencode
 
 from ..feeds import FetchError, download
+from .rift_editions import RIOT_CONTENT, publisher_image_url
 
 
 CODEX = "https://api.riftcodex.com/cards"
-RIOT = "https://asia.api.riotgames.com/riftbound/content/v1/contents"
+RIOT = RIOT_CONTENT
 PAGE_SIZE = 100
 PACK = re.compile(r"[A-Za-z0-9]{1,16}")
 IDENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
@@ -76,6 +77,16 @@ def riot_snapshot(payload):
             ident = card.get("id")
             record = printing(ident, ident, group.get("id"), card.get("name"), RIOT)
             facts = record["facts"]
+            # Published CardArtDTO and the live media array can differ. Keep only absolute
+            # Riot card-file URLs; joining an undocumented relative path could select another asset.
+            art = card.get("art")
+            urls = [art.get("fullURL")] if isinstance(art, dict) else []
+            media = card.get("media")
+            if isinstance(media, list):
+                urls.extend(item.get("url") for item in media if isinstance(item, dict))
+            approved = list(dict.fromkeys(url for url in urls if publisher_image_url(url)))
+            if 0 < len(approved) <= 16:
+                facts["artUrls"] = approved
             for field in ("collectorNumber", "type", "faction", "rarity"):
                 value = card.get(field)
                 if type(value) is int or isinstance(value, str) and 0 < len(value) <= 160:

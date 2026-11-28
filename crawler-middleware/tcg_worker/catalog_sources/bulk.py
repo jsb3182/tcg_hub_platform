@@ -11,6 +11,7 @@ from urllib.parse import quote, urlencode, urlsplit
 
 from .card_names import PokemonNames, pokemon_edition, pokemon_effect, pokemon_with_name_references, ygo_names
 from .rift_editions import add_korean_edition, galleries, printing_identity
+from . import weiss_art
 
 def document(path):
     with path.open(encoding="utf-8-sig") as stream:
@@ -124,14 +125,8 @@ def weiss(http):
                     family="weiss-english-archive")
     seen = set()
     with zipfile.ZipFile(file) as archive:
-        for entry in archive.infolist():
-            parts = PurePosixPath(entry.filename).parts
-            if len(parts) != 3 or parts[1] != "DB" or not parts[2].endswith(".json"):
-                continue
-            if entry.file_size > 10_000_000:
-                raise ValueError("Unexpected Weiss set file size")
-            with archive.open(entry) as stream:
-                cards = json.load(stream)
+        ambiguous = weiss_art.conflicting_prints(archive)
+        for filename, cards in weiss_art.sets(archive):
             for card in cards:
                 code, name = card["code"].strip(), card["name"].strip()
                 if code in seen:
@@ -140,11 +135,13 @@ def weiss(http):
                 pack = code.rsplit("-", 1)[0]
                 source = "https://en.ws-tcg.com/cardlist/cardsearch/exec?cardno=" + quote(code, safe="")
                 image = urlsplit(card.get("image") or "")
-                art = {}
+                art = weiss_art.metadata(card, sha, filename, ambiguous)
+                # Existing V59 local-cache scope. Broader publisher references are metadata only.
                 if (image.scheme == "https" and image.netloc == "en.ws-tcg.com" and not image.query
-                        and re.fullmatch(r"/(?:wp|wordpress)/wp-content/images/cardimages/[A-Za-z0-9_./+-]+\.(?:png|jpg)",image.path,re.I)
+                        and not image.fragment and re.fullmatch(
+                            r"/(?:wp|wordpress)/wp-content/images/cardimages/[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+\.(?:png|jpg)",image.path,re.I)
                         and ".." not in image.path):
-                    art = {"images":{"en":image.geturl()}, "imageSources":{"en":source}, "imageProducts":{"en":pack}}
+                    art.update(images={"en":image.geturl()}, imageSources={"en":source}, imageProducts={"en":pack})
                 yield {"external_id": "en:" + code, "pack_code": pack, "pack_name": card.get("expansion") or pack,
                        "number": code, "name": name, "original_name": name, "rarity": card.get("rarity"),
                        "effect": "\n".join(card.get("ability") or []) or None, "release_date": None,

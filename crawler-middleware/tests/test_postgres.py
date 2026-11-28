@@ -68,7 +68,19 @@ class DatabaseTests(unittest.TestCase):
             def download(url):
                 self.assertEqual(url,source)
                 return data.getvalue()
-            self.assertEqual(batch(self.db,media,stop,("POKEMON",),fetch=download,policy=lambda _:3),1)
+            from tcg_worker.local_art import discover
+            discover(self.db, "POKEMON", 96)
+            self.db.execute("update collection_control set scheduler_enabled=false")
+            self.assertEqual(batch(self.db,media,stop,("POKEMON",),scan=0,automatic=True,
+                                   fetch=self.fail,policy=self.fail),0)
+            self.db.execute("update collection_control set scheduler_enabled=true,crawler_enabled=true")
+            self.db.execute("update feed_source set enabled=false where provider='CATALOG' and source_key='POKEMON'")
+            self.assertEqual(batch(self.db,media,stop,("POKEMON",),scan=0,automatic=True,
+                                   fetch=self.fail,policy=self.fail),0)
+            self.db.execute("update feed_source set enabled=true,policy_note=null where provider='CATALOG' and source_key='POKEMON'")
+            with patch("tcg_worker.local_art.discover",side_effect=AssertionError("extra scan")):
+                self.assertEqual(batch(self.db,media,stop,("POKEMON",),scan=0,automatic=True,
+                                       fetch=download,policy=lambda _:3),1)
             file_id,key,dhash = self.db.execute(
                 "select id,storage_key,capture_hash::text from catalog_art_file where source_url=%s", (source,)).fetchone()
             self.assertTrue((media/key).is_file())

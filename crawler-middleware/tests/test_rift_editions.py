@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.error import HTTPError
 
 from tcg_worker.catalog_sources.bulk import riftbound
-from tcg_worker.catalog_sources.rift_editions import GALLERIES, ORIGIN
+from tcg_worker.catalog_sources.rift_editions import GALLERIES, ORIGIN, RIOT_CONTENT, attach_riot_api_art
 
 
 def asset(n):
@@ -50,6 +50,31 @@ class Fixture:
 
 
 class RiftEditions(unittest.TestCase):
+    def test_english_printing_evidence_survives_untranslated_korean_gallery_without_publishing_art(self):
+        card = printing(1, "Against the Odds", 1)
+        local = printing(2, "Localized", 2)
+        english = official(card, card["name"], 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            def read(cards, en, ko):
+                return list(riftbound(Fixture(Path(tmp), [*cards,local],
+                    [*en,official(local, "Localized", 2)], [*ko,official(local, "확인", 3)])))[0]
+            for korean in ([], [official(card, card["name"], 1)]):
+                item = read([card], [english], korean)
+                self.assertEqual(item["specs"]["editionEvidence"]["en"], {
+                    "basis":"PUBLISHER_PRINTING","publisherId":"ogn-001-298","set":"OGN",
+                    "collectorNumber":1,"publicCode":"OGN-001/298","englishImageKey":f"{1:040x}",
+                    "source":GALLERIES["en-us"],"imageFile":f"{1:040x}-744x1039.png",
+                })
+                for field in ("images", "imageSources", "imageProducts", "names", "texts"):
+                    self.assertNotIn(field, item["specs"])
+                self.assertEqual(item["external_id"],"en:fixture-1")
+            for candidate in (dict(english, publicCode="OGN-001*/298"), dict(english, collectorNumber=9),
+                              dict(english, set={"value":{"id":"SFD"}}), official(card, card["name"], 99)):
+                self.assertNotIn("editionEvidence", read([card],[candidate],[])["specs"])
+            sibling = {**card, "printing_id":"another-finish"}
+            self.assertNotIn("editionEvidence", read([card,sibling],[english],[])["specs"])
+            self.assertNotIn("editionEvidence", read([card],[english,english],[])["specs"])
+
     def test_signature_slug_requires_matching_provider_ids_public_code_and_unique_art(self):
         signed = {**printing(303, "English fixture", 31), "id": "ogn-303-star-298",
                   "riftboundId": "ogn-303*-298", "variant": "signature"}
@@ -146,8 +171,10 @@ class RiftEditions(unittest.TestCase):
             self.assertTrue(all("_deferred_riot_edition" in row for row in riftbound(http)))
             (Path(tmp)/"robots").write_text("User-agent: *\nDisallow: /ko-kr/\n")
             http.calls.clear()
-            self.assertTrue(all("_deferred_riot_edition" in r for r in riftbound(http)))
-            self.assertFalse(any(url in GALLERIES.values() for url,_ in http.calls))
+            rows = list(riftbound(http))
+            self.assertTrue(all("_deferred_riot_edition" in r and "en" in r["specs"]["editionEvidence"] for r in rows))
+            self.assertNotIn(GALLERIES["ko-kr"], [url for url,_ in http.calls])
+            self.assertIn(GALLERIES["en-us"], [url for url,_ in http.calls])
             original = http.get
             def limited(url, **kwargs):
                 if url.endswith("/robots.txt"):
@@ -160,6 +187,55 @@ class RiftEditions(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("TCG_TEST_DSN"), "Requires isolated PostgreSQL")
 class PersistRiftEditions(unittest.TestCase):
+    def test_english_asset_requires_authenticated_observation_for_same_set_number_and_full_art(self):
+        from psycopg import connect
+        from psycopg.types.json import Jsonb
+        from tcg_worker.catalog_sources.rift_supplement import riot_snapshot
+        from tcg_worker.sync import save_cards
+        from tcg_worker.local_art import discover
+
+        card = printing(1,"Against the Odds",1)
+        local = printing(2,"Localized",2)
+        with tempfile.TemporaryDirectory() as tmp, connect(os.environ["TCG_TEST_DSN"]) as db, db.transaction(force_rollback=True):
+            http=Fixture(Path(tmp),[card,local],[official(card,card["name"],1),official(local,"Localized",2)],
+                         [official(card,card["name"],1),official(local,"확인",3)])
+            item=next(riftbound(http))
+            cards={item["external_id"]:item}
+            def observation(provider="RIOT", group="OGN", collector=1, url=asset(1), ident=card["riftboundId"]):
+                rows,_=riot_snapshot({"sets":[{"id":"OGN","cards":[{"id":ident, "name":card["name"],
+                    "collectorNumber":collector, "media":[{"url":url}]}]}]})
+                db.execute("""INSERT INTO supplemental_printing
+                    (provider,game_code,external_id,pack_code,number,name,lang,facts,source_url)
+                    VALUES (%s,'RIFTBOUND',%s,%s,%s,%s,'en',%s,%s)
+                    ON CONFLICT(provider,game_code,external_id) DO UPDATE SET
+                    (pack_code,facts,source_url)=(excluded.pack_code,excluded.facts,excluded.source_url)""",
+                    (provider,ident,group,ident,card["name"],Jsonb(rows[0]["facts"]),RIOT_CONTENT))
+            for wrong in (dict(provider="RIFTCODEX"),dict(group="SFD"),dict(collector=2),dict(url=asset(999)),
+                          dict(url=asset(1).replace("744x1039","100x140")),dict(url="/relative/art.png")):
+                observation(**wrong)
+                attach_riot_api_art(db,cards)
+                self.assertNotIn("images",item["specs"])
+            observation()
+            attach_riot_api_art(db,cards)
+            self.assertEqual(item["specs"]["images"],{"en":asset(1)})
+            self.assertEqual(item["specs"]["imageProducts"],{"en":"OGN"})
+            self.assertEqual(item["specs"]["imageSources"],{"en":RIOT_CONTENT})
+            item["specs"]["imageSources"]["en"] = GALLERIES["en-us"]
+            attach_riot_api_art(db,cards)
+            self.assertEqual(item["specs"]["imageSources"]["en"],RIOT_CONTENT)
+            self.assertNotIn("ko",item["specs"]["editionEvidence"])
+            source_id,=db.execute("SELECT id FROM feed_source WHERE provider='CATALOG' AND game_code='RIFTBOUND'").fetchone()
+            source={"id":source_id,"game_code":"RIFTBOUND","auto_publish":True}
+            save_cards(db,source,[next(riftbound(http))])
+            cid,images=db.execute("SELECT id,specs->'images' FROM card WHERE legacy_key=%s",
+                                  ("catalog:RIFTBOUND:"+item["external_id"],)).fetchone()
+            self.assertEqual(images,{"en":asset(1)})
+            db.execute("INSERT INTO catalog_art_scan VALUES('RIFTBOUND',%s) ON CONFLICT(game_code) DO UPDATE SET after_id=excluded.after_id",
+                       (cid-1,))
+            discover(db,"RIFTBOUND",1)
+            self.assertEqual(db.execute("""SELECT f.source_url FROM catalog_art_card a JOIN catalog_art_file f
+                ON f.id=a.file_id WHERE a.card_id=%s""",(cid,)).fetchall(), [(asset(1),)])
+
     def test_refresh_preserves_id_moderation_and_prior_provenance_only_until_a_printing_changes(self):
         from psycopg import connect
         from tcg_worker.sync import save_cards

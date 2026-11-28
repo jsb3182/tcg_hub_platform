@@ -51,7 +51,19 @@ PostGIS가 이미 설치된 **전용 테스트 DB**의 DSN을 `TCG_TEST_DSN`으�
 
 ## 공개 카드 그림 배치
 
-워커는 90초 간격으로 종목별 공개 카드 최대 96장의 인쇄본·언어별 그림 출처를 확인하고, 그 종목에서 대기 중인 그림을 최대 한 장 내려받는다. 기기의 남은 용량이 768 MiB 미만이면 다운로드를 쉰다. 운영 중 한 차례 실행하려면 `python -m tcg_worker cache-card-art --game POKEMON`을 사용한다. 자동 배치와 수동 배치는 같은 데이터베이스 잠금을 사용한다.
+워커는 90초 간격으로 수집이 활성화된 종목마다 공개 카드 최대 96장의 그림 출처를 확인한다. 대기열에서는 한 번에 종목별로 한 파일을 받아 저장한다. 저장에 성공하면 5초 후에 다음 배치를 시도하고, 처리할 그림이 없으면 90초 후에 다시 확인한다. 호스트별 호출 간격과 재시도 시각은 데이터베이스에서 공유한다. 자동 수집을 끄거나 기기 여유 공간이 768 MiB 아래로 내려가면 다운로드를 쉰다. 운영 중 한 차례 실행하려면 `python -m tcg_worker cache-card-art --game POKEMON`을 사용한다. 자동 배치와 수동 배치는 같은 데이터베이스 잠금을 사용한다.
+
+바이스 슈발츠는 발행사 상세 페이지와 판본별 출처를 기록한다. 서비스에 그림을 표시할 수 있는 라이선스를 보유한 운영자는 워커 환경에 `WEISS_ART_LICENSED=1`을 설정할 수 있다. 리프트바운드 자동 다운로드는 앱의 `RIOT_API_KEY`로 받은 영문 카드 콘텐츠와 공식 갤러리의 인쇄본·세트·그림이 일치할 때 실행한다. [부시로드 팬 콘텐츠 정책](https://en.bushiroad.com/fan-content-policy/) · [Riot 개발자 정책](https://developer.riotgames.com/docs/riftbound)
+
+유희왕 대량 수집에는 제공자의 지역별 Git 저장소를 사용한다. PC의 워커 폴더에서 아래 명령을 실행하면 한국어 원본을 같은 WebP 규격으로 변환하고 출처 리비전과 파일별 해시를 함께 묶는다. 영문과 일문 저장소 이름은 각각 `artworks-en-n`, `artworks-jp-n`이다. [YGOResources 대량 수집 안내](https://github.com/yugioh-artworks/artworks-index#getting-the-data)
+
+```sh
+git clone --bare --depth 1 https://github.com/yugioh-artworks/artworks-ko-db artworks-ko-db.git
+PYTHONPATH=. python tools/ygo_art_bundle.py prepare artworks-ko-db artworks-ko-db.git ko.zip
+sha256sum ko.zip
+```
+
+서버의 워커 환경에서 `PYTHONPATH=. python tools/ygo_art_bundle.py load ko.zip <확인한-SHA256>`을 실행한다. 적재기는 공개 카드와 지역별 주소의 연결을 DB에서 다시 확인한다. 중간에 멈추면 같은 명령으로 이어갈 수 있다. 동일 카드가 여러 팩에 실린 경우 한 그림을 공유하며, 도감에서는 해당 언어의 대표 그림으로 표시한다.
 
 도감의 `GET /api/v1/cards?withImage=true`는 로컬 WebP가 연결됐거나 공개 아틀라스 타일이 있는 카드만 페이지로 반환한다. 요청한 언어의 그림이 없으면 도감 원언어, 다른 언어의 저장된 판본 순으로 확인할 수 있다. 직접 그림의 `imageLanguage`, `imageProduct`, `imageSource`는 실제 선택한 그림을 설명한다. 유희왕의 카드 단위 참고 그림에는 `CARD_REFERENCE`가 붙는다. 출처 갱신으로 다른 언어판을 추가해도 동일한 공개 카드·판본 언어·주소의 기존 그림은 계속 열린다. 카드의 식별 정보가 바뀌거나 공개가 철회되면 기존 그림 연결을 해제한다.
 

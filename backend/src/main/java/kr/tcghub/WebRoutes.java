@@ -38,7 +38,10 @@ class WebRoutes {
             case "banners" -> "select exists(select 1 from pack where banner_key=?)";
             case "cards" -> """
                   select exists(select 1 from catalog_art_file f join catalog_art_card a on a.file_id=f.id
-                      join card c on c.id=a.card_id where f.storage_key=? and c.status='PUBLISHED')
+                      join card c on c.id=a.card_id where f.storage_key=? and c.status='PUBLISHED'
+                       and (not starts_with(f.source_url,'https://images.ygoprodeck.com/') or exists (
+                           select from catalog_ygo_provider_reference r where r.card_id=c.id
+                              and r.source_url=f.source_url and r.source_sha256=f.source_sha256)))
                   """;
             default -> """
                   select exists(

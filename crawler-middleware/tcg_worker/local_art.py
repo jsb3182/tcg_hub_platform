@@ -4,6 +4,7 @@ from email.utils import parsedate_to_datetime
 import hashlib
 import io
 from http.client import HTTPException
+import os
 from pathlib import PurePosixPath
 import re
 import shutil
@@ -17,6 +18,7 @@ from PIL import Image, ImageOps
 from psycopg.types.json import Jsonb
 from bs4 import BeautifulSoup
 
+from .catalog_sources.rift_editions import RIOT_CONTENT
 from .jobs import connect
 from .media import LIMIT_BYTES, LIMIT_PIXELS, publish
 
@@ -24,8 +26,10 @@ from .media import LIMIT_BYTES, LIMIT_PIXELS, publish
 GAMES = ("YUGIOH", "POKEMON", "WEISS", "NIVEL", "RIFTBOUND", "ONEPIECE")
 LOCK = 73401856
 AGENT = "TCGHub-Catalog"
+YGO_PROVIDER = "images.ygoprodeck.com"
 _POLICIES = {}
 PATHS = {
+    YGO_PROVIDER: r"/images/cards_small/[1-9][0-9]{0,9}\.jpg",
     "artworks-ko-db.ygoresources.com": r"/\d+/\d+/\d+_\d+\.png",
     "artworks-en-n.ygoresources.com": r"/\d+/\d+/\d+_\d+\.png",
     "artworks-jp-n.ygoresources.com": r"/\d+/\d+/\d+_\d+\.png",
@@ -270,15 +274,20 @@ def discover(db, game, size):
                  WHERE game_code=%s AND id>%s AND status='PUBLISHED' ORDER BY id LIMIT %s FOR SHARE)
             SELECT p.id,p.specs->'images',a.ko_path,a.en_path,a.ja_path,
                  ARRAY(SELECT n.image_path FROM neuron_artwork n
-                       WHERE %s='YUGIOH' AND n.cid=coalesce(p.specs->>'konami_id',e.konami_id::text))
+                       WHERE %s='YUGIOH' AND n.cid=coalesce(p.specs->>'konami_id',e.konami_id::text)),
+                 r.source_url
             FROM picked p LEFT JOIN legacy_card_edition e ON e.card_id=p.id
                  AND e.matched_number=p.number AND e.matched_name=p.original_name
             LEFT JOIN yugioh_reference_art a ON %s='YUGIOH' AND a.cid=coalesce(p.specs->>'konami_id',e.konami_id::text)
+            LEFT JOIN catalog_ygo_provider_reference r ON %s='YUGIOH' AND r.card_id=p.id
             ORDER BY p.id
-            """, (game, after[0] if after else 0, size, game,game)).fetchall()
+            """, (game, after[0] if after else 0, size, game,game,game)).fetchall()
         associations = []
-        for cid, images, ko, en, ja, art in rows:
-            urls = {value for lang, value in images.items() if lang in ("ko","en","ja") and isinstance(value, str)} if isinstance(images, dict) else set()
+        for cid, images, ko, en, ja, art, representative in rows:
+            urls = {value for lang, value in images.items() if lang in ("ko","en","ja") and isinstance(value, str)
+                    and not value.startswith("https://" + YGO_PROVIDER + "/")} if isinstance(images, dict) else set()
+            if representative:
+                urls.add(representative)
             for path, subdomain in ((ko,"ko-db"), (en,"en-n"), (ja,"jp-n"), *((p,"jp-n") for p in art)):
                 if path:
                     urls.add(f"https://artworks-{subdomain}.ygoresources.com" + path)
@@ -315,27 +324,43 @@ def delay_after(value):
     return 3600
 
 
-def batch(db, media, stop, games=GAMES, scan=96, fetch=download, policy=site_delay):
+def batch(db, media, stop, games=GAMES, scan=96, fetch=download, policy=site_delay, *, automatic=False):
     if not db.execute("SELECT pg_try_advisory_lock(%s)", (LOCK,)).fetchone()[0]:
         return 0
     done = 0
     try:
         media.mkdir(parents=True, exist_ok=True)
-        backfill_hashes(db,media)
+        if scan:
+            backfill_hashes(db,media)
         for game in games:
             if stop.is_set():
                 break
-            discover(db, game, scan)
+            if automatic and not db.execute("""
+                SELECT EXISTS (SELECT FROM collection_control WHERE crawler_enabled AND scheduler_enabled)
+                   AND EXISTS (SELECT FROM feed_source WHERE provider='CATALOG' AND source_key=%s
+                               AND enabled AND policy_note IS NULL)
+                """, (game,)).fetchone()[0]:
+                continue
+            if scan:
+                discover(db, game, scan)
             if shutil.disk_usage(media).free < 768 * 1024 * 1024:
                 continue
+            if game == "WEISS" and os.environ.get("WEISS_ART_LICENSED") != "1":
+                continue
+            if game == "RIFTBOUND" and not os.environ.get("RIOT_API_KEY", "").strip():
+                continue
+            # Riot downloads use the URL that the game's authenticated feed
+            # supplied for this edition. A gallery link alone is kept as provenance.
             row = db.execute("""
                 SELECT f.id,f.source_url,f.failures FROM catalog_art_file f
                  WHERE f.game_code=%s AND f.next_attempt<=now()
                    AND EXISTS (SELECT FROM catalog_art_card a JOIN card c ON c.id=a.card_id
-                               WHERE a.file_id=f.id AND c.status='PUBLISHED')
+                               WHERE a.file_id=f.id AND c.status='PUBLISHED'
+                                 AND (NOT %s OR (c.specs->'images'->>'en'=f.source_url
+                                     AND c.specs->'imageSources'->>'en'=%s)))
                    AND NOT EXISTS (SELECT FROM catalog_art_host h WHERE h.hostname=split_part(f.source_url,'/',3)
                                    AND h.next_attempt>now())
-                 ORDER BY f.next_attempt,f.id LIMIT 1""", (game,)).fetchone()
+                 ORDER BY f.next_attempt,f.id LIMIT 1""", (game, game == "RIFTBOUND", RIOT_CONTENT)).fetchone()
             if not row:
                 continue
             file_id, url, failures = row
@@ -362,12 +387,21 @@ def batch(db, media, stop, games=GAMES, scan=96, fetch=download, policy=site_del
                     missing.close()
                     pace(db, host, policy(target))
                     original = fetch(target)
+                source_hash = hashlib.sha256(original).hexdigest()
+                if host == YGO_PROVIDER and not db.execute("""
+                        SELECT EXISTS(SELECT FROM yugioh_provider_art WHERE source_url=%s AND source_sha256=%s
+                                      AND language IS NOT NULL)
+                        """, (url, source_hash)).fetchone()[0]:
+                    db.execute("""UPDATE catalog_art_file SET next_attempt='infinity', failures=failures+1,
+                                  last_error='Unreviewed provider image' WHERE id=%s""", (file_id,))
+                    continue
                 data = webp(original)
                 key = publish(media, "cards", data)
                 db.execute("""
                     UPDATE catalog_art_file SET storage_key=%s,source_sha256=%s,capture_hash=%s::bit(64),checked_at=now(),
-                        next_attempt=now()+interval '90 days',failures=0,last_error=NULL WHERE id=%s
-                    """, (key, hashlib.sha256(original).hexdigest(), capture_hash(data), file_id))
+                        next_attempt=case when %s then 'infinity'::timestamptz else now()+interval '90 days' end,
+                        failures=0,last_error=NULL WHERE id=%s
+                    """, (key, source_hash, capture_hash(data), host == YGO_PROVIDER, file_id))
                 done += 1
             except (OSError, ValueError, SyntaxError, HTTPException, Image.DecompressionBombError) as error:
                 delay = min(7*86400, 3600*2**min(failures, 8))
@@ -387,7 +421,7 @@ def batch(db, media, stop, games=GAMES, scan=96, fetch=download, policy=site_del
     return done
 
 
-def scheduled(media, stop):
+def scheduled(media, stop, scan=True):
     with connect() as db:
         db.autocommit = True
-        return batch(db, media, stop)
+        return batch(db, media, stop, scan=96 if scan else 0, automatic=True)

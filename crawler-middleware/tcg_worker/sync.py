@@ -15,7 +15,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from .catalog_news import collect_pack_dates, finish_yugioh_scan
-from .catalog_sources.rift_editions import preserve_deferred
+from .catalog_sources.rift_editions import attach_riot_api_art, preserve_deferred
 from .catalog_sources.onepiece import COLLECTOR, OPTCG, SINGLE_PRODUCT, preserve_partial_korean
 from .feeds import FetchError, backoff, fetch_feed
 from .jobs import connect, process_once
@@ -208,6 +208,7 @@ def save_cards(db, source, records):
 
     if game == "RIFTBOUND":
         preserve_deferred(db, cards)
+        attach_riot_api_art(db, cards)
     if game == "ONEPIECE":
         preserve_partial_korean(db, cards)
     if packs:
@@ -427,6 +428,7 @@ def run(db, media, spool, stop, interval):
     from .translation import model_directory, translate_pending
     from .local_art import scheduled as cache_catalog_art
     next_art_batch = 0
+    next_art_scan = 0
     next_translation_check = 0
     translating = None
     # Independent lanes keep slow imports and local inference out of the heartbeat loop.
@@ -454,10 +456,13 @@ def run(db, media, spool, stop, interval):
                         if source:
                             active[catalog] = pool.submit(sync_source, source, cancel)
                 if "artwork" in active and active["artwork"].done():
-                    active.pop("artwork").result()
+                    saved = active.pop("artwork").result()
+                    next_art_batch = time.monotonic() + (5 if saved else 90)
                 if "artwork" not in active and time.monotonic() >= next_art_batch:
-                    next_art_batch = time.monotonic() + 90
-                    active["artwork"] = pool.submit(cache_catalog_art, media, cancel)
+                    scan = time.monotonic() >= next_art_scan
+                    if scan:
+                        next_art_scan = time.monotonic() + 90
+                    active["artwork"] = pool.submit(cache_catalog_art, media, cancel, scan)
                 if translating is not None and translating.done():
                     translating.result()
                     translating = None
