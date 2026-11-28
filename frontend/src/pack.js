@@ -40,6 +40,8 @@ const labels = {
   '상세':['Details','詳細'],'공식 카드 대조':['Official card record','公式カード情報'],
   '자동 번역':['Machine translation','自動翻訳'],'검수한 번역':['Reviewed translation','確認済みの翻訳'],
   '한국판 카드 정보':['Korean printing details','韓国版カード情報'],
+  '영문 인쇄본':['English printing','英語版カード'],'발행사 영문 카드 페이지':['Publisher’s English card page','発行元の英語版カードページ'],
+  'Riot 영문 카드 갤러리':['Riot’s English card gallery','Riot 英語版カードギャラリー'],
   '선택한 한국판 특성':['Selected Korean printing trait','選択した韓国版の特徴'],
   '용어 사전 번역':['Glossary translation','用語辞書による翻訳'],'로컬 이미지 없음':['No locally stored image','ローカル画像なし'],
   '월간 달력':['Month calendar','月間カレンダー'],'타임라인':['Timeline','タイムライン'],

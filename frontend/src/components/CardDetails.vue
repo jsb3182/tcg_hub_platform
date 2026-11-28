@@ -7,6 +7,7 @@ import { cardArtworks } from '../artwork'
 import { cardDetailLocale,traitLabel,traitValueLabel } from '../cardDetailLocale'
 import {rarityBadges} from '../cardRarity'
 import {cardWikiReferences} from '../wikiReferences'
+import {printingSource} from '../printingSource'
 import { pngSnapshot } from '../pngSnapshot'
 import CardArtworkPicker from './CardArtworkPicker.vue'
 import CardTextCredit from './CardTextCredit.vue'
@@ -99,6 +100,7 @@ const originalName = computed(() => {
   return name && name!==readingOriginal.value?.name && name !== localized.value.name && !editions.value.some(([, printedName]) => printedName === name) ? name : ''
 })
 const regionalPrinting=computed(()=>card.value?.gameCode==='ONEPIECE' && locale.value==='ko' ? card.value.specs?.regionalFacts?.ko : null)
+const printSource=computed(()=>printingSource(card.value))
 const catalogNameBasis={IMPORTED_LABEL:'기존 도감 표기',IMPORTED_ORIGINAL:'기존 도감 원문'}
 const references=computed(()=>cardWikiReferences(card.value?.specs,card.value?.gameCode).map(reference=>({...reference,
   facts:reference.facts.map(([key,value])=>({key,label:traitLabel(card.value.gameCode,key,locale.value),
@@ -111,7 +113,7 @@ const wikiSearch=computed(()=>{
   return query ? 'https://namu.wiki/Search?q='+encodeURIComponent(query) : ''
 })
 const specs = computed(() => Object.entries(card.value?.specs || {}).filter(([key, value]) =>
-    !['xid','pk','ej','names','texts','images','sources','nameBasis','referenceNames','referenceNameUrls','editionEvidence','koreanPrinting','wikiReferences','readingOriginal','regionalFacts'].includes(key) && value != null && value !== '' &&
+    !['xid','pk','ej','names','texts','images','sources','nameBasis','referenceNames','referenceNameUrls','editionEvidence','koreanPrinting','wikiReferences','readingOriginal','regionalFacts','publisherCardUrl','publisherArtwork'].includes(key) && value != null && value !== '' &&
     !(card.value?.gameCode==='ONEPIECE' && ['productCode','imageProducts','imageSources'].includes(key))))
 const names = { k: "종류", at: "속성", lv: "레벨", mk: "링크 마커", rc: "종족", sub: "유형", ps: "펜듈럼 스케일", pe: "펜듈럼 효과", atk: "공격력", def: "수비력", or: "읽기", nw: "수록 구분", pr: "출처", pd: "발매 정보", type: "유형", attribute: "속성", level: "레벨", race: "종족" }
 function display(value) {
@@ -235,6 +237,9 @@ watch([() => props.cardId,locale], () => {
             <div v-if="card.packName"><small>{{ $t('수록 팩') }}</small><p><RouterLink v-if="card.packId" :to="{name:'pack',params:{id:card.packId},query:{lang:locale}}">{{ card.packName }}</RouterLink><template v-else>{{ card.packName }}</template></p></div>
             <div v-if="card.sourceName || sourceLink(card.sourceUrl)"><small>{{ $t('정보 출처') }}</small>
               <p><a v-if="sourceLink(card.sourceUrl)" :href="sourceLink(card.sourceUrl)" target="_blank" rel="noopener noreferrer">{{ card.sourceName || $t('원문 보기') }}</a><span v-else>{{ card.sourceName }}</span></p>
+            </div>
+            <div v-if="printSource && printSource.url!==card.sourceUrl">
+              <a :href="printSource.url" hreflang="en" target="_blank" rel="noopener noreferrer"><template v-if="printSource.provider">{{ printSource.provider }} · </template>{{ pt(printSource.label) }}<template v-if="printSource.number"> ({{ printSource.number }})</template></a>
             </div>
             <div v-if="references.length" class="wiki-references">
               <small>{{ pt('나무위키 참고 문서') }}</small>

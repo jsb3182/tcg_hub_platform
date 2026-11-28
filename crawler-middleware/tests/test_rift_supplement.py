@@ -66,3 +66,16 @@ class RiftSupplementTest(unittest.TestCase):
                 fetch_page(key,request_json=refuse,environ={"RIOT_API_KEY":"synthetic"})
             self.assertIs(caught.exception,error)
             self.assertEqual(len(calls),1)
+
+    def test_riot_keeps_only_explicit_publisher_card_files_and_never_guesses_a_base(self):
+        face = "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/"+"1"*40+"-744x1039.png"
+        different = face.replace("1"*40,"2"*40)
+        media = [face, different+"?accountingTag=RB", "/"+face.split("/",3)[3],
+                 face.replace("cmsassets.rgpub.io","cmsassets.rgpub.io.other.example"),
+                 face+"?width=44", face+"#crop", face.replace("https://","http://")]
+        card = {"id":"sfd-001-221","name":"Against the Odds","collectorNumber":1,
+                "art":{"fullURL":face,"thumbnailURL":different},
+                "media":[{"url":v} for v in media]}
+        records,_ = fetch_page("RIOT",environ={"RIOT_API_KEY":"synthetic"},
+            request_json=lambda *args:{"sets":[{"id":"SFD","cards":[card]}]})
+        self.assertEqual(records[0]["facts"]["artUrls"],[face,different+"?accountingTag=RB"])

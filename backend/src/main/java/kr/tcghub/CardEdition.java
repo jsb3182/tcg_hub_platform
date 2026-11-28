@@ -20,13 +20,15 @@ final class CardEdition {
     private static final String REGIONAL_ART = """
             left join yugioh_reference_art ygo_art on c.game_code='YUGIOH'
                 and ygo_art.cid=coalesce(nullif(c.specs->>'konami_id',''),linked.konami_id::text)
+            left join catalog_ygo_provider_reference provider_art on c.game_code='YUGIOH' and provider_art.card_id=c.id
             """;
     private static final String ART_EDITIONS = """
             (values ('ko',c.specs->'images'->>'ko',false),('en',c.specs->'images'->>'en',false),
                     ('ja',c.specs->'images'->>'ja',false),
                     ('ko','https://artworks-ko-db.ygoresources.com'||ygo_art.ko_path,true),
                     ('en','https://artworks-en-n.ygoresources.com'||ygo_art.en_path,true),
-                    ('ja','https://artworks-jp-n.ygoresources.com'||ygo_art.ja_path,true)) v(lang,url,reference)
+                    ('ja','https://artworks-jp-n.ygoresources.com'||ygo_art.ja_path,true),
+                    (provider_art.language,provider_art.source_url,true)) v(lang,url,reference)
             """;
     // Start with cached files: an approved URL or a Neuron-only variant is not a catalog thumbnail.
     static final String CARDS_WITH_ART = """
@@ -34,7 +36,10 @@ final class CardEdition {
             join card c on c.id=a.card_id
             """ + LEGACY_EDITION + REGIONAL_ART + """
             where f.storage_key is not null and f.source_url in (select v.url from
-            """ + ART_EDITIONS + ") ";
+            """ + ART_EDITIONS + """
+            where not starts_with(v.url,'https://images.ygoprodeck.com/')
+               or (v.reference and v.url=provider_art.source_url and f.source_sha256=provider_art.source_sha256))
+            """;
     static final String JOIN = LEGACY_JOIN + """
             cross join lateral (select
                 coalesce(nullif(c.specs->'names'->>:lang,''),nullif(linked.names->>:lang,'')) as name,
@@ -83,13 +88,17 @@ final class CardEdition {
             """ + REGIONAL_ART + """
             left join lateral (
                 select '/media/'||f.storage_key as url,v.lang,case when v.reference then 'CARD_REFERENCE' end as basis,
-                       case when v.reference then v.url else c.specs->'imageSources'->>v.lang end as source,
+                       case when v.url=provider_art.source_url then provider_art.card_url
+                            when v.reference then v.url else c.specs->'imageSources'->>v.lang end as source,
                        case when not v.reference then c.specs->'imageProducts'->>v.lang end as product
                   from
             """ + ART_EDITIONS + """
                   join catalog_art_file f on f.source_url=v.url and f.storage_key is not null
                   join catalog_art_card allowed on allowed.file_id=f.id and allowed.card_id=c.id
-                 order by case when v.lang=:lang and not v.reference then 1 when v.lang=:lang then 2
+                 where not starts_with(v.url,'https://images.ygoprodeck.com/')
+                    or (v.reference and v.url=provider_art.source_url and f.source_sha256=provider_art.source_sha256)
+                 order by case when v.url=provider_art.source_url then 6
+                               when v.lang=:lang and not v.reference then 1 when v.lang=:lang then 2
                                when not v.reference and v.lang=c.specs->>'language' then 3
                                when not v.reference then 4 else 5 end,
                           case v.lang when 'ko' then 1 when 'en' then 2 else 3 end limit 1

@@ -25,6 +25,47 @@ class RegionalArtworkIntegrationTest {
     @Autowired JdbcClient db;
     @Autowired MockMvc http;
 
+    @Test void checkedProviderFaceIsAReferenceOnlyAndIsRevokedWithItsIdentity() throws Exception {
+        String source="https://ygoprodeck.com/card/mecha-phantom-beast-token-79";
+        String url="https://images.ygoprodeck.com/images/cards_small/904186.jpg";
+        db.sql("""
+                insert into yugioh_provider_printing values ('catalog:YUGIOH:en:904186:aaaaaaaaaaaaaaaaaaaaaaaa','904186',
+                                                             'QA-PT026','Mecha Phantom Beast Token')
+                """).update();
+        long card=db.sql("""
+                insert into card(game_code,name,original_name,legacy_key,number,specs,status,source_id,source_url)
+                select 'YUGIOH','Mecha Phantom Beast Token','Mecha Phantom Beast Token',
+                       'catalog:YUGIOH:en:904186:aaaaaaaaaaaaaaaaaaaaaaaa','QA-PT026',
+                       jsonb_build_object('passcode',904186,'representativeArt',cast(? as text)),
+                       'PUBLISHED',id,? from feed_source where provider='CATALOG' and source_key='YUGIOH'
+                returning id
+                """).param(url).param(source).query(Long.class).single();
+        String path=CachedArtwork.link(db,card,url,'a');
+        http.perform(get("/api/v1/cards/"+card)).andExpect(jsonPath("$.imageUrl").isEmpty());
+        db.sql("update catalog_art_file f set source_sha256=p.source_sha256 from yugioh_provider_art p where p.source_url=f.source_url and f.source_url=?")
+                .param(url).update();
+        for (String language : java.util.List.of("ko","ja","en")) {
+            http.perform(get("/api/v1/cards/"+card).param("lang",language)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.imageUrl").value(path)).andExpect(jsonPath("$.imageBasis").value("CARD_REFERENCE"))
+                    .andExpect(jsonPath("$.imageLanguage").value("en")).andExpect(jsonPath("$.imageSource").value(source))
+                    .andExpect(jsonPath("$.specs.images.en").doesNotExist()).andExpect(jsonPath("$.imageProduct").isEmpty());
+        }
+        http.perform(get("/api/v1/cards").param("ids",""+card).param("withImage","true"))
+                .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].imageBasis").value("CARD_REFERENCE"));
+        http.perform(get("/api/v1/play/cards").param("game","YUGIOH").param("ids",""+card))
+                .andExpect(jsonPath("$[0].imageBasis").value("CARD_REFERENCE"));
+        db.sql("update card set specs=specs||jsonb_build_object('images',jsonb_build_object('ja','https://example.org/atlas-original')) where id=?")
+                .param(card).update();
+        CachedArtwork.link(db,card,url,'a');
+        String exact=CachedArtwork.link(db,card,"https://example.org/atlas-original",'b');
+        http.perform(get("/api/v1/cards/"+card).param("lang","en"))
+                .andExpect(jsonPath("$.imageUrl").value(exact)).andExpect(jsonPath("$.imageLanguage").value("ja"))
+                .andExpect(jsonPath("$.imageBasis").isEmpty());
+        db.sql("update card set source_url='https://example.org/unrelated' where id=?").param(card).update();
+        assertEquals(0L,db.sql("select count(*) from catalog_art_card a join catalog_art_file f on f.id=a.file_id where a.card_id=? and f.source_url=?")
+                .param(card).param(url).query(Long.class).single());
+    }
+
     @Test void sourceRefreshRetainsOnlyPreviouslyGrantedUnchangedEditions(@TempDir java.nio.file.Path media) throws Exception {
         long id=db.sql("""
             insert into card(game_code,name,number,specs,status) values ('RIFTBOUND','Art refresh','OGN-100',

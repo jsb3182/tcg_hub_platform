@@ -9,6 +9,7 @@ from urllib.robotparser import RobotFileParser
 
 
 ORIGIN = "https://playriftbound.com"
+RIOT_CONTENT = "https://asia.api.riotgames.com/riftbound/content/v1/contents"
 GALLERIES = {locale: f"{ORIGIN}/{locale}/card-gallery/" for locale in ("en-us", "ko-kr")}
 HANGUL = re.compile(r"[가-힣]")
 ART = re.compile(r"/sanity/images/dsfx7636/game_data_live/([0-9a-f]{40})-[1-9][0-9]*x[1-9][0-9]*\.(?:png|jpe?g|webp)$")
@@ -31,13 +32,19 @@ def image_key(value):
     return None
 
 
+def publisher_image_url(value):
+    if not image_key(value) or len(value) > 512 or any(char.isspace() or ord(char) < 32 for char in value):
+        return None
+    url = urlsplit(value)
+    return value if url.query in ("", "accountingTag=RB") and not url.fragment else None
+
+
 def gallery_image(card, name):
     image = card.get("cardImage") or {}
     url = image.get("url")
     label = image.get("accessibilityText")
-    if (image_key(url) and isinstance(name, str) and name and isinstance(label, str) and name in label
-            and urlsplit(url).query in ("", "accountingTag=RB") and not urlsplit(url).fragment):
-        return url
+    if isinstance(name, str) and name and isinstance(label, str) and name in label:
+        return publisher_image_url(url)
     return None
 
 
@@ -138,22 +145,35 @@ def galleries(http, printings):
     try:
         robot = RobotFileParser()
         robot.parse(http.get(ORIGIN + "/robots.txt", ttl=86400).read_text("utf-8-sig").splitlines())
-        if not all(robot.can_fetch("TCGHub-Catalog", url) for url in GALLERIES.values()):
-            raise ValueError("Robots policy disallows a regional card gallery")
         delay = max(1, robot.crawl_delay("TCGHub-Catalog") or 0)
         rate = robot.request_rate("TCGHub-Catalog")
         if rate:
             delay = max(delay, rate.seconds / rate.requests)
-        return tuple(read_gallery(http.get(url, ttl=WEEK, size=16_000_000, delay=delay), locale, wanted)
-                     for locale, url in GALLERIES.items())
     except HTTPError as exc:
         if exc.code in (429, 503):
             raise  # The existing scheduler honors Retry-After.
         logging.getLogger(__name__).warning("Riot regional catalog unavailable (HTTP %d)", exc.code)
         exc.close()
+        return {}, {}
     except (OSError, ValueError, KeyError, TypeError) as exc:
         logging.getLogger(__name__).warning("Riot regional catalog incomplete (%s)", type(exc).__name__)
-    return {}, {}
+        return {}, {}
+    indexes = {}
+    for locale, url in GALLERIES.items():
+        indexes[locale] = {}
+        if not robot.can_fetch("TCGHub-Catalog", url):
+            continue
+        try:
+            page = http.get(url, ttl=WEEK, size=16_000_000, delay=delay)
+            indexes[locale] = read_gallery(page, locale, wanted)
+        except HTTPError as exc:
+            if exc.code in (429, 503):
+                raise
+            logging.getLogger(__name__).warning("Riot %s catalog unavailable (HTTP %d)", locale, exc.code)
+            exc.close()
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            logging.getLogger(__name__).warning("Riot %s catalog incomplete (%s)", locale, type(exc).__name__)
+    return indexes["en-us"], indexes["ko-kr"]
 
 
 def add_korean_edition(record, card, indexes, unique):
@@ -161,21 +181,29 @@ def add_korean_edition(record, card, indexes, unique):
     if not ident or not asset or unique[(pack, ident, asset)] != 1:
         return
     en_index, ko_index = indexes
+    proof = {"publisherId": ident, "set": pack, "collectorNumber": card.get("num"), "englishImageKey": asset}
+    en = en_index.get(ident)
+    if ident in en_index:
+        number = card.get("riftboundId")
+        if (not en or not isinstance(number, str) or not isinstance(en["code"], str)
+                or en["code"].casefold().replace("/", "-") != number.casefold()
+                or en["set"] != pack or type(card.get("num")) is not int
+                or en["number"] != card["num"] or en["image"] != asset):
+            return
+        if en["imageUrl"]:
+            # Gallery evidence identifies a printing. It alone does not authorize a new image download.
+            record["specs"]["editionEvidence"] = {"en": {
+                **proof, "basis": BASIS, "publicCode": en["code"], "source": GALLERIES["en-us"],
+                "imageFile": urlsplit(en["imageUrl"]).path.rsplit("/", 1)[1],
+            }}
     # A partially rendered gallery can omit an otherwise verified printing. Carry it
     # over only while the underlying English printing and source asset still match.
     if ident not in en_index or ident not in ko_index:
-        record["_deferred_riot_edition"] = {"publisherId": ident, "set": pack,
-                                            "collectorNumber": card.get("num"), "englishImageKey": asset}
+        record["_deferred_riot_edition"] = proof
         return
-    en, ko = en_index[ident], ko_index[ident]
-    if (not en or not ko or not en["code"] or en["code"] != ko["code"] or
-            en["set"] != pack or ko["set"] != pack or card.get("num") is None or
-            en["number"] != card["num"] or ko["number"] != card["num"] or en["image"] != asset):
+    ko = ko_index[ident]
+    if not ko or en["code"] != ko["code"] or ko["set"] != pack or ko["number"] != card["num"]:
         return
-    if ident != card["riftboundId"]:
-        number, total = card["riftboundId"].upper().rsplit("-", 1)
-        if en["code"] != f"{number}/{total}":
-            return
     name = ko["name"]
     if not isinstance(name, str) or not HANGUL.search(name):
         return  # Korean gallery pages also include unreleased cards in English.
@@ -202,11 +230,11 @@ def add_korean_edition(record, card, indexes, unique):
         specs["texts"] = {"ko": ko["text"]}
     specs["nameBasis"] = {"ko": "PRINTED_NAME"}
     specs["sources"] = {"ko": GALLERIES["ko-kr"]}
-    specs["editionEvidence"] = {"ko": {
+    specs.setdefault("editionEvidence", {})["ko"] = {
         "basis": BASIS, "publisherId": ident, "set": pack, "publicCode": en["code"],
         "collectorNumber": card["num"], "englishImageKey": asset,
         "englishSource": GALLERIES["en-us"], "source": GALLERIES["ko-kr"],
-    }}
+    }
 
 
 def preserve_deferred(db, cards):
@@ -216,6 +244,10 @@ def preserve_deferred(db, cards):
     for key, prior in db.execute("SELECT legacy_key,specs FROM card WHERE legacy_key=ANY(%s)", (list(pending),)):
         item = pending[key]
         evidence = prior.get("editionEvidence")
+        english = evidence.get("en") if isinstance(evidence, dict) else None
+        if (isinstance(english, dict) and english.get("basis") == BASIS
+                and all(english.get(k) == v for k, v in item["_deferred_riot_edition"].items())):
+            item["specs"].setdefault("editionEvidence", {}).setdefault("en", english)
         saved = evidence.get("ko") if isinstance(evidence, dict) else None
         if (not isinstance(saved, dict) or saved.get("basis") != BASIS
                 or any(saved.get(k) != v for k, v in item["_deferred_riot_edition"].items())):
@@ -230,3 +262,41 @@ def preserve_deferred(db, cards):
                     for lang in ("en", "ko"):
                         if lang in prior[field]:
                             item["specs"].setdefault(field, {})[lang] = prior[field][lang]
+
+
+def attach_riot_api_art(db, cards):
+    """Use an absolute URL supplied by the authenticated content feed for this exact English face."""
+    wanted = {}
+    for item in cards.values():
+        specs = item["specs"]
+        en = specs.get("editionEvidence", {}).get("en", {})
+        if en.get("basis") != BASIS or not en.get("imageFile"):
+            continue
+        for ident in {en["publisherId"], item["number"]}:
+            wanted.setdefault(ident, []).append(item)
+    if not wanted:
+        return
+    observations = db.execute("""
+        SELECT external_id,pack_code,number,facts FROM supplemental_printing
+        WHERE provider='RIOT' AND game_code='RIFTBOUND' AND lang='en' AND source_url=%s
+        AND external_id=ANY(%s) AND facts ? 'artUrls' ORDER BY external_id
+        """, (RIOT_CONTENT, list(wanted)))
+    for ident, pack, number, facts in observations:
+        if number != ident.lower() or not isinstance(facts.get("artUrls"), list):
+            continue
+        for item in wanted[ident]:
+            specs = item["specs"]
+            en = specs["editionEvidence"]["en"]
+            collector = facts.get("collectorNumber")
+            if (pack != en["set"] or type(collector) is not int
+                    or collector != en["collectorNumber"]):
+                continue
+            for url in facts["artUrls"]:
+                if (publisher_image_url(url) and image_key(url) == en["englishImageKey"]
+                        and specs.get("images", {}).get("en", url) == url
+                        and urlsplit(url).path.rsplit("/", 1)[1] == en["imageFile"]):
+                    specs.setdefault("images", {})["en"] = url
+                    specs.setdefault("imageProducts", {})["en"] = pack
+                    specs.setdefault("imageSources", {})["en"] = RIOT_CONTENT
+                    specs["productCode"] = pack
+                    break

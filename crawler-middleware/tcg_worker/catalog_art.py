@@ -16,6 +16,7 @@ def queue_yugioh_art(db, source_id, after, stop):
     sql="""SELECT v.id,c.specs->>'representativeArt' FROM card c JOIN card_variant v ON v.card_id=c.id
         WHERE c.source_id=%s AND c.status='PUBLISHED' AND v.position=0 AND v.sheet_id IS NULL
           AND c.specs ? 'representativeArt' AND v.id>%s
+          AND NOT EXISTS(SELECT FROM yugioh_provider_printing p WHERE p.legacy_key=c.legacy_key)
           AND NOT EXISTS(SELECT 1 FROM media_job j WHERE j.variant_id=v.id)
         ORDER BY v.id LIMIT 12"""
     rows=db.execute(sql,(source_id,after)).fetchall()

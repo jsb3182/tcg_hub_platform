@@ -49,6 +49,7 @@ class DeckCaptureMatcher {
             from catalog_art_file f join catalog_art_card a on a.file_id=f.id join card c on c.id=a.card_id
                  left join card_korean_reading r on r.card_id=c.id and r.due_at is null
             where c.game_code=? and c.status='PUBLISHED' and f.capture_hash is not null and f.storage_key is not null
+              and not starts_with(f.source_url,'https://images.ygoprodeck.com/')
             order by f.id,c.id
             """).param(game).query(Sample.class).list();
         var slots=new ArrayList<Slot>(rows*columns);

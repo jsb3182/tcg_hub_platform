@@ -38,6 +38,8 @@ cp target/tcg-hub.jar "$tmp/release/"
 cd "$root"
 tar --exclude='__pycache__' --exclude='*.pyc' -cf - deploy | tar -C "$tmp/release" -xf -
 cp crawler-middleware/requirements.txt crawler-middleware/README.md "$tmp/release/crawler-middleware/"
+mkdir -p "$tmp/release/crawler-middleware/tools"
+cp crawler-middleware/tools/ygo_art_bundle.py "$tmp/release/crawler-middleware/tools/"
 tar --exclude='__pycache__' --exclude='*.pyc' -C crawler-middleware -cf - tcg_worker | tar -C "$tmp/release/crawler-middleware" -xf -
 mkdir -p "$tmp/release/docs"
 cp docs/DEPLOYMENT.md docs/COLLECTION.md docs/CARD_SOURCES.md docs/ANDROID.md docs/STORES.md "$tmp/release/docs/"
