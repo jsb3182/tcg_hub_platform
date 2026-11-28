@@ -45,6 +45,11 @@ interface CardRepository extends Repository<Card, Long> {
         """ + CardEdition.JOIN;
     String FILTER = """
          where c.status='PUBLISHED' and (:game='' or c.game_code=:game)
+           and (not :withImage or c.id in (
+                 select v.card_id from card_variant v join image_sheet s on s.id=v.sheet_id where not s.retired
+                 union all
+        """ + CardEdition.CARDS_WITH_ART + """
+           ))
            and (cast(:packId as bigint) is null or c.pack_id=current_catalog_pack(:packId))
            and (cast(:yearStart as date) is null
              or (c.release_date>=:yearStart and c.release_date<:yearEnd)
@@ -75,7 +80,8 @@ interface CardRepository extends Repository<Card, Long> {
                          @Param("rarity") String rarity, @Param("inclusion") String inclusion,
                          @Param("ygoType") String ygoType, @Param("q") String q,
                          @Param("yearStart") java.time.LocalDate yearStart, @Param("yearEnd") java.time.LocalDate yearEnd,
-                         @Param("traitKey") String traitKey, @Param("traitValue") String traitValue, Pageable pageable);
+                         @Param("traitKey") String traitKey, @Param("traitValue") String traitValue,
+                         @Param("withImage") boolean withImage, Pageable pageable);
 
     @Query(value=SELECT + " where c.status='PUBLISHED' and c.id in (:ids) and (:game='' or c.game_code=:game) order by c.id", nativeQuery=true)
     java.util.List<Summary> publishedByIds(@Param("ids") java.util.List<Long> ids,@Param("game") String game,@Param("lang") String lang);

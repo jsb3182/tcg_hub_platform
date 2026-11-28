@@ -80,6 +80,7 @@ class CatalogApi {
                     @RequestParam(required=false) @Min(1900) @Max(9998) Integer releaseYear,
                     @RequestParam(defaultValue="") @Size(max=32) String traitKey,
                     @RequestParam(defaultValue="") @Size(max=80) String traitValue,
+                    @RequestParam(defaultValue="false") boolean withImage,
                     @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
                     @RequestParam(defaultValue="24") @Min(1) @Max(100) int size) {
         facets.checkKey(game,traitKey);
@@ -87,7 +88,7 @@ class CatalogApi {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"검색 항목과 값을 함께 선택해 주세요.");
         LocalDate start = releaseYear==null ? null : LocalDate.of(releaseYear,1,1);
         var result = cards.search(game, packId, lang, rarity.strip(), inclusion, ygoType, q.strip(),
-                start, start==null ? null : start.plusYears(1), traitKey, traitValue.strip(), PageRequest.of(page,size));
+                start, start==null ? null : start.plusYears(1), traitKey, traitValue.strip(), withImage, PageRequest.of(page,size));
         return new PageResult(withImages(result.getContent(),lang),page,size,result.getTotalElements());
     }
 
@@ -100,9 +101,12 @@ class CatalogApi {
     @GetMapping(value="/cards",params="ids")
     PageResult byIds(@RequestParam @Size(min=1,max=100) List<@Positive Long> ids,
                      @RequestParam(defaultValue="") @Size(max=32) String game,
-                     @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang) {
+                    @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang,
+                    @RequestParam(defaultValue="false") boolean withImage) {
         var found=cards.publishedByIds(ids,game,lang);
-        return new PageResult(withImages(found,lang),0,ids.size(),found.size());
+        var items=withImages(found,lang);
+        if (withImage) items=items.stream().filter(item -> item.image()!=null || item.card().getImageUrl()!=null).toList();
+        return new PageResult(items,0,ids.size(),items.size());
     }
 
     private List<ListedCard> withImages(List<CardRepository.Summary> summaries,String lang){
