@@ -10,6 +10,21 @@ export function namuArticleUrl(value) {
   } catch {return ''}
 }
 
+export function characterReadings(card, language) {
+  const specs=card?.specs
+  if (language!=='ko' || card?.gameCode!=='WEISS' || specs?.language!=='en' || !Array.isArray(specs.characterNameReferences)) return []
+  const references=[], seen=new Set()
+  for (const item of specs.characterNameReferences) {
+    if (item?.basis!=='CHARACTER_READING') continue
+    const url=namuArticleUrl(item.url)
+    if (!url || ![item.english,item.korean,item.title].every(s=>typeof s==='string' && s.trim())) continue
+    const english=item.english.trim(), korean=item.korean.trim(), title=item.title.trim()
+    const key=JSON.stringify([english,korean,url])
+    if (!seen.has(key)){seen.add(key);references.push({key,english,korean,title,url})}
+  }
+  return references
+}
+
 const positiveId=/^[1-9]\d{0,9}$/
 const koreaCardFilters={
   freewords:/^(?:[A-Z]{1,4}\d{0,3})-\d{3}$/,series:/^(?:all)?$/,

@@ -5,8 +5,8 @@ import { preferredArtwork } from '../artwork'
 import { pt } from '../pack'
 import ArtworkCredit from './ArtworkCredit.vue'
 
-const props=defineProps({choices:{type:Array,required:true},card:Object,title:String,original:Boolean,hasAlternatives:Boolean})
-const emit=defineEmits(['failed','alternatives'])
+const props=defineProps({choices:{type:Array,required:true},card:Object,title:String,original:Boolean,hasAlternatives:Boolean,failed:Boolean})
+const emit=defineEmits(['failed','alternatives','retry'])
 const selected=ref(null), dialog=ref(), picture=ref(), alternativeButton=ref(), enlarged=ref(false)
 const current=computed(()=>props.choices.find(art=>art.key===selected.value) || preferredArtwork(props.choices,locale.value))
 const index=computed(()=>props.choices.indexOf(current.value))
@@ -34,8 +34,9 @@ watch(current,art=>{if(!art && dialog.value?.open)dialog.value.close()})
     </button>
     <button v-else-if="current?.style" ref="picture" class="atlas" :style="current.style" type="button" :aria-label="title+$t(' 이미지 확대')" @click="show"></button>
     <span v-else class="atlas missing" :class="{compact:!hasAlternatives}">
-      {{ hasAlternatives ? pt('이 언어의 이미지 미등록') : $t('이미지 미등록') }}
+      {{ failed ? pt('사진을 불러오지 못했습니다.') : hasAlternatives ? pt('이 언어의 이미지 미등록') : $t('이미지 미등록') }}
     </span>
+    <button v-if="failed" class="other-art" type="button" data-png-skip @click="emit('retry')">{{ pt('다시 시도') }}</button>
     <small v-if="current?.src || current?.style" class="edition-note">
       <ArtworkCredit :language="current.language" :automatic="original && selected===null" :printing="current.src ? current.printing || card : null" :label-image="!original && current.language===locale"/>
     </small>

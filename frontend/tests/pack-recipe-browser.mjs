@@ -28,7 +28,8 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 try{
   for(const width of [360,1280]){
     const ctx=await browser.newContext({viewport:{width,height:width===360?800:900},hasTouch:width===360,isMobile:width===360,serviceWorkers:'block'})
-    const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message))
+    const page=await ctx.newPage(),errors=[],cardReads=[];page.on('pageerror',e=>errors.push(e.message))
+    page.on('request',req=>{const m=/^\/api\/v1\/cards\/(\d+)$/.exec(new URL(req.url()).pathname);if(m)cardReads.push(Number(m[1]))})
     const sheet=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=160;c.height=174
       const p=c.getContext('2d');['#f12d52','#226abc','#188347','#740fc0'].forEach((color,i)=>{p.fillStyle=color;p.fillRect(i*40,0,40,58)});return c.toDataURL().split(',')[1]})
     let header=pack
@@ -49,13 +50,16 @@ try{
       if(actual && (path.startsWith('/media/')||path.startsWith('/api/')))return route.continue()
       if(path==='/api/v1/auth/admin-mode')return json({mode:'DISABLED'})
       if(path==='/api/v1/auth/refresh')return json({},401)
+      if(path==='/api/v1/auth/login')return json({email:'calendar@example.invalid',role:'ROLE_USER',accessToken:'test-calendar'})
+      if(path==='/api/v1/me/calendar')return json({items:[],hasMore:false})
       if(path==='/api/v1/packs/7')return json(pack)
       if(path==='/api/v1/packs/8')return json(announced)
       if(path==='/api/v1/packs/9'){
         const page=Number(url.searchParams.get('page')||0)
         return json({...pack,id:9,page,total:largePack.length,hasMore:page===0,cards:largePack.slice(page*200,(page+1)*200)})
       }
-      if(path==='/api/v1/releases')return json([pack,announced])
+      if(path==='/api/v1/releases')return json([pack,announced,{...pack,id:17,name:'검증 동봉 팩',group:'DISTRIBUTION'},
+        {...pack,id:18,name:'검증 미수록 팩',group:'ARCHIVE'}])
       if(path==='/api/v1/release-calendar')return json({items:[],total:0,page:0,size:24,asOf:'2026-11-27'})
       if(path.match(/^\/api\/v1\/cards\/\d+$/)){const id=Number(path.split('/').pop()),c=fakeCards.find(x=>x.id===id)||largePack.find(x=>x.id===id);return json({...c,
         nameBasis:'RELATED_PRINTING',nameReferenceUrl:'https://example.invalid/references/name',
@@ -82,7 +86,14 @@ try{
     const shot=async name=>{if(process.env.QA_SCREENSHOTS){await mkdir(process.env.QA_SCREENSHOTS,{recursive:true});await page.screenshot({path:resolve(process.env.QA_SCREENSHOTS,name+'-'+width+'.png')})}}
     await page.goto(origin+'/releases/'+header.id+'?lang=ko')
     const row=page.locator('.pack-row[open]')
+    const first=page.locator('.pack-row>summary').first()
+    await visible(first);assert.equal(await row.count(),0);assert.equal(await page.locator('.pack-row .details-body').count(),0)
+    assert.deepEqual(cardReads,[])
+    await shot('pack-list');await first.focus();await first.press('Enter')
     await visible(row.locator('.detail-section p'));assert.equal(await row.count(),1)
+    assert.deepEqual(cardReads,[header.cards[0].id])
+    await first.click();await row.waitFor({state:'detached'});await first.click();await visible(row.locator('.card-reader'))
+    assert.deepEqual(cardReads,[header.cards[0].id])
     assert.equal(await row.locator('summary .pack-number').innerText(),header.cards[0].number)
     if(!actual){
       await row.locator('.reader-source>summary').click()
@@ -126,6 +137,16 @@ try{
     await page.keyboard.press('Escape');assert.equal(await gallery.count(),0);await noOverflow()
     await page.locator('.pack-back').click();await page.waitForURL(u=>u.pathname==='/releases')
     await visible(page.locator('#release-SCHEDULE'))
+    const shortcuts=page.locator('nav.release-sections')
+    for(const group of ['SCHEDULE','DISTRIBUTION','PREMIERE','ARCHIVE']){
+      const jump=shortcuts.locator('a[href="#release-'+group+'"]')
+      await visible(jump);assert.ok((await jump.boundingBox()).height>=44)
+    }
+    await visible(shortcuts.locator('a.calendar-login'))
+    assert.match(await shortcuts.locator('a.calendar-login').getAttribute('href'),/personal-calendar/)
+    await shot('release-navigation')
+    await shortcuts.locator('a[href="#release-DISTRIBUTION"]').click()
+    await page.waitForURL(u=>u.hash==='#release-DISTRIBUTION')
     await page.locator('.release-filters input').fill('Maze of Machines')
     const upcoming=page.locator('#release-PREMIERE li a').filter({hasText:'MZMC'})
     await visible(upcoming.getByText('도감 등록 전',{exact:true}))
@@ -145,13 +166,20 @@ try{
     if(!actual){
       await page.goto(origin+'/releases/9?lang=ko')
       const numbers=[]
+      const readsBefore=cardReads.length
       for(let i=0;i<Math.ceil(largePack.length/30);i++){
         await page.waitForFunction(n=>document.querySelector('.pack-row .pack-number')?.textContent==='BIG-'+n,i*30+1)
-        await visible(page.locator('.pack-row[open] .card-reader'))
+        assert.equal(await row.count(),0)
         numbers.push(...await page.locator('.pack-row .pack-number').allTextContents())
         if(i<7)await page.locator('.pack-page>nav.pagination').getByRole('button',{name:'다음'}).click()
       }
       assert.deepEqual(numbers,largePack.map(c=>c.number),'every card must appear exactly once across the 200-card API boundary')
+      assert.equal(cardReads.length,readsBefore)
+      const linked=largePack[205]
+      await page.goto(origin+'/releases/9?lang=ko#pack-card-'+linked.id)
+      await visible(row.locator('.card-reader'))
+      assert.equal(await row.getAttribute('id'),'pack-card-'+linked.id)
+      assert.deepEqual(cardReads.slice(readsBefore),[linked.id])
     }
     await page.goto(origin+'/shared/decks/fixture')
     const recipe=page.locator('.recipe-panel');await visible(recipe.locator('.lib-recipe'))
@@ -172,6 +200,21 @@ try{
     await page.goto(origin+'/shared/decks/large');await recipe.getByRole('button',{name:'Gallery',exact:true}).click()
     assert.equal(await recipe.locator('.recipe-tiles li').count(),72)
     await recipe.getByRole('button',{name:/Show more/}).click();assert.equal(await recipe.locator('.recipe-tiles li').count(),144)
+    if(!actual){
+      await page.goto(origin+'/releases?lang=ko&game=YUGIOH')
+      await page.locator('.release-sections .calendar-login').click()
+      await page.waitForURL(u=>u.pathname==='/login')
+      const targetLang=width===360?'ja':'en'
+      await page.locator('.locale-switch select').selectOption(targetLang)
+      await page.waitForURL(url=>new URL(url.searchParams.get('next'),origin).searchParams.get('lang')===targetLang)
+      await page.locator('input[type=email]').fill('calendar@example.invalid')
+      await page.locator('input[type=password]').fill('calendar-fixture-only')
+      await page.locator('form button[type=submit]').click()
+      await page.waitForURL(url=>url.pathname==='/releases' && url.searchParams.get('game')==='YUGIOH' && url.searchParams.get('lang')===targetLang && url.hash==='#personal-calendar')
+      assert.equal(await page.locator('html').getAttribute('lang'),targetLang)
+      await visible(page.locator('#personal-calendar[open]').getByRole('button',{name:targetLang==='ja'?'予定を追加':'Add event'}))
+      assert.equal(await page.locator('.release-sections .calendar-login').count(),0)
+    }
     await noOverflow();assert.deepEqual(errors,[]);await ctx.close()
     console.log(width+'px passed: pack accordion, source card, three gallery filters, card + gallery PNG, jump + Escape, sections/copies, list/gallery/search, side-excluded PNG, preview, and 999-copy pagination.')
   }

@@ -39,6 +39,7 @@ let translation={lang:'ja',name:'保存済み',effect:'',sourceUrl:'https://exam
 const communityReports=[{id:3,postId:16,commentId:4,title:'Synthetic post',reason:'Reported reply <b>literal</b>',excerpt:'Synthetic comment',status:'OPEN',createdAt:'2026-11-01T00:00:00Z'},
   {id:4,postId:17,title:'Another post',reason:'Duplicate listing',excerpt:'Fixture excerpt',status:'OPEN',createdAt:'2026-11-02T00:00:00Z'}]
 let reportReads=0
+let recoveringImageRequests=0
 try {
  const context=await browser.newContext({viewport:{width:360,height:800},isMobile:true,hasTouch:true,serviceWorkers:'block'})
  // Android System WebView 91 predates these built-ins. Disable them before any app module loads.
@@ -92,6 +93,9 @@ try {
    if(api==='cards/62')return json({...card,id:62,gameCode:'RIFTBOUND',variants:[],
      specs:{images:{ja:'/media/print-ja.webp',en:'/media/print-en.webp',ko:'https://publisher.example.invalid/uncached.png'}}})
    if(api==='cards/63')return json({...card,id:63,imageUrl:null,variants:[],specs:{}})
+   if(api==='cards/64')return json({...card,id:64,gameCode:'YUGIOH',imageUrl:'/media/fixture.webp',imageLanguage:'ko',
+     imageBasis:'CARD_REFERENCE',imageSource:'https://example.invalid/prints/ko/art',specs:{},variants:[]})
+   if(api==='cards/65')return json({...card,id:65,gameCode:'YUGIOH',imageUrl:'/media/recovering.webp',imageLanguage:'ko',specs:{},variants:[]})
    if(/^cards\/(58|59|60|61)$/.test(api)){
      const id=Number(api.slice(6)),images={ko:'/media/print-ko.webp',en:'/media/print-en.webp'}
      const source='https://example.invalid/prints/'+lang
@@ -163,7 +167,8 @@ try {
    if(api==='news')return json({items:[{id:3,title:titles[lang],originalTitle:'Practice card',originalLanguage:'en',originalSummary:'Original summary',summary:'Original summary',contentLanguage:lang,summaryLanguage:'en',translationStatus:lang==='en'?'ORIGINAL':'TRANSLATED',gameCode:'ONEPIECE',sourceUrl:'https://example.invalid/news/3'}],total:1})
    errors.push('Unknown route '+api);return json({},404)
   }
-  if(['/media/fixture.webp','/media/print-ko.webp','/media/print-en.webp','/media/print-ja.webp'].includes(path))return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2ZkAAAAASUVORK5CYII=','base64')})
+  if(path==='/media/recovering.webp' && ++recoveringImageRequests===1)return route.fulfill({status:503,headers:{'cache-control':'no-store'},body:''})
+  if(['/media/fixture.webp','/media/print-ko.webp','/media/print-en.webp','/media/print-ja.webp','/media/recovering.webp'].includes(path))return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2ZkAAAAASUVORK5CYII=','base64')})
   const file=(path.startsWith('/assets/')||extname(path))?path.slice(1):'index.html'
   try{return await route.fulfill({contentType:mime[extname(file)],body:await readFile(join(dist,file))})}catch{return route.fulfill({status:404,body:''})}
  })
@@ -196,8 +201,17 @@ try {
    await visible(picker.getByText('画像未登録',{exact:true}))
    assert.equal(await picker.getByRole('button').count(),0)
    assert.ok((await picker.boundingBox()).height<50)
+   await go('/cards/64?lang=ko')
+   await visible(picker.locator('button.localized-card img'))
+   await visible(picker.getByRole('link',{name:'카드 참고 이미지'}))
+   assert.equal(await picker.locator('.missing').count(),0)
  }
  await page.setViewportSize({width:360,height:800})
+ await go('/cards/65?lang=ko')
+ await visible(picker.getByText('사진을 불러오지 못했습니다.'))
+ await picker.getByRole('button',{name:'다시 시도'}).click()
+ await picker.locator('button.localized-card img').evaluate(img=>img.decode())
+ assert.equal(recoveringImageRequests,2)
  for(const lang of ['ko','en']){
    await go('/cards/58?lang='+lang)
    const picture=picker.locator('.localized-card img')
@@ -264,7 +278,7 @@ try {
    await go('/cards/'+id+'?lang=ko')
    for(const lang of ['ko','en','ja']){
      await select.selectOption(lang)
-     if(lang==='ja'||kind==='different'){
+     if(lang==='ja'){
        await visible(page.locator('.card-reader .atlas.missing'))
        await openSources()
      }
@@ -315,10 +329,8 @@ try {
  await visible(caption.getByText('English edition',{exact:true}))
  // A general reference has its own citation. A matching, verified local printing wins a tie.
  await go('/cards/56?lang=ko')
- await visible(page.locator('.card-reader .atlas.missing'))
- await openSources()
- await visible(sources.getByRole('link',{name:'카드 참고 이미지'}))
- assert.equal(await sources.getByRole('link',{name:'카드 참고 이미지'}).getAttribute('href'),'https://example.invalid/prints/ko/art')
+ await visible(picker.locator('.localized-card img'))
+ assert.equal(await picker.getByRole('link',{name:'카드 참고 이미지'}).getAttribute('href'),'https://example.invalid/prints/ko/art')
  await select.selectOption('ja')
  await visible(caption.getByText('日本語版',{exact:true}))
  assert.equal(await caption.locator('a').count(),0)

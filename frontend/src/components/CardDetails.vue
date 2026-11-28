@@ -6,7 +6,7 @@ import { request, sourceLink } from '../api'
 import { cardArtworks } from '../artwork'
 import { cardDetailLocale,traitLabel,traitValueLabel } from '../cardDetailLocale'
 import {rarityBadges} from '../cardRarity'
-import {cardWikiReferences} from '../wikiReferences'
+import {cardWikiReferences,characterReadings} from '../wikiReferences'
 import {printingSource} from '../printingSource'
 import { pngSnapshot } from '../pngSnapshot'
 import CardArtworkPicker from './CardArtworkPicker.vue'
@@ -61,6 +61,8 @@ const localArt=computed(()=>{
   const art=choices.value.filter(a=>(a.src || a.style) && !referenceOnly(a))
   const local=art.filter(a=>a.language===locale.value)
   if(local.length)return local
+  const sameLanguageReference=choices.value.filter(a=>a.language===locale.value && referenceOnly(a))
+  if(sameLanguageReference.length)return sameLanguageReference
   // A Japanese-numbered card can still show its own verified Japanese scan in the English reader.
   // An atlas position alone cannot establish the language or market of a printing.
   const region=card.value?.gameCode==='YUGIOH' && /-(JP|EN|KR)\d+[A-Z]?$/i.exec(card.value.number || '')?.[1]?.toUpperCase()
@@ -101,6 +103,7 @@ const originalName = computed(() => {
 })
 const regionalPrinting=computed(()=>card.value?.gameCode==='ONEPIECE' && locale.value==='ko' ? card.value.specs?.regionalFacts?.ko : null)
 const printSource=computed(()=>printingSource(card.value))
+const readings=computed(()=>characterReadings(card.value,locale.value))
 const catalogNameBasis={IMPORTED_LABEL:'기존 도감 표기',IMPORTED_ORIGINAL:'기존 도감 원문'}
 const references=computed(()=>cardWikiReferences(card.value?.specs,card.value?.gameCode).map(reference=>({...reference,
   facts:reference.facts.map(([key,value])=>({key,label:traitLabel(card.value.gameCode,key,locale.value),
@@ -113,7 +116,7 @@ const wikiSearch=computed(()=>{
   return query ? 'https://namu.wiki/Search?q='+encodeURIComponent(query) : ''
 })
 const specs = computed(() => Object.entries(card.value?.specs || {}).filter(([key, value]) =>
-    !['xid','pk','ej','names','texts','images','sources','nameBasis','referenceNames','referenceNameUrls','editionEvidence','koreanPrinting','wikiReferences','readingOriginal','regionalFacts','publisherCardUrl','publisherArtwork'].includes(key) && value != null && value !== '' &&
+    !['xid','pk','ej','names','texts','images','sources','nameBasis','referenceNames','referenceNameUrls','editionEvidence','koreanPrinting','wikiReferences','characterNameReferences','readingOriginal','regionalFacts','publisherCardUrl','publisherArtwork'].includes(key) && value != null && value !== '' &&
     !(card.value?.gameCode==='ONEPIECE' && ['productCode','imageProducts','imageSources'].includes(key))))
 const names = { k: "종류", at: "속성", lv: "레벨", mk: "링크 마커", rc: "종족", sub: "유형", ps: "펜듈럼 스케일", pe: "펜듈럼 효과", atk: "공격력", def: "수비력", or: "읽기", nw: "수록 구분", pr: "출처", pd: "발매 정보", type: "유형", attribute: "속성", level: "레벨", race: "종족" }
 function display(value) {
@@ -187,7 +190,8 @@ watch([() => props.cardId,locale], () => {
         <div class="detail-grid" :class="{'no-card-art':!localArt.length && !otherArt.length}">
           <CardArtworkPicker ref="mainPicker" :card="card" :title="title" :choices="alternateVisible && otherArt.length ? otherArt : localArt"
             :original="alternateVisible && !!otherArt.length" :has-alternatives="!!otherArt.length"
-            @alternatives="showOtherArt" @failed="imageFailed"/>
+            :failed="failedImages.length>0 && !localArt.length && !otherArt.length"
+            @alternatives="showOtherArt" @failed="imageFailed" @retry="failedImages=[]"/>
           <dl v-if="facts.length || rarities.length || card.releaseDate || card.productReleaseDate" class="reader-facts">
             <div v-for="fact in facts" :key="fact.key"><dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd></div>
             <div v-if="rarities.length" class="rarities-row"><dt>{{ $t('레어도') }}</dt><dd class="reader-rarities">
@@ -240,6 +244,13 @@ watch([() => props.cardId,locale], () => {
             </div>
             <div v-if="printSource && printSource.url!==card.sourceUrl">
               <a :href="printSource.url" hreflang="en" target="_blank" rel="noopener noreferrer"><template v-if="printSource.provider">{{ printSource.provider }} · </template>{{ pt(printSource.label) }}<template v-if="printSource.number"> ({{ printSource.number }})</template></a>
+            </div>
+            <div v-if="readings.length" class="wiki-references character-readings" lang="ko">
+              <small>등장인물의 한글 표기</small>
+              <ul><li v-for="r in readings" :key="r.key">
+                <span lang="en">{{ r.english }}</span> · {{ r.korean }}
+                <a :href="r.url" hreflang="ko" target="_blank" rel="noopener noreferrer">나무위키 · {{ r.title }}</a>
+              </li></ul>
             </div>
             <div v-if="references.length" class="wiki-references">
               <small>{{ pt('나무위키 참고 문서') }}</small>

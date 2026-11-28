@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import {cardWikiReferences,namuArticleUrl} from '../src/wikiReferences.js'
+import {cardWikiReferences,namuArticleUrl,characterReadings} from '../src/wikiReferences.js'
+
+test('a referenced character reading is distinct from the printed name and limited to the Korean reader of an English Weiss printing',()=>{
+  const r={basis:'CHARACTER_READING',english:'Kurumi',korean:'쿠루미',title:'토키사키 쿠루미',url:'https://namu.wiki/w/토키사키%20쿠루미'}
+  const card={gameCode:'WEISS',specs:{language:'en',characterNameReferences:[r,null,{...r},{...r,title:' '},
+    {...r,basis:'PRINTED_NAME'},{...r,korean:''},{...r,url:'https://other.invalid/w/article'}]}}
+  const [row,...more]=characterReadings(card,'ko')
+  assert.equal(row.english,'Kurumi');assert.equal(row.korean,'쿠루미');assert.equal(row.url,new URL(r.url).href);assert.deepEqual(more,[])
+  for(const locale of ['en','ja'])assert.deepEqual(characterReadings(card,locale),[])
+  assert.deepEqual(characterReadings({...card,gameCode:'POKEMON'},'ko'),[])
+  assert.deepEqual(characterReadings({...card,specs:{...card.specs,language:'ja'}},'ko'),[])
+})
 
 test('only HTTPS NamuWiki article URLs are usable',()=>{
   const article='https://namu.wiki/w/테스트 문서/카드#s-2'

@@ -1,12 +1,11 @@
 <script setup>
 import { t as uiText, locale, gameName, supportedLanguage } from '../i18n'
 
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { mediaPath, request } from '../api'
 import {pt, inclusions, shortRarity} from '../pack'
 import {traitLabel,traitValueLabel} from '../cardDetailLocale'
-import CardDetails from '../components/CardDetails.vue'
 import LibraryThumbnail from '../components/LibraryThumbnail.vue'
 import ArtworkCredit from '../components/ArtworkCredit.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
@@ -14,6 +13,8 @@ import RiftEffectSummary from '../components/RiftEffectSummary.vue'
 import CatalogGallery from '../components/CatalogGallery.vue'
 
 const route = useRoute()
+const CardDetails = defineAsyncComponent(()=>import('../components/CardDetails.vue'))
+const visited = reactive(new Set())
 const router = useRouter()
 const games = ref([])
 const packs = ref([])
@@ -109,7 +110,7 @@ watch([activeGame, needsPacks, reload], async ([game, needed], _, cleanup) => {
   finally { if (!controller.signal.aborted) packLoading.value = false }
 }, {immediate:true})
 const searchQuery = computed(() => {
-  const query = new URLSearchParams({ page:String(page.value), size:String(pageSize), lang:locale.value })
+  const query = new URLSearchParams({ page:String(page.value), size:String(pageSize), lang:locale.value, order:'edition' })
   for (const key of ['q','game','packId','rarity','inclusion','ygoType','releaseYear','traitKey','traitValue']) {
     if (param(key)) query.set(key,param(key))
   }
@@ -121,6 +122,7 @@ watch([searchQuery, reload], async ([query], __, onCleanup) => {
   const controller = new AbortController()
   onCleanup(() => controller.abort())
   loading.value = true
+  visited.clear()
   error.value = ''
   try {
     const data = await request('/cards?' + query, { signal: controller.signal })
@@ -220,17 +222,18 @@ function reset() {
       </div>
       <CatalogGallery v-else-if="gallery" :cards="result.items" :query="route.query" />
       <div v-else class="catalog-list">
-        <div v-for="card in result.items" :key="card.id" class="catalog-entry"><details class="card-row">
+        <div v-for="card in result.items" :key="card.id" class="catalog-entry"><details class="card-row" @toggle="event=>{if(event.currentTarget.open)visited.add(card.id)}">
           <summary>
             <span class="card-leading">
               <LibraryThumbnail v-slot="{art}" placeholder :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card">
-                <span class="card-title"><strong :class="{'closed-card-name':card.language!==locale}" :lang="card.language || ''">{{ card.name || card.originalName || $t("이름 미정") }}</strong>
-                <strong v-if="card.language!==locale" class="expanded-card-name">{{ card.number || $t('이름 미정') }}</strong>
-                <CardTextCredit :card="card"/>
+                <span class="card-title"><strong :lang="locale">{{ card.language===locale && card.name ? card.name : card.number || $t('이름 미정') }}</strong>
+                <small v-if="card.language!==locale || !card.name">{{ pt('이 언어의 카드명 미등록') }}</small>
+                <CardTextCredit v-else :card="card"/>
                 <small v-if="card.packName">{{ card.packName }}</small>
                 <RiftEffectSummary v-if="card.gameCode==='RIFTBOUND'" :card="card"/>
                 <small v-if="param('releaseYear') && (card.releaseDate || card.productReleaseDate)">{{ card.releaseDate?$t('발매일'):pt('수록 상품 첫 발매일') }} · <time :datetime="card.releaseDate || card.productReleaseDate">{{ card.releaseDate || card.productReleaseDate }}</time></small>
-                <small class="card-id-mobile">{{ [card.number,shortRarity(card)].filter(Boolean).join(' · ') }}</small>
+                <small class="card-id-mobile">{{ [card.language===locale && card.name ? card.number : '',shortRarity(card)].filter(Boolean).join(' · ') }}</small>
+                <small v-if="!art?.src && !art?.style" class="catalog-edition">{{ $t('이미지 미등록') }}</small>
                 <small v-if="art && (art.language!==locale || art.reference)" class="catalog-edition">
                   <ArtworkCredit :language="art.language" :label-image="!supportedLanguage(art.language)" :printing="art.reference ? card : null" automatic disable-link/>
                 </small>
@@ -240,7 +243,7 @@ function reset() {
             <span class="card-code">{{ card.number }}</span>
             <span class="card-rarity">{{ shortRarity(card) }}</span><span class="chevron" aria-hidden="true"></span>
           </summary>
-          <CardDetails :card-id="card.id" :catalog-query="route.query" lazy />
+          <CardDetails v-if="visited.has(card.id)" :card-id="card.id" :catalog-query="route.query" lazy />
         </details>
         <RouterLink class="catalog-open" :to="{name:'card',params:{id:card.id},query:{...route.query,lang:locale}}" :aria-label="pt('카드 상세 보기')+' · '+(card.number||card.name)">{{ pt('상세') }} →</RouterLink></div>
       </div>
@@ -254,7 +257,6 @@ function reset() {
 <style scoped>
 .catalog-entry{position:relative}.catalog-entry+.catalog-entry{border-top:1px solid var(--bd)}.catalog-entry>.card-row>summary{padding-right:5rem}
 .catalog-open{position:absolute;inset-inline-end:11px;top:10px;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:4px;font-size:.82rem;font-weight:600}
-.card-row:not([open]) .expanded-card-name,.card-row[open] .closed-card-name{display:none}
 .catalog-display,.view-switch,.picture-filter{display:flex;align-items:center}
 .catalog-display{justify-content:space-between;gap:12px;margin-block:0 14px}
 .picture-filter{gap:8px;min-height:44px;font-size:.875rem;cursor:pointer}

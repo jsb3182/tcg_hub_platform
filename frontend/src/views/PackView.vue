@@ -1,17 +1,22 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { mediaPath, request, sourceLink } from '../api'
 import { gameName, locale } from '../i18n'
 import { countLabel, facetLabel, inclusions, packTitle, pt, regionName, shortRarity } from '../pack'
-import CardDetails from '../components/CardDetails.vue'
 import CardTextCredit from '../components/CardTextCredit.vue'
 import RiftEffectSummary from '../components/RiftEffectSummary.vue'
 import PackGallery from '../components/PackGallery.vue'
 import LegacyPackNavigation from '../components/LegacyPackNavigation.vue'
 
 const route=useRoute()
+const CardDetails=defineAsyncComponent(()=>import('../components/CardDetails.vue'))
 const pack=ref(null), cards=ref([]), expanded=ref(null), page=ref(0), packPage=ref(0)
+const visited=reactive(new Set())
+const linkedCard=computed(()=>{
+  const number=/^#pack-card-([1-9]\d{0,14})$/.exec(route.hash)?.[1]
+  return number?Number(number):null
+})
 const loading=ref(true), moreBusy=ref(false), hasMore=ref(false), error=ref(''), moreError=ref(''), retry=ref(0)
 const q=ref(''), inclusion=ref(''), sort=ref('source'),listTop=ref()
 const releaseEvents=ref([]), releasePage=ref(0), releaseTotal=ref(0), releaseError=ref(false), releaseBusy=ref(false), releaseRetry=ref(0)
@@ -35,7 +40,7 @@ const otherEvents=computed(()=>{
 const productReference=computed(()=>pack.value?.wikiProductReference)
 const backTo=computed(()=>{
   const {section,...query}=route.query
-  const hash=section==='catalog-packs'?'#catalog-packs':['SCHEDULE','DISTRIBUTION','PREMIERE','ARCHIVE'].includes(section)?'#release-'+section:''
+  const hash=['catalog-packs','regional-calendar'].includes(section)?'#'+section:['SCHEDULE','DISTRIBUTION','PREMIERE','ARCHIVE'].includes(section)?'#release-'+section:''
   return {name:'releases',query,hash}
 })
 const announced=computed(()=>{
@@ -90,21 +95,27 @@ watch([()=>route.params.id,locale,retry,sort],async([id],previous,onCleanup)=>{
   controller=controllerForRequest
   const signal=controllerForRequest.signal
   onCleanup(()=>controllerForRequest.abort())
-  if(different){q.value='';inclusion.value='';expanded.value=null;page.value=0}
+  if(different){q.value='';inclusion.value='';expanded.value=null;page.value=0;visited.clear()}
   loading.value=true;error.value='';moreError.value='';moreBusy.value=false;hasMore.value=false;loadToEnd=false
   try{
     const data=await apiPage(0,signal)
     if(signal.aborted)return
     const {cards:rows,...header}=data
     pack.value=header;cards.value=rows;packPage.value=0;hasMore.value=data.hasMore
-    if(different || expanded.value===null)expanded.value=rows[0]?.id ?? null
     if(hasMore.value && (q.value || inclusion.value || page.value>0))await loadMore(true)
   }catch(e){if(!signal.aborted)error.value=e.message}
   finally{if(!signal.aborted)loading.value=false}
 },{immediate:true})
 watch([q,inclusion],()=>{
-  page.value=0;expanded.value=filtered.value[0]?.id ?? null
+  page.value=0;expanded.value=null
   if(hasMore.value)loadMore(true)
+})
+watch(expanded,id=>{if(id!==null)visited.add(id)},{flush:'sync'})
+watch([linkedCard,loading], async ([id,busy],_,cleanup)=>{
+  if(!id || busy || error.value)return
+  let current=true;cleanup(()=>{current=false})
+  if(!cards.value.some(card=>card.id===id) && hasMore.value)await loadMore(true)
+  if(current && cards.value.some(card=>card.id===id))await pickCard(id)
 })
 function toggle(id,event){
   if(event.currentTarget.open)expanded.value=id
@@ -117,7 +128,7 @@ async function goPage(n){
     if(signal?.aborted || moreError.value)return
   }
   if(n<0 || n>=pages.value)return
-  page.value=n;expanded.value=shown.value[0]?.id ?? null
+  page.value=n;expanded.value=null
   await nextTick();listTop.value?.focus({preventScroll:true});listTop.value?.scrollIntoView({block:'start'})
 }
 async function pickCard(id){
@@ -202,7 +213,7 @@ async function pickCard(id){
           <h3 v-if="special && card.product && (i===0 || shown[i-1].product!==card.product)" class="pack-product">{{ card.product }} <small v-if="card.productDate">{{ card.productDate }}</small></h3>
           <details :id="'pack-card-'+card.id" class="pack-row" :open="expanded===card.id" @toggle="toggle(card.id,$event)">
             <summary><span class="pack-number">{{ card.number }}</span><span class="pack-name"><strong :lang="locale">{{ card.language===locale && card.name ? card.name : pt('이 언어의 카드명 미등록') }}</strong><CardTextCredit v-if="card.language===locale" :card="card"/><small v-if="card.inclusion || card.type"><span v-if="card.inclusion">{{ facetLabel('inclusion',card.inclusion) }}</span><span v-if="card.type">{{ card.inclusion?' · ':'' }}{{ facetLabel('type',card.type,pack.gameCode) }}</span></small><RiftEffectSummary v-if="pack.gameCode==='RIFTBOUND'" :card="card"/></span><span v-if="card.rarity" class="pack-rarity">{{ shortRarity(card) }}</span><span class="chevron" aria-hidden="true"></span></summary>
-            <CardDetails :card-id="card.id" lazy/>
+            <CardDetails v-if="visited.has(card.id)" :card-id="card.id" lazy/>
           </details>
         </template>
       </div>

@@ -18,9 +18,9 @@ function changeLanguage(code) {
   const route = router.currentRoute.value
   if (route.name==='login' && typeof route.query.next==='string' && route.query.next.startsWith('/') && !route.query.next.startsWith('//') && !route.query.next.includes('\\')) {
     const next = router.resolve(route.query.next)
-    if (['play','decks','deck-edit','deck-new'].includes(next.name)) {
+    if (['play','decks','deck-edit','deck-new','releases'].includes(next.name)) {
       const destination=router.resolve({path:next.path,query:{...next.query,lang:code},hash:next.hash})
-      router.replace({path:route.path,query:{...route.query,next:destination.fullPath}})
+      router.replace({path:route.path,query:{...route.query,lang:route.query.lang?code:undefined,next:destination.fullPath}})
       return
     }
   }
@@ -37,7 +37,7 @@ const loginTarget = computed(() => {
   const route = router.currentRoute.value
   if (route.name === 'admin') return {name:'login',query:{to:'admin'}}
   if (route.name === 'login') return {name:'login',query:{next:route.query.next,to:route.query.to}}
-  if (['binder','decks','deck-new','deck-edit','play','stores','community'].includes(route.name)) return {name:'login',query:{next:route.fullPath}}
+  if (['binder','decks','deck-new','deck-edit','play','stores','community','releases'].includes(route.name)) return {name:'login',query:{next:route.fullPath}}
   return {name:'login'}
 })
 const navigation = [
