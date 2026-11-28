@@ -5,7 +5,7 @@ import {readFile,mkdir} from 'node:fs/promises'
 import {extname,resolve} from 'node:path'
 import {fileURLToPath} from 'node:url'
 const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE||'playwright')
-const dist=fileURLToPath(new URL('../dist/',import.meta.url)),actual=process.env.RELEASE_QA_ORIGIN
+const dist=process.env.RELEASE_QA_DIST||fileURLToPath(new URL('../dist/',import.meta.url)),actual=process.env.RELEASE_QA_ORIGIN
 const origin=actual||'http://127.0.0.1:19899'
 assert.equal(new URL(origin).hostname,'127.0.0.1')
 const codes=['YUGIOH','POKEMON','WEISS','NIVEL','RIFTBOUND','ONEPIECE'],regions=['NA','EN','JP','KR','GLOBAL','CN']
@@ -16,6 +16,9 @@ const events=Array.from({length:186},(_,i)=>{
     name:'시험 상품 '+id,names:{ko:'시험 상품 '+id,en:'Test set '+id,ja:'テスト商品 '+id},sourceUrl:'https://example.invalid/sets/'+id,
     catalogPackId:i%3?1000+id:null,catalogCount:i%3?1:0}
 })
+// These catalogued products deliberately have no dated event in this fixture.
+const catalog=[['DBGV','글로리어스 빅터즈'],['SV1V','바이올렛 ex'],['SAO/S47','Sword Art Online Re: Edit'],['SB02','니벨아레나 스페셜 부스터'],['OGN','Origins'],['OP-01','ROMANCE DAWN']].map(([code,name],i)=>({id:8001+i,gameCode:codes[i],code,name,catalogCount:10+i}))
+for(let i=1;i<=26;i++)catalog.push({id:8100+i,gameCode:'POKEMON',code:'QA-SERIES-'+i,name:'검색 검사 상품 '+i,catalogCount:i})
 const mime={'.html':'text/html;charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png'}
 function fixture(params){
   const period=params.get('period'),game=params.get('game'),region=params.get('region'),q=(params.get('q')||'').toLowerCase(),p=+(params.get('page')||0),packId=+params.get('packId')
@@ -45,6 +48,12 @@ try{
     if(actual && !process.env.RELEASE_LOCAL_DIST)return route.continue()
     if(actual && (path.startsWith('/api/')||path.startsWith('/media/')))return route.continue()
     const json=v=>route.fulfill({json:v})
+    if(path==='/api/v1/catalog-packs'){
+      const g=u.searchParams.get('game'),q=(u.searchParams.get('q')||'').toLowerCase()
+      const n=Number(u.searchParams.get('page')),limit=Number(u.searchParams.get('size'))
+      const matches=catalog.filter(p=>(!g||g===p.gameCode)&&(p.code+' '+p.name).toLowerCase().includes(q))
+      return json({items:matches.slice(n*limit,(n+1)*limit),total:matches.length})
+    }
     if(path==='/api/v1/release-calendar' && u.searchParams.get('packId')==='9900'){
       return json({items:[{id:1,catalogPackId:9901,region:'KR',releaseDate:'2026-01-25',sourceUrl:'https://example.invalid/nivel'}],page:0,total:1})
     }
@@ -53,7 +62,7 @@ try{
     if(path==='/api/v1/auth/admin-mode')return json({mode:'DISABLED'})
     if(path==='/api/v1/packs/9900')return json({id:9901,gameCode:'NIVEL',name:'정정된 수록 상품',total:0,cards:[]})
     if(path.startsWith('/api/v1/packs/')){
-      const id=+path.split('/').pop(),event=events.find(e=>e.catalogPackId===id)
+      const id=+path.split('/').pop(),event=events.find(e=>e.catalogPackId===id)||catalog.find(p=>p.id===id)
       return json({id,name:event.name,code:event.code,gameCode:event.gameCode,group:'SCHEDULE',metadata:{},total:1,newCount:0,reprintCount:0,newArtCount:0,
         page:0,size:200,hasMore:false,cards:[{id,name:'인쇄 카드',number:'PRINT-001',rarities:[]}]})
     }
@@ -210,6 +219,45 @@ try{
     await calendar.getByRole('heading',{name:'지역별 발매 일정'}).waitFor()
     assert.equal(await calendar.locator('time').getAttribute('datetime'),'2026-01-25')
     assert.equal(await calendar.getByRole('link').getAttribute('href'),'https://example.invalid/nivel')
+  }
+  for(const gameCode of codes){
+    const product=actual
+      ? (await (await ctx.request.get(origin+'/api/v1/catalog-packs?game='+gameCode+'&size=1')).json()).items[0]
+      : catalog.find(p=>p.gameCode===gameCode)
+    assert.ok(product,gameCode+' needs a catalogued pack')
+    const term=product.code||product.name
+    await page.goto(origin+'/releases?lang=ko&game='+gameCode)
+    await page.getByRole('searchbox').fill(term)
+    const finder=page.locator('#catalog-packs')
+    const link=finder.locator('a[href^="/releases/'+product.id+'?"]')
+    await link.waitFor()
+    assert.match(await link.innerText(),new RegExp(product.catalogCount.toLocaleString('ko')))
+    if(!actual)await page.getByText('조건에 맞는 발매 일정이 없습니다.').waitFor()
+    if(gameCode==='ONEPIECE' && process.env.QA_SCREENSHOTS)await page.screenshot({path:resolve(process.env.QA_SCREENSHOTS,'pack-search-'+width+'.png')})
+    await link.click();await page.locator('.pack-heading h1').waitFor()
+    await page.locator('.pack-back').click();await link.waitFor()
+    assert.equal(await page.getByRole('searchbox').inputValue(),term)
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width)
+  }
+  if(!actual){
+    await page.goto(origin+'/releases?browse=1&packQuery=OP-01&packGame=ONEPIECE#catalog-packs')
+    await page.locator('#catalog-packs a').filter({hasText:'ROMANCE DAWN'}).waitFor()
+    assert.equal(await page.getByRole('searchbox').inputValue(),'OP-01')
+    await page.getByRole('searchbox').fill('')
+    await game.selectOption('RIFTBOUND')
+    await page.locator('#catalog-packs a').filter({hasText:'Origins'}).waitFor()
+    await page.goto(origin+'/releases?game=YUGIOH,ONEPIECE&q=OP-01')
+    await page.locator('#catalog-packs select').selectOption('ONEPIECE')
+    await page.locator('#catalog-packs a').filter({hasText:'ROMANCE DAWN'}).waitFor()
+    await page.goto(origin+'/releases?game=POKEMON&q=QA-SERIES')
+    const sets=page.locator('#catalog-packs')
+    await sets.getByRole('button',{name:/수록 팩 찾기/}).click()
+    await sets.locator('.pagination').getByRole('button',{name:'다음'}).click()
+    await sets.getByRole('link').filter({hasText:'QA-SERIES-26'}).waitFor()
+    assert.equal(await sets.getByRole('link').count(),2)
+    await page.getByRole('searchbox').fill('SV1V')
+    await sets.getByRole('link').filter({hasText:'바이올렛 ex'}).waitFor()
+    assert.equal(new URL(page.url()).searchParams.has('packPage'),false)
   }
   assert.deepEqual(errors,[]);console.log(width+'px '+(actual?'Spring':'fixture')+' six games, default, periods, paging, region, locale, source/pack links, search and width passed: '+evidence.join(' / '))
   await ctx.close()

@@ -1,7 +1,7 @@
 <script setup>
 import { t as uiText, locale, supportedLanguage } from '../i18n'
 
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { request, sourceLink } from '../api'
 import { cardArtworks } from '../artwork'
 import { cardDetailLocale,traitLabel,traitValueLabel } from '../cardDetailLocale'
@@ -22,16 +22,19 @@ const card = ref(null)
 const error = ref('')
 const loading = ref(false)
 const sourceOpen=ref(false), copied=ref(false)
+const alternateVisible=ref(false), mainPicker=ref()
 const failedImages=ref([])
 function imageFailed(url){if(url && !failedImages.value.includes(url))failedImages.value.push(url)}
 const choices = computed(() => {
   const data = card.value
   const all=cardArtworks(data?.imageUrl,data?.imageLanguage,data?.variants || [],null,data?.imageBasis)
-  const lang=locale.value
-  const [edition]=cardArtworks(data?.specs?.images?.[lang],lang,[],null)
-  if(edition){
+  for(const [lang,url] of Object.entries(data?.specs?.images || {})){
+    if(!supportedLanguage(lang))continue
+    const [edition]=cardArtworks(url,lang,[],null)
+    if(!edition)continue
     const product=data.specs.imageProducts?.[lang], source=data.specs.imageSources?.[lang]
-    const direct=all.find(art=>art.src===edition.src && !art.reference && (!art.language || art.language===lang))
+    const direct=all.find(art=>art.key==='direct' && art.src===edition.src && !art.reference && (art.language===lang ||
+      (!art.language && lang===locale.value)))
     const samePrinting=direct && !(product && data.imageProduct && product!==data.imageProduct)
       && !(source && data.imageSource && source!==data.imageSource)
     if(samePrinting){
@@ -63,6 +66,11 @@ const localArt=computed(()=>{
   return art.filter(a=>a.style && a.language===({JP:'ja',EN:'en',KR:'ko'})[region] && a.language)
 })
 const otherArt=computed(()=>choices.value.filter(art=>(art.src || art.style) && !localArt.value.includes(art)))
+async function showOtherArt(){
+  alternateVisible.value=!alternateVisible.value
+  await nextTick()
+  mainPicker.value?.focusPicture()
+}
 const rarities=computed(()=>rarityBadges(card.value,locale.value))
 const numericStats=['atk','def','power','might','hp']
 const prices=computed(()=>(Array.isArray(card.value?.prices)?card.value.prices:[]).filter(p=>p && ['number','string'].includes(typeof p.amount) &&
@@ -135,7 +143,7 @@ async function load() {
   const run = new AbortController()
   controller = run
   card.value = null
-  endPress();sourceOpen.value=false;copied.value=false
+  endPress();sourceOpen.value=false;alternateVisible.value=false;copied.value=false
   failedImages.value = []
   loading.value = true
   error.value = ''
@@ -174,9 +182,11 @@ watch([() => props.cardId,locale], () => {
           <small v-if="copied" role="status" class="muted">{{ pt('카드명을 복사했습니다.') }}</small>
         </header>
         <CardTextCredit v-if="['WIKI_REFERENCE','NAMUWIKI_KO','MACHINE_TRANSLATION','GLOSSARY_TRANSLATED','CURATED_TRANSLATION'].includes(localized.nameBasis)" class="reader-name-credit" :card="localCredit"/>
-        <div class="detail-grid">
-          <CardArtworkPicker :card="card" :title="title" :choices="localArt" @failed="imageFailed"/>
-          <dl class="reader-facts">
+        <div class="detail-grid" :class="{'no-card-art':!localArt.length && !otherArt.length}">
+          <CardArtworkPicker ref="mainPicker" :card="card" :title="title" :choices="alternateVisible && otherArt.length ? otherArt : localArt"
+            :original="alternateVisible && !!otherArt.length" :has-alternatives="!!otherArt.length"
+            @alternatives="showOtherArt" @failed="imageFailed"/>
+          <dl v-if="facts.length || rarities.length || card.releaseDate || card.productReleaseDate" class="reader-facts">
             <div v-for="fact in facts" :key="fact.key"><dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd></div>
             <div v-if="rarities.length" class="rarities-row"><dt>{{ $t('레어도') }}</dt><dd class="reader-rarities">
               <span v-for="r in rarities" :key="r.code || r.label"><b v-if="r.code">{{ r.code }}</b>{{ r.label }}</span>
@@ -268,6 +278,9 @@ watch([() => props.cardId,locale], () => {
 .reader-number{color:var(--mu);font-size:.8rem;font-variant-numeric:tabular-nums;letter-spacing:.035em}
 .card-reader .detail-grid{grid-template-columns:minmax(88px,clamp(100px,29%,172px)) minmax(0,1fr);gap:clamp(12px,3vw,23px);align-items:start}
 .reader-facts{min-width:0;margin:0}.reader-facts div{display:grid;grid-template-columns:minmax(4em,.65fr) minmax(0,1fr);gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--bd)}
+.card-reader .detail-grid.no-card-art{grid-template-columns:minmax(0,1fr);gap:10px}
+.no-card-art .reader-facts div{grid-template-columns:minmax(5em,8em) minmax(0,1fr)}
+.reader-facts time{display:inline-block;font-variant-numeric:tabular-nums;white-space:nowrap}
 .reader-facts div:first-child{padding-top:0}.reader-facts dt,.reader-facts dd{margin:0;overflow-wrap:anywhere;line-height:1.35}.reader-facts dt{color:var(--mu);font-size:.78rem}.reader-facts dd{font-size:.9rem;font-weight:580;font-variant-numeric:tabular-nums}
 .detail-section h3{font-size:1rem;margin:0 0 6px}.detail-section .card-text-credit{margin-top:5px}
 .reader-stats{display:flex;gap:0 24px;flex-wrap:wrap;margin:12px 0 0}.reader-stats div{display:flex;align-items:baseline;gap:8px}.reader-stats dt{font-size:.8rem;color:var(--mu)}.reader-stats dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums}

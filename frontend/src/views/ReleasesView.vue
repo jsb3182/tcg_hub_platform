@@ -13,7 +13,9 @@ import PublicPackFinder from '../components/PublicPackFinder.vue'
 const route=useRoute(),router=useRouter(),size=24
 const periods={upcoming:'발매 예정',past:'지난 발매',all:'날짜 전체'}
 const sections=[['SCHEDULE','팩 발매 일정'],['DISTRIBUTION','동봉 · 배포 카드'],['PREMIERE','TCG 월드 프리미어 카드'],['ARCHIVE','장기 미수록 카드']]
-const games=computed(()=>selectedCodes(route.query.game,gameCodes))
+// Older shared pack searches used a second set of filters below the header.
+const legacyBrowse=computed(()=>route.query.browse==='1')
+const games=computed(()=>selectedCodes((legacyBrowse.value && route.query.packGame) || route.query.game,gameCodes))
 const regions=computed(()=>selectedCodes(route.query.region,Object.keys(releaseRegions)))
 const types=computed(()=>selectedCodes(route.query.productType,Object.keys(productTypes)))
 const game=computed(()=>games.value.join(',')),region=computed(()=>regions.value.join(','))
@@ -24,7 +26,10 @@ const month=computed(()=>/^\d{4}-(0[1-9]|1[0-2])$/.test(route.query.month||'') ?
 const requestedMonth=computed(()=>grid.value ? month.value : '')
 const day=computed(()=>typeof route.query.day==='string' && route.query.day.startsWith(month.value+'-')?route.query.day:'')
 const period=computed(()=>Object.keys(periods).includes(route.query.period)?route.query.period:'upcoming')
-const query=computed(()=>typeof route.query.q==='string'?route.query.q.slice(0,100):'')
+const query=computed(()=>{
+  const value=(legacyBrowse.value && route.query.packQuery) || route.query.q
+  return typeof value==='string'?value.slice(0,100):''
+})
 const page=computed(()=>/^\d{1,6}$/.test(route.query.page||'')?Number(route.query.page):0)
 const draft=ref(query.value),result=ref(null),packs=ref(null),loading=ref(true),error=ref(''),retry=ref(0),limits=ref({})
 const resultsHeading=ref(),jumpAfterPage=ref(false)
@@ -35,7 +40,14 @@ function destination(edits){
   for(const key of Object.keys(params))if(params[key]===''||params[key]==null)delete params[key]
   return {name:'releases',query:params}
 }
-function filter(edits){return router.replace(destination({q:draft.value.trim(),page:null,day:null,...edits}))}
+function filter(edits){
+  const text=draft.value.trim()
+  const catalogChanged=text!==query.value || ('game' in edits && (edits.game||'')!==game.value)
+  return router.replace(destination({
+    game:game.value,q:text,packGame:null,packQuery:null,page:null,day:null,
+    ...(catalogChanged?{packPage:null,catalogGame:null}:{}),...edits
+  }))
+}
 watch(query,value=>{draft.value=value})
 watch(draft,(value,_,cleanup)=>{
   if(value.trim()===query.value)return
@@ -131,7 +143,7 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
         <label class="release-search">{{ pt('팩 검색') }}<input v-model="draft" type="search" maxlength="100" :placeholder="pt('팩 이름 또는 코드')" @keydown.enter.prevent="filter({})"></label>
       </div>
     </header>
-    <PublicPackFinder :game="game"/>
+    <PublicPackFinder :games="games" :term="query"/>
     <PersonalCalendar/>
     <nav v-if="groups.length" class="release-sections" :aria-label="pt('팩 분류')">
       <a v-for="s in groups" :key="s.id" :href="'#release-'+s.id">{{ pt(s.title) }}</a>
@@ -239,9 +251,10 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
 .event-links{justify-items:end}.event-links a{display:inline-flex;align-items:center;gap:.2rem;min-height:36px;font-size:.84rem;text-underline-offset:.2rem}.releases-page small,.release-row-title span{color:var(--mu);font-size:.82rem}
 .release-section li>a{display:flex;align-items:center;gap:1rem;min-height:76px;padding:.75rem 0;text-decoration:none;color:var(--tx)}.release-row-title{flex:1}.release-section li>a:hover strong{text-decoration:underline}.release-count{text-align:end;font-size:.78rem}.release-count b{color:var(--ac)}.release-count small{display:block}.release-section img{width:5.75rem;height:3.25rem;object-fit:cover;border-radius:4px}.release-section>button{margin-top:.8rem}
 @media(max-width:650px){
- .releases-page{margin:1.3rem auto}.release-filters{grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:.55rem}
+ .releases-page{margin:1.3rem auto}.release-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
  .release-views{gap:0 .8rem}.release-views a{font-size:.88rem}.release-month li{grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:.2rem .5rem}
  .release-date{grid-area:1/1;color:var(--mu);font-size:.82rem}.event-product{grid-area:2/1/3/3}.event-links{grid-area:1/2;display:flex;align-items:baseline;gap:.45rem}.event-links small{display:none}
  .release-section img{width:3.25rem;height:2.9rem}.release-count{max-width:4.4rem}.release-section li>a{gap:.55rem}
 }
+@media(max-width:340px){.release-filters{grid-template-columns:1fr}}
 </style>
