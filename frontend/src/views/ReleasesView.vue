@@ -9,8 +9,10 @@ import {selectedCodes,toggledCode,releaseDistance,kstMonth,changeMonth,productTy
 import ReleaseMonthGrid from '../components/ReleaseMonthGrid.vue'
 import PersonalCalendar from '../components/PersonalCalendar.vue'
 import PublicPackFinder from '../components/PublicPackFinder.vue'
+import {useSession} from '../stores/session'
 
 const route=useRoute(),router=useRouter(),size=24
+const session=useSession()
 const periods={upcoming:'발매 예정',past:'지난 발매',all:'날짜 전체'}
 const sections=[['SCHEDULE','팩 발매 일정'],['DISTRIBUTION','동봉 · 배포 카드'],['PREMIERE','TCG 월드 프리미어 카드'],['ARCHIVE','장기 미수록 카드']]
 // Older shared pack searches used a second set of filters below the header.
@@ -62,14 +64,19 @@ watch(packRetry,async(_,__,cleanup)=>{
   try{const data=await publicPacks();if(!abort.signal.aborted)packs.value=data}
   catch(cause){if(!abort.signal.aborted)packError.value=cause.message}
 },{immediate:true})
-watch([()=>route.hash,packs],async([hash,rows])=>{
+watch([()=>route.hash,packs,packError,loading],async([hash,rows,failed,pending])=>{
   if(hash.startsWith('#pack-')){
     const pack=bookmarkedPack(rows,hash)
     if(pack)await router.replace({name:'pack',params:{id:pack.id},query:route.query})
     return
   }
-  if(!sections.some(([id])=>hash==='#release-'+id))return
-  await nextTick();document.getElementById(hash.slice(1))?.scrollIntoView({block:'start'})
+  if(hash!=='#personal-calendar' && hash!=='#regional-calendar' && !sections.some(([id])=>hash==='#release-'+id))return
+  if(hash!=='#personal-calendar' && !rows && !failed)return
+  if(hash==='#regional-calendar' && pending)return
+  await nextTick()
+  requestAnimationFrame(()=>{
+    if(route.name==='releases' && route.hash===hash)document.getElementById(hash.slice(1))?.scrollIntoView({block:'start'})
+  })
 },{immediate:true})
 watch([game,region,period,query,page,retry,grid,requestedMonth,products],async([g,r,when,q,n,_,calendar,m,product],previous,cleanup)=>{
   const controller=new AbortController(),signal=controller.signal
@@ -145,11 +152,12 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
     </header>
     <PublicPackFinder :games="games" :term="query"/>
     <PersonalCalendar/>
-    <nav v-if="groups.length" class="release-sections" :aria-label="pt('팩 분류')">
-      <a v-for="s in groups" :key="s.id" :href="'#release-'+s.id">{{ pt(s.title) }}</a>
-      <a href="#regional-calendar" class="calendar-jump">{{ pt('지역별 발매 일정') }} ↓
-        <small v-if="groups.length && result?.items?.length">{{ result.items[0].releaseDate }} · {{ releaseName(result.items[0]) }}</small>
+    <nav class="release-sections" :aria-label="pt('팩 분류')">
+      <a v-for="s in groups" :key="s.id" :href="'#release-'+s.id" :aria-current="route.hash==='#release-'+s.id?'location':undefined">{{ pt(s.title) }}</a>
+      <a href="#regional-calendar" class="calendar-jump" :aria-current="route.hash==='#regional-calendar'?'location':undefined">
+        <span>{{ pt('지역별 발매 일정') }}<small v-if="groups.length && result?.items?.length">{{ result.items[0].releaseDate }} · {{ releaseName(result.items[0]) }}</small></span>
       </a>
+      <RouterLink v-if="session.ready && !session.account" class="calendar-login" :to="{name:'login',query:{next:route.fullPath.split('#')[0]+'#personal-calendar'}}">{{ pt('내 일정 로그인') }}</RouterLink>
     </nav>
     <div class="release-layout" :class="{'has-packs':groups.length>0}">
       <p v-if="packError" class="inline-error" role="alert">{{ packError }} <button class="text-button" @click="packRetry++">{{ pt('다시 시도') }}</button></p>
@@ -203,7 +211,7 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
           <time class="release-date" :datetime="e.releaseDate">{{ e.releaseDate }} <small>{{ releaseDistance(e.releaseDate,result.asOf) }}</small></time>
           <div class="event-product">
             <small>{{ [gameName(e.gameCode),regionName(e.region),productTypes[e.productType] && e.productType!=='UNKNOWN'?pt(productTypes[e.productType]):'',e.code].filter(Boolean).join(' · ') }}</small>
-            <RouterLink v-if="e.catalogPackId" :to="packRoute(e.catalogPackId)" :aria-label="releaseName(e)+' · '+pt('팩 상세')">
+            <RouterLink v-if="e.catalogPackId" :to="packRoute(e.catalogPackId,'regional-calendar')" :aria-label="releaseName(e)+' · '+pt('팩 상세')">
               <span :lang="e.names?.[locale]?locale:undefined">{{ releaseName(e) }}</span> <span class="to-pack" aria-hidden="true">→</span></RouterLink>
             <strong v-else :lang="e.names?.[locale]?locale:undefined">{{ releaseName(e) }}</strong>
           </div>
@@ -229,7 +237,13 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
 .release-date small{white-space:nowrap}
 .releases-page{max-width:62rem;margin:2rem auto}.release-head h1{margin:0 0 1.15rem}.release-filters{display:grid;grid-template-columns:minmax(8rem,1fr) minmax(10rem,2.2fr);gap:.6rem 1rem}
 .release-filters label,.calendar-heading label{display:grid;gap:.25rem;min-width:0;color:var(--mu);font-size:.85rem}.release-filters :is(input,select),.calendar-heading select{width:100%;min-width:0;min-height:44px;background:var(--sf);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:.45rem .65rem}
-.release-views,.release-sections{display:flex;align-items:center;flex-wrap:wrap;gap:0 1.15rem;border-bottom:1px solid var(--bd);margin-top:1rem}
+.release-views{display:flex;align-items:center;flex-wrap:wrap;gap:0 1.15rem;border-bottom:1px solid var(--bd);margin-top:1rem}
+.release-sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.4rem,1fr));gap:1px;margin:1rem 0 0;border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--bd)}
+.release-sections a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;min-width:0;min-height:44px;background:var(--sf);color:var(--tx);font-size:.84rem;font-weight:600;text-decoration:none;line-height:1.35;word-break:keep-all;overflow-wrap:anywhere}
+.release-sections a::after{content:'';width:6px;height:6px;border-inline-end:1.5px solid currentColor;border-block-end:1.5px solid currentColor;transform:rotate(45deg);flex:none;color:var(--mu)}
+.release-sections .calendar-login::after{transform:rotate(-45deg)}
+.release-sections a:hover,.release-sections a[aria-current]{background:var(--bg);color:var(--ac)}
+.release-sections a:focus-visible{outline-offset:-3px}
 .release-layout>*,.calendar-jump{min-width:0}.regional-calendar{margin-top:1.6rem;scroll-margin-top:5rem}.calendar-heading{display:flex;align-items:end;justify-content:space-between;gap:.6rem;flex-wrap:wrap}.calendar-heading>h2{font-size:1.25rem;margin:0}.calendar-heading label{max-width:min(12rem,100%)}.regional-calendar .release-views{margin-top:.3rem}.calendar-jump small{display:none}
 @media(min-width:840px){
  .release-layout.has-packs{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);column-gap:2rem}
@@ -238,9 +252,10 @@ function packRoute(id,section){return {name:'pack',params:{id},query:section?{..
  .has-packs .release-date{grid-area:1/1;font-size:.82rem}.has-packs .event-product{grid-area:2/1/3/3}.has-packs .event-links{grid-area:1/2}.has-packs .event-links small{display:none}
 }
 @media(max-width:839px){
- .calendar-jump{width:100%;gap:.6rem}.calendar-jump small{display:block;min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .release-sections{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .calendar-jump>span{min-width:0}.calendar-jump small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem;font-weight:400}
 }
-.release-views a,.release-sections a{display:inline-flex;align-items:center;min-height:44px;text-decoration:none;text-underline-offset:.25em}.release-views a{border-bottom:2px solid transparent;color:var(--mu)}.release-views a[aria-current=page]{color:var(--ac);border-bottom-color:var(--ac);font-weight:700}.release-views a:hover,.release-sections a:hover{text-decoration:underline}
+.release-views a{display:inline-flex;align-items:center;min-height:44px;text-decoration:none;text-underline-offset:.25em;border-bottom:2px solid transparent;color:var(--mu)}.release-views a[aria-current=page]{color:var(--ac);border-bottom-color:var(--ac);font-weight:700}.release-views a:hover{text-decoration:underline}
 .release-summary{display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin:1.25rem 0;color:var(--mu);scroll-margin-top:5rem}.release-summary b{color:var(--tx)}
 .release-month,.release-section{margin:1.6rem 0 2.2rem;scroll-margin-top:6rem}.release-month h2,.release-section h2{font-size:1.25rem;margin:0 0 .35rem}
 .releases-page ul{list-style:none;margin:0;padding:0}.release-month li,.release-section li{border-bottom:1px solid var(--bd)}

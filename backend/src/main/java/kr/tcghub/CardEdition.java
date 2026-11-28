@@ -28,17 +28,8 @@ final class CardEdition {
                     ('ko','https://artworks-ko-db.ygoresources.com'||ygo_art.ko_path,true),
                     ('en','https://artworks-en-n.ygoresources.com'||ygo_art.en_path,true),
                     ('ja','https://artworks-jp-n.ygoresources.com'||ygo_art.ja_path,true),
-                    (provider_art.language,provider_art.source_url,true)) v(lang,url,reference)
-            """;
-    // Start with cached files: an approved URL or a Neuron-only variant is not a catalog thumbnail.
-    static final String CARDS_WITH_ART = """
-            select a.card_id from catalog_art_file f join catalog_art_card a on a.file_id=f.id
-            join card c on c.id=a.card_id
-            """ + LEGACY_EDITION + REGIONAL_ART + """
-            where f.storage_key is not null and f.source_url in (select v.url from
-            """ + ART_EDITIONS + """
-            where not starts_with(v.url,'https://images.ygoprodeck.com/')
-               or (v.reference and v.url=provider_art.source_url and f.source_sha256=provider_art.source_sha256))
+                    (provider_art.language,provider_art.source_url,true),
+                    ('ko',case when c.game_code='NIVEL' then c.specs->>'nivelThumbnail' end,false)) v(lang,url,reference)
             """;
     static final String JOIN = LEGACY_JOIN + """
             cross join lateral (select
@@ -101,7 +92,8 @@ final class CardEdition {
                                when v.lang=:lang and not v.reference then 1 when v.lang=:lang then 2
                                when not v.reference and v.lang=c.specs->>'language' then 3
                                when not v.reference then 4 else 5 end,
-                          case v.lang when 'ko' then 1 when 'en' then 2 else 3 end limit 1
+                          case v.lang when 'ko' then 1 when 'en' then 2 else 3 end,
+                          case when c.game_code='NIVEL' and v.url=c.specs->>'nivelThumbnail' then 1 else 0 end limit 1
             ) art on true
             """;
     static final String NAME = "coalesce(correction.name,requested.name,case when original.lang=:lang then c.original_name end,requested.reference_name,wiki_label.name,case when c.specs->>'language' is distinct from :lang then supplement.name end,case when :lang='ko' then kr_read.name end,c.name)";
@@ -129,7 +121,7 @@ final class CardEdition {
                  when requested.reference_name is not null then 'RELATED_PRINTING'
                  when wiki_label.name is not null then 'WIKI_REFERENCE'
                  when supplement.name is not null and c.specs->>'language' is distinct from :lang then 'SOURCE_LABEL'
-                 when :lang='ko' and kr_read.name is not null then kr_read.basis
+                 when :lang='ko' and kr_read.name is not null then coalesce(kr_read.name_basis,kr_read.basis)
                  when original.lang is not null and c.name=c.original_name then 'IMPORTED_ORIGINAL'
                  when starts_with(c.legacy_key,'legacy:') then 'IMPORTED_LABEL'
                  when c.specs->>'language' is not null and c.source_url is not null then 'SOURCE_LABEL' end as "nameBasis",
@@ -153,7 +145,7 @@ final class CardEdition {
                  when requested.effect is null and wiki_label.effect is not null then 'NAMUWIKI_KO'
                  when requested.effect is null and supplement.effect is not null then case when supplement.related
                        then 'RELATED_PRINTING' else 'SOURCE_LABEL' end
-                 when requested.effect is null and :lang='ko' and kr_read.effect is not null then kr_read.basis
+                 when requested.effect is null and :lang='ko' and kr_read.effect is not null then coalesce(kr_read.effect_basis,kr_read.basis)
                  when c.game_code='ONEPIECE' and c.specs->'nameBasis'->>
                       (case when requested.effect is not null then :lang else c.specs->>'language' end)='RELATED_PRINTING'
                       and coalesce(requested.effect,nullif(c.effect,'')) is not null then 'RELATED_PRINTING' end as "effectBasis",

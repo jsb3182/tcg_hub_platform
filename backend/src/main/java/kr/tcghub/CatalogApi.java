@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.constraints.*;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,12 +34,14 @@ class CatalogApi {
     private final JdbcClient db;
     private final ObjectMapper json;
     private final CatalogFacets facets;
+    private final CatalogBrowse browse;
 
-    CatalogApi(CardRepository cards, JdbcClient db, ObjectMapper json, CatalogFacets facets) {
+    CatalogApi(CardRepository cards, JdbcClient db, ObjectMapper json, CatalogFacets facets, CatalogBrowse browse) {
         this.cards = cards;
         this.db = db;
         this.json = json;
         this.facets = facets;
+        this.browse = browse;
     }
 
     @GetMapping("/games")
@@ -70,6 +71,7 @@ class CatalogApi {
     }
 
     @GetMapping(value="/cards",params="!ids")
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     PageResult list(@RequestParam(defaultValue="") @Size(max=32) String game,
                     @RequestParam(defaultValue="ko") @Pattern(regexp="ko|en|ja") String lang,
                     @RequestParam(required=false) @Positive Long packId,
@@ -81,15 +83,21 @@ class CatalogApi {
                     @RequestParam(defaultValue="") @Size(max=32) String traitKey,
                     @RequestParam(defaultValue="") @Size(max=80) String traitValue,
                     @RequestParam(defaultValue="false") boolean withImage,
+                    @RequestParam(defaultValue="source") @Pattern(regexp="source|edition") String order,
                     @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
                     @RequestParam(defaultValue="24") @Min(1) @Max(100) int size) {
         facets.checkKey(game,traitKey);
         if (traitKey.isEmpty()!=traitValue.isBlank())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"검색 항목과 값을 함께 선택해 주세요.");
         LocalDate start = releaseYear==null ? null : LocalDate.of(releaseYear,1,1);
-        var result = cards.search(game, packId, lang, rarity.strip(), inclusion, ygoType, q.strip(),
-                start, start==null ? null : start.plusYears(1), traitKey, traitValue.strip(), withImage, PageRequest.of(page,size));
-        return new PageResult(withImages(result.getContent(),lang),page,size,result.getTotalElements());
+        var filter=new CatalogBrowse.Filter(game,packId,lang,rarity.strip(),inclusion,ygoType,q.strip(),start,traitKey,
+                traitValue.strip(),withImage,order.equals("edition") && lang.equals("ko"));
+        var result=browse.page(filter,page,size);
+        if (result.ids().isEmpty()) return new PageResult(List.of(),page,size,result.total());
+        var found=new HashMap<Long,CardRepository.Summary>();
+        for (var card:cards.publishedByIds(result.ids(),game,lang)) found.put(card.getId(),card);
+        var ordered=result.ids().stream().map(found::get).toList();
+        return new PageResult(withImages(ordered,lang),page,size,result.total());
     }
 
     @GetMapping("/cards/facets")
@@ -131,9 +139,10 @@ class CatalogApi {
                 select cast(((case when linked.card_id is null then c.specs else c.specs || jsonb_build_object(
                     'names', linked.names || case when jsonb_typeof(c.specs->'names')='object' then c.specs->'names' else '{}' end,
                     'texts', linked.texts || case when jsonb_typeof(c.specs->'texts')='object' then c.specs->'texts' else '{}' end
-                ) end) - 'koreanPrinting' - 'wikiReferences' - 'readingOriginal' - 'images' - 'representativeArt')
+                ) end) - 'koreanPrinting' - 'wikiReferences' - 'readingOriginal' - 'images' - 'representativeArt' - 'nivelThumbnail')
                 || jsonb_build_object('images',jsonb_strip_nulls(jsonb_build_object(
-                    'ko',local_catalog_art(c.id,c.specs->'images'->>'ko'),
+                    'ko',coalesce(local_catalog_art(c.id,c.specs->'images'->>'ko'),
+                            case when c.game_code='NIVEL' then local_catalog_art(c.id,c.specs->>'nivelThumbnail') end),
                     'en',local_catalog_art(c.id,c.specs->'images'->>'en'),
                     'ja',local_catalog_art(c.id,c.specs->'images'->>'ja'))))
                 || case when kr_read.name is not null or kr_read.effect is not null then
@@ -163,7 +172,7 @@ class CatalogApi {
         var variants = db.sql("""
             select v.id, v.rarity, v.sheet_id, v.col_idx, v.row_idx, s.storage_key, s.cell_width, s.cell_height,
                    edition.language as tile_language
-              from card_variant v left join image_sheet s on s.id=v.sheet_id and not s.retired
+              from card_variant v left join public_catalog_sheet s on s.id=v.sheet_id
             """ + LibraryImage.EDITION_JOIN + " where v.card_id=? order by v.position")
                 .param(id).query((row, n) -> new Variant(row.getLong("id"),row.getString("rarity"),LibraryImage.read(row))).list();
         var dates=facets.productDates(List.of(card));

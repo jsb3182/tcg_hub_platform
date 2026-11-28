@@ -246,8 +246,10 @@ def save_cards(db, source, records):
     """, (game, source["id"], "PUBLISHED" if source["auto_publish"] else "PENDING", Jsonb(list(cards.values()))))
     if game == "WEISS":
         from .card_readings import curated_index, seed_curated_readings
+        from .weiss_readings import seed_templates
         if curated_index().keys() & cards.keys():
             seed_curated_readings(db)
+        seed_templates(db,keys)
     db.execute("""
         INSERT INTO card_variant AS v(card_id,position,rarity)
           SELECT id,0,rarity FROM card WHERE legacy_key=ANY(%s)

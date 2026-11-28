@@ -78,12 +78,13 @@ def original_language(source_key, title, summary=None):
 
 
 class OfflineTranslator:
-    def __init__(self, directory, threads=1):
+    def __init__(self, directory, threads=1, *, device="cpu"):
         import ctranslate2
         import sentencepiece
 
         self.tokenizer = sentencepiece.SentencePieceProcessor(model_file=str(directory / "sentencepiece.bpe.model"))
-        self.model = ctranslate2.Translator(str(directory), device="cpu", compute_type="int8",
+        self.model = ctranslate2.Translator(str(directory), device=device,
+                                            compute_type="int8_float16" if device=="cuda" else "int8",
                                             intra_threads=threads, inter_threads=1)
 
     def translate(self, text, source, target):

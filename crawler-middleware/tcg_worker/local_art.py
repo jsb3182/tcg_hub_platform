@@ -19,6 +19,7 @@ from psycopg.types.json import Jsonb
 from bs4 import BeautifulSoup
 
 from .catalog_sources.rift_editions import RIOT_CONTENT
+from .catalog_sources.nivel import BOARD as NIVEL_BOARD, matching_thumbnail
 from .jobs import connect
 from .media import LIMIT_BYTES, LIMIT_PIXELS, publish
 
@@ -27,6 +28,13 @@ GAMES = ("YUGIOH", "POKEMON", "WEISS", "NIVEL", "RIFTBOUND", "ONEPIECE")
 LOCK = 73401856
 AGENT = "TCGHub-Catalog"
 YGO_PROVIDER = "images.ygoprodeck.com"
+NIVEL_MISSING_FIRST = """
+    CASE WHEN EXISTS (SELECT FROM catalog_art_card target JOIN card c ON c.id=target.card_id
+        WHERE target.file_id=f.id AND c.status='PUBLISHED' AND NOT EXISTS (
+            SELECT FROM catalog_art_card a JOIN catalog_art_file alt ON alt.id=a.file_id
+             WHERE a.card_id=c.id AND alt.storage_key IS NOT NULL
+               AND alt.source_url IN (c.specs->'images'->>'ko',c.specs->>'nivelThumbnail')))
+        THEN 0 ELSE 1 END, """
 _POLICIES = {}
 PATHS = {
     YGO_PROVIDER: r"/images/cards_small/[1-9][0-9]{0,9}\.jpg",
@@ -270,24 +278,29 @@ def discover(db, game, size):
         after = db.execute("SELECT after_id FROM catalog_art_scan WHERE game_code=%s", (game,)).fetchone()
         rows = db.execute("""
             WITH picked AS MATERIALIZED (
-                SELECT id,specs,legacy_key,number,original_name FROM card
+                SELECT id,specs,legacy_key,number,original_name,source_id,source_url FROM card
                  WHERE game_code=%s AND id>%s AND status='PUBLISHED' ORDER BY id LIMIT %s FOR SHARE)
             SELECT p.id,p.specs->'images',a.ko_path,a.en_path,a.ja_path,
                  ARRAY(SELECT n.image_path FROM neuron_artwork n
                        WHERE %s='YUGIOH' AND n.cid=coalesce(p.specs->>'konami_id',e.konami_id::text)),
-                 r.source_url
+                 r.source_url, CASE WHEN %s='NIVEL' AND p.legacy_key ~ '^catalog:NIVEL:ko:[0-9]+$'
+                   AND p.source_url=%s || split_part(p.legacy_key,':',4)
+                   AND EXISTS (SELECT FROM feed_source s WHERE s.id=p.source_id AND s.provider='CATALOG' AND s.source_key='NIVEL')
+                   THEN p.specs->>'nivelThumbnail' END
             FROM picked p LEFT JOIN legacy_card_edition e ON e.card_id=p.id
                  AND e.matched_number=p.number AND e.matched_name=p.original_name
             LEFT JOIN yugioh_reference_art a ON %s='YUGIOH' AND a.cid=coalesce(p.specs->>'konami_id',e.konami_id::text)
             LEFT JOIN catalog_ygo_provider_reference r ON %s='YUGIOH' AND r.card_id=p.id
             ORDER BY p.id
-            """, (game, after[0] if after else 0, size, game,game,game)).fetchall()
+            """, (game, after[0] if after else 0, size, game,game,NIVEL_BOARD + "&wr_id=",game,game)).fetchall()
         associations = []
-        for cid, images, ko, en, ja, art, representative in rows:
+        for cid, images, ko, en, ja, art, representative, thumbnail in rows:
             urls = {value for lang, value in images.items() if lang in ("ko","en","ja") and isinstance(value, str)
                     and not value.startswith("https://" + YGO_PROVIDER + "/")} if isinstance(images, dict) else set()
             if representative:
                 urls.add(representative)
+            if thumbnail and isinstance(images, dict) and matching_thumbnail(images.get("ko"), thumbnail):
+                urls.add(thumbnail)
             for path, subdomain in ((ko,"ko-db"), (en,"en-n"), (ja,"jp-n"), *((p,"jp-n") for p in art)):
                 if path:
                     urls.add(f"https://artworks-{subdomain}.ygoresources.com" + path)
@@ -301,7 +314,9 @@ def discover(db, game, size):
             db.execute("""
                 INSERT INTO catalog_art_card(card_id,file_id)
                     SELECT r.card_id,f.id FROM jsonb_to_recordset(%s) r(card_id bigint,url text)
-                    JOIN catalog_art_file f ON f.source_url=r.url ON CONFLICT DO NOTHING""", (links,))
+                    JOIN catalog_art_file f ON f.source_url=r.url
+                WHERE NOT EXISTS (SELECT FROM catalog_art_card a WHERE a.card_id=r.card_id AND a.file_id=f.id)
+                ON CONFLICT DO NOTHING""", (links,))
         if rows:
             db.execute("""
                 DELETE FROM catalog_art_card a USING catalog_art_file f WHERE a.file_id=f.id AND a.card_id=ANY(%s)
@@ -351,16 +366,24 @@ def batch(db, media, stop, games=GAMES, scan=96, fetch=download, policy=site_del
                 continue
             # Riot downloads use the URL that the game's authenticated feed
             # supplied for this edition. A gallery link alone is kept as provenance.
+            # A missing Nivel card face takes precedence over a higher resolution
+            # copy of an already visible printing. Other games retain indexed due order.
+            priority = NIVEL_MISSING_FIRST if game == "NIVEL" else ""
             row = db.execute("""
                 SELECT f.id,f.source_url,f.failures FROM catalog_art_file f
                  WHERE f.game_code=%s AND f.next_attempt<=now()
                    AND EXISTS (SELECT FROM catalog_art_card a JOIN card c ON c.id=a.card_id
                                WHERE a.file_id=f.id AND c.status='PUBLISHED'
                                  AND (NOT %s OR (c.specs->'images'->>'en'=f.source_url
-                                     AND c.specs->'imageSources'->>'en'=%s)))
+                                     AND c.specs->'imageSources'->>'en'=%s))
+                                 AND (f.game_code<>'NIVEL' OR c.specs->>'nivelThumbnail' IS DISTINCT FROM f.source_url
+                                      OR NOT EXISTS (SELECT FROM catalog_art_file primary_art
+                                         JOIN catalog_art_card g ON g.file_id=primary_art.id AND g.card_id=c.id
+                                        WHERE primary_art.source_url=c.specs->'images'->>'ko'
+                                          AND (primary_art.storage_key IS NOT NULL OR primary_art.failures=0))))
                    AND NOT EXISTS (SELECT FROM catalog_art_host h WHERE h.hostname=split_part(f.source_url,'/',3)
                                    AND h.next_attempt>now())
-                 ORDER BY f.next_attempt,f.id LIMIT 1""", (game, game == "RIFTBOUND", RIOT_CONTENT)).fetchone()
+                 ORDER BY """ + priority + "f.next_attempt,f.id LIMIT 1", (game, game == "RIFTBOUND", RIOT_CONTENT)).fetchone()
             if not row:
                 continue
             file_id, url, failures = row

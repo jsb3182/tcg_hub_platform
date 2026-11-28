@@ -132,3 +132,14 @@ test('official Korean One Piece traits stay with their language and numbers with
   assert.deepEqual(facts(card,'ko').life,['라이프','5'])
   assert.equal(facts(card,'ko').counter,undefined)
 })
+test('Weiss displays each language’s documented side, triggers and traits', () => {
+  const card={gameCode:'WEISS',specs:{language:'en',side:'S',trigger:['SOUL'],attributes:['NIKKE','Counters'],
+    regionalFacts:{ko:{side:'슈발츠',triggers:['소울'],traits:['니케','카운터스']}}}}
+  const facts=lang=>Object.fromEntries(cardDetailLocale(card,lang).facts.map(({key,value})=>[key,value]))
+  assert.deepEqual(facts('ko'),{side:'슈발츠',triggers:'소울',traits:'니케 · 카운터스'})
+  assert.deepEqual(facts('en'),{side:'S',triggers:'SOUL',traits:'NIKKE · Counters'})
+  assert.deepEqual(facts('ja'),{})
+  delete card.specs.regionalFacts.ko.traits
+  assert.equal(facts('ko').traits,undefined)
+  card.specs.attributes=['-','-'];assert.equal(facts('en').traits,undefined)
+})

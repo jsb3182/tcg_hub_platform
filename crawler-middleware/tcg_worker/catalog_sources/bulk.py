@@ -11,7 +11,7 @@ from urllib.parse import quote, urlencode, urlsplit
 
 from .card_names import PokemonNames, pokemon_edition, pokemon_effect, pokemon_with_name_references, ygo_names
 from .rift_editions import add_korean_edition, galleries, printing_identity
-from . import weiss_art
+from . import weiss_art, weiss_korean
 
 def document(path):
     with path.open(encoding="utf-8-sig") as stream:
@@ -144,8 +144,8 @@ def weiss(http):
                     art.update(images={"en":image.geturl()}, imageSources={"en":source}, imageProducts={"en":pack})
                 yield {"external_id": "en:" + code, "pack_code": pack, "pack_name": card.get("expansion") or pack,
                        "number": code, "name": name, "original_name": name, "rarity": card.get("rarity"),
-                       "effect": "\n".join(card.get("ability") or []) or None, "release_date": None,
-                       "specs": {"language": "en", **art, **selected(card, ("type", "side", "color", "level", "cost",
+                       "effect": weiss_korean.source_effect(card.get("ability")), "release_date": None,
+                       "specs": {"language": "en", **art, **weiss_korean.language_metadata(card), **selected(card, ("type", "side", "color", "level", "cost",
                                                                      "power", "soul", "trigger", "attributes"))},
                        "source_url": source}
     if not seen:

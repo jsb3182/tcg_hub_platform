@@ -14,8 +14,8 @@ final class LibraryImage {
     private static final String PUBLIC_TILES="""
          left join lateral (
             select v.sheet_id,v.col_idx,v.row_idx,s.storage_key,s.cell_width,s.cell_height,edition.language as tile_language
-            from card_variant v join image_sheet s on s.id=v.sheet_id
-        """ + EDITION_JOIN + " where v.card_id=c.id and c.status='PUBLISHED' and not s.retired ";
+            from card_variant v join public_catalog_sheet s on s.id=v.sheet_id
+        """ + EDITION_JOIN + " where v.card_id=c.id and c.status='PUBLISHED' ";
     static final String JOIN=PUBLIC_TILES + " order by v.position limit 1) tile on true ";
     static final String DECK_JOIN=PUBLIC_TILES + " and (e.variant_id is null or v.id=e.variant_id) order by case when edition.language=:lang then 0 else 1 end,v.position limit 1) tile on true ";
     static final String LOCALIZED_JOIN=PUBLIC_TILES

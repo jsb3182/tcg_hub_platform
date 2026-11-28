@@ -10,6 +10,59 @@ from PIL import Image
 
 @unittest.skipUnless(os.environ.get("TCG_TEST_DSN"), "set TCG_TEST_DSN to test PostgreSQL/PostGIS")
 class DatabaseTests(unittest.TestCase):
+    def test_weiss_template_stays_visible_during_name_inference_and_edits_invalidate_the_result(self):
+        import threading
+        from urllib.parse import quote
+        from tcg_worker.card_readings import fill_readings
+        from tcg_worker.weiss_readings import seed_templates
+        from unittest.mock import Mock
+
+        code="QA/W219-E002"
+        key="catalog:WEISS:en:"+code
+        source="https://en.ws-tcg.com/cardlist/cardsearch/exec?cardno="+quote(code,safe="")
+        effect="【CONT】 This card cannot side attack."
+        with self.db.transaction(force_rollback=True):
+            cid=self.db.execute("""INSERT INTO card(game_code,name,number,effect,source_url,legacy_key,status,specs)
+                                    VALUES ('WEISS','New Rain',%s,%s,%s,%s,'PUBLISHED','{"language":"en"}')
+                                    RETURNING id""",(code,effect,source,key)).fetchone()[0]
+            self.assertEqual(seed_templates(self.db,[key]),1)
+            self.assertEqual(seed_templates(self.db,[key]),0)
+            self.assertEqual(self.db.execute("""SELECT name,effect_basis,due_at IS NULL,weiss_draft_due_at IS NOT NULL
+                                                FROM card_korean_reading WHERE card_id=%s""",(cid,)).fetchone(),
+                             (None,"GLOSSARY_TRANSLATED",True,True))
+            model=Mock()
+            model.translate.return_value="새로운 비"
+            self.assertEqual(fill_readings(self.db,lambda:model,threading.Event(),1,weiss_only=True),1)
+            self.assertEqual(self.db.execute("SELECT name,name_basis,effect_basis FROM card_korean_reading WHERE card_id=%s",
+                                            (cid,)).fetchone(),("새로운 비","MACHINE_TRANSLATION","GLOSSARY_TRANSLATED"))
+            self.assertEqual(fill_readings(self.db,lambda:model,threading.Event(),1,weiss_only=True),0)
+            self.db.execute("UPDATE card_korean_reading SET effect='이전 자동 초안',effect_basis='MACHINE_TRANSLATION' WHERE card_id=%s",(cid,))
+            self.assertEqual(seed_templates(self.db,[key]),1)
+            self.assertEqual(self.db.execute("SELECT name,name_basis,effect,effect_basis FROM card_korean_reading WHERE card_id=%s",
+                              (cid,)).fetchone(),("새로운 비","MACHINE_TRANSLATION","【지속】이 카드는 사이드 어택을 할 수 없다.","GLOSSARY_TRANSLATED"))
+            self.db.execute("UPDATE card_korean_reading SET effect='검수한 표현',effect_basis='CURATED_TRANSLATION' WHERE card_id=%s",(cid,))
+            self.assertEqual(seed_templates(self.db,[key]),0)
+            self.assertEqual(self.db.execute("SELECT effect FROM card_korean_reading WHERE card_id=%s",(cid,)).fetchone()[0],"검수한 표현")
+            self.db.execute("UPDATE card SET effect='Unrecognized second effect' WHERE id=%s",(cid,))
+            self.assertEqual(self.db.execute("SELECT name,effect,due_at IS NOT NULL FROM card_korean_reading WHERE card_id=%s",
+                                            (cid,)).fetchone(),(None,None,True))
+            self.assertEqual(self.db.execute("SELECT name_basis,effect_basis,weiss_draft_due_at FROM card_korean_reading WHERE card_id=%s",
+                                            (cid,)).fetchone(),(None,None,None))
+            def change_source(*args):
+                self.db.execute("UPDATE card SET name='Updated title' WHERE id=%s",(cid,))
+                return "기존 문구 번역"
+            model.translate.side_effect=change_source
+            self.assertEqual(fill_readings(self.db,lambda:model,threading.Event(),1,weiss_only=True),0)
+            self.assertEqual(self.db.execute("SELECT effect,due_at IS NOT NULL FROM card_korean_reading WHERE card_id=%s",
+                                            (cid,)).fetchone(),(None,True))
+            self.db.execute("UPDATE card SET effect=%s WHERE id=%s",(effect,cid))
+            self.assertEqual(seed_templates(self.db,[key]),1)
+            self.db.execute("UPDATE card SET number='QA/WRONG-E003' WHERE id=%s",(cid,))
+            self.assertIsNone(self.db.execute("SELECT effect FROM card_korean_reading WHERE card_id=%s",(cid,)).fetchone()[0])
+            self.assertEqual(seed_templates(self.db,[key]),0)
+            self.db.execute("UPDATE card SET status='PENDING' WHERE id=%s",(cid,))
+            self.assertIsNone(self.db.execute("SELECT 1 FROM card_korean_reading WHERE card_id=%s",(cid,)).fetchone())
+
     def test_rift_provider_codes_preserve_both_observed_collector_number_styles(self):
         from tcg_worker.supplements import save
         with self.db.transaction(force_rollback=True):

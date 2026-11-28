@@ -45,15 +45,15 @@ class WebRoutes {
                   """;
             default -> """
                   select exists(
-                      select 1 from image_sheet s join card_variant v on v.sheet_id=s.id
-                        join card c on c.id=v.card_id
-                      where s.storage_key=? and not s.retired group by s.id having bool_and(c.status='PUBLISHED'))
+                      select 1 from public_catalog_sheet s join card_variant v on v.sheet_id=s.id
+                      where s.storage_key=?)
                   """;
         };
         if (!db.sql(visibilitySql).param(kind + "/" + name).query(Boolean.class).single()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
         return ResponseEntity.ok().contentType(MediaType.parseMediaType("image/webp"))
+                .eTag("\"" + name.substring(0,64) + "\"")
                 .cacheControl(!kind.equals("banners") ? CacheControl.noCache()
                         : CacheControl.maxAge(java.time.Duration.ofDays(1)).cachePublic())
                 .body(new FileSystemResource(path));

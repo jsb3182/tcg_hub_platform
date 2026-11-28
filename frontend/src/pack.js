@@ -42,6 +42,8 @@ const labels = {
   '한국판 카드 정보':['Korean printing details','韓国版カード情報'],
   '영문 인쇄본':['English printing','英語版カード'],'발행사 영문 카드 페이지':['Publisher’s English card page','発行元の英語版カードページ'],
   'Riot 영문 카드 갤러리':['Riot’s English card gallery','Riot 英語版カードギャラリー'],
+  '사진을 불러오지 못했습니다.':['Could not load the image.','画像を読み込めませんでした。'],
+  '내 일정 로그인':['Sign in to my calendar','予定にログイン'],
   '선택한 한국판 특성':['Selected Korean printing trait','選択した韓国版の特徴'],
   '용어 사전 번역':['Glossary translation','用語辞書による翻訳'],'로컬 이미지 없음':['No locally stored image','ローカル画像なし'],
   '월간 달력':['Month calendar','月間カレンダー'],'타임라인':['Timeline','タイムライン'],

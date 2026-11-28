@@ -40,6 +40,7 @@ const labels = {
   stage:['진화 단계','Evolution stage','進化段階'],regulation:['레귤레이션 마크','Regulation mark','レギュレーションマーク'],
   domain:['영역','Domain','ドメイン'],printingNumber:['인쇄 번호','Printing number','収録番号'],
   traits:['특징','Traits','特徴'],counter:['카운터','Counter','カウンター'],
+  side:['사이드','Side','サイド'],triggers:['트리거','Triggers','トリガー'],
 }
 
 function terms(rows) {
@@ -195,11 +196,21 @@ function factsFor(card, lang) {
       add('retreat', numeric(specs.retreat))
       add('pokedex', numeric(specs.pokedex_number))
       break
-    case 'WEISS':
+    case 'WEISS': {
       add('type', word(weissTypes, specs.type))
       add('color', word(colors, specs.color))
       for (const key of ['level', 'cost', 'power', 'soul']) add(key, numeric(specs[key]))
+      const fields=specs.regionalFacts?.[lang] || (lang==='en' && specs.language==='en'
+        ? {side:specs.side,triggers:specs.trigger,traits:specs.attributes} : {})
+      const side=text(fields.side)
+      if(side && side!=='-')add('side',side)
+      for(const key of ['triggers','traits']){
+        if(!Array.isArray(fields[key]))continue
+        const values=fields[key].map(text).filter(value=>value && value!=='-')
+        add(key,values.join(' · '))
+      }
       break
+    }
     case 'NIVEL':
       add('type', word(nivelTypes, specs.type))
       add('attribute', word(nivelAttributes, specs.attribute))

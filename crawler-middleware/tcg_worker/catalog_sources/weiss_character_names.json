@@ -1,0 +1,218 @@
+[
+  {
+    "family": "5HY",
+    "english": "Itsuki Nakano",
+    "korean": "나카노 이츠키",
+    "title": "나카노 이츠키",
+    "row": 431409,
+    "articleSha256": "2e7986aa65cfa3d9a55ea1d84dc0c775e439431ebf98cdf0597f5d1e0e833d06"
+  },
+  {
+    "family": "5HY",
+    "english": "Miku Nakano",
+    "korean": "나카노 미쿠",
+    "title": "나카노 미쿠",
+    "row": 8189,
+    "articleSha256": "fb07ad1b12db880731218668385ffc1b0ce9e446cf32ddc49df8d9eb36bef7b9"
+  },
+  {
+    "family": "BD",
+    "english": "Kasumi Toyama",
+    "korean": "토야마 카스미",
+    "title": "토야마 카스미",
+    "row": 5484,
+    "articleSha256": "2a76912fa87f8c1e175b15990cee6131dc29603bfcfe45f0b3d17603093e815c"
+  },
+  {
+    "family": "BD",
+    "english": "Tae Hanazono",
+    "korean": "하나조노 타에",
+    "title": "하나조노 타에",
+    "row": 5493,
+    "articleSha256": "0b190043de91a3d4dabf9ee32eeb02178de9c5ec4b56d60f8e2e126a3aeb7b30"
+  },
+  {
+    "family": "CCS",
+    "english": "Sakura",
+    "korean": "사쿠라",
+    "title": "키노모토 사쿠라",
+    "row": 254725,
+    "articleSha256": "185d7abed3fe1e3fc91e266ebdfc2133db39f19b872f2db27934c9ffa9affffc"
+  },
+  {
+    "family": "CCS",
+    "english": "Tomoyo",
+    "korean": "토모요",
+    "title": "다이도우지 토모요",
+    "row": 167163,
+    "articleSha256": "22163db7e2bc865ba16be436329b4729e6cf58ecaddc3ee796ded3cc2ab18759"
+  },
+  {
+    "family": "DAL",
+    "english": "Kotori",
+    "korean": "코토리",
+    "title": "이츠카 코토리",
+    "row": 121135,
+    "articleSha256": "07b8e61315ccf529ff3ae93aef953527dcc70a4c6d722555b53c9d09ab8dbbc2"
+  },
+  {
+    "family": "DAL",
+    "english": "Kurumi",
+    "korean": "쿠루미",
+    "title": "토키사키 쿠루미",
+    "row": 282532,
+    "articleSha256": "e46b3b5bc6ae7cdb65623b206cff4a90975275e49ad2c8a1677dc29272d86818"
+  },
+  {
+    "family": "DAL",
+    "english": "Origami",
+    "korean": "오리가미",
+    "title": "토비이치 오리가미",
+    "row": 280426,
+    "articleSha256": "4c8af35ad0b7872093643024ff2317361a7af540ed8bfaeaae7db425c268ae2d"
+  },
+  {
+    "family": "DAL",
+    "english": "Tohka",
+    "korean": "토카",
+    "title": "야토가미 토카",
+    "row": 14853,
+    "articleSha256": "92e85cb54dbcb688d15622a12b515584625f3a29ae21a4a357320466ab2d286f"
+  },
+  {
+    "family": "HOL",
+    "english": "Tokino Sora",
+    "korean": "토키노 소라",
+    "title": "토키노 소라",
+    "row": 77522,
+    "articleSha256": "920745ff14a7fa2bc2e1c52502874e082a71227131b0dadf2322a4b73fb50532"
+  },
+  {
+    "family": "KGL",
+    "english": "Ai",
+    "korean": "아이",
+    "title": "하야사카 아이",
+    "row": 368894,
+    "articleSha256": "32478557ff0a09cafa297e1788d4dc814e8587a329005a597e39fa606f396cf6"
+  },
+  {
+    "family": "KGL",
+    "english": "Chika",
+    "korean": "치카",
+    "title": "후지와라 치카",
+    "row": 368892,
+    "articleSha256": "658a2041bbb34b5876e2f2ec291104bb688f9b5cd2addc7b918dd4ef6ac501b0"
+  },
+  {
+    "family": "KGL",
+    "english": "Kaguya",
+    "korean": "카구야",
+    "title": "시노미야 카구야",
+    "row": 368890,
+    "articleSha256": "5cb7513b6267a420d04eb3795cd8517836c9611be935436ca45b06faf811feb3"
+  },
+  {
+    "family": "KGL",
+    "english": "Miyuki",
+    "korean": "미유키",
+    "title": "시로가네 미유키",
+    "row": 368891,
+    "articleSha256": "cf597f0d2fa9bca48218e8236091b387c8f7ef40a6939507f83dbda4f276cc4d"
+  },
+  {
+    "family": "KS",
+    "english": "Megumin",
+    "korean": "메구밍",
+    "title": "메구밍",
+    "row": 76063,
+    "articleSha256": "44920fc45811d837d47d42aa3bc0658f8952e32e940ffa1b61d57b41e4afda41"
+  },
+  {
+    "family": "LL",
+    "english": "Honoka",
+    "korean": "호노카",
+    "title": "코사카 호노카",
+    "row": 235476,
+    "articleSha256": "a2bf1b9b282aaae5620bb74f1dc19f7fa4a555aa7416f2943f19dd8e4d269f15"
+  },
+  {
+    "family": "LL",
+    "english": "Kotori",
+    "korean": "코토리",
+    "title": "미나미 코토리",
+    "row": 279906,
+    "articleSha256": "1900d41afcb3985c58bed5fd41cfb760230a11924a424468142eea7dc87bfbab"
+  },
+  {
+    "family": "LL",
+    "english": "Maki",
+    "korean": "마키",
+    "title": "니시키노 마키",
+    "row": 162637,
+    "articleSha256": "ee2bf07407087ee5a0dd441edae4be2d67afbe9fbae81e96762c3eaeae8cc079"
+  },
+  {
+    "family": "LL",
+    "english": "Umi",
+    "korean": "우미",
+    "title": "소노다 우미",
+    "row": 362248,
+    "articleSha256": "342b9506d72039d7e8bfb2cf263b2e02eae9c51d067cee321c2977b2e888bf6d"
+  },
+  {
+    "family": "MM",
+    "english": "Homura",
+    "korean": "호무라",
+    "title": "아케미 호무라",
+    "row": 415611,
+    "articleSha256": "6ac47e28774c43366f4c5aacde9877e53b9e5d778144a7c25c253b601a6b06c1"
+  },
+  {
+    "family": "MM",
+    "english": "Madoka",
+    "korean": "마도카",
+    "title": "카나메 마도카",
+    "row": 209032,
+    "articleSha256": "7ac7632c95e7411c1366415150a8fadb9fd48d3a7514ad6946a2e482dd1e5865"
+  },
+  {
+    "family": "MM",
+    "english": "Mami",
+    "korean": "마미",
+    "title": "토모에 마미",
+    "row": 279671,
+    "articleSha256": "500ad160980246fded3a07181503d053cefa9a964d269c506bddf42c7f29f76d"
+  },
+  {
+    "family": "MM",
+    "english": "Sayaka",
+    "korean": "사야카",
+    "title": "미키 사야카",
+    "row": 289441,
+    "articleSha256": "4defb39ab3c026d5222017adbb39fac46a6c1027c99b5450bce2510f53f74f43"
+  },
+  {
+    "family": "SY",
+    "english": "Haruhi",
+    "korean": "하루히",
+    "title": "스즈미야 하루히",
+    "row": 378079,
+    "articleSha256": "ef89f07d6881f5e18d0ef75797e6b98582f3125f5d65aee1b13c0d6b15e8b11f"
+  },
+  {
+    "family": "SY",
+    "english": "Mikuru",
+    "korean": "미쿠루",
+    "title": "아사히나 미쿠루",
+    "row": 409070,
+    "articleSha256": "d67332f987dce460dd38bc433a3601a2d47af81f1b71262fa022d840a4ada3e3"
+  },
+  {
+    "family": "SY",
+    "english": "Nagato",
+    "korean": "나가토",
+    "title": "나가토 유키",
+    "row": 139334,
+    "articleSha256": "c20fa31a579c61ced98d9f18426236d7e38359eeef22c83f82bdeb2fcf07bf73"
+  }
+]
