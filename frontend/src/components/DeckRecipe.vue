@@ -9,7 +9,7 @@ import LibraryThumbnail from './LibraryThumbnail.vue'
 import CardTextCredit from './CardTextCredit.vue'
 import ArtworkCredit from './ArtworkCredit.vue'
 import PngExport from './PngExport.vue'
-import {pt} from '../pack'
+import {facetLabel,pt} from '../pack'
 import DeckBanner from './DeckBanner.vue'
 
 const props=defineProps({deck:{type:Object,required:true},gameName:String})
@@ -24,6 +24,7 @@ const offsets=computed(()=>{
 function missing(entry,index){return Number.isInteger(entry.ownedCopies) && (offsets.value.get(entry)||0)+index>=entry.ownedCopies}
 function limited(entry){return props.deck.regionalLimits?.violations?.find(v=>v.cardId===entry.cardId)?.limit}
 const groups=computed(()=>groupRecipe(props.deck))
+const rarities=computed(()=>new Map(props.deck.entries.map(entry=>[entry,facetLabel('rarity',entry.rarity,props.deck.gameCode)])))
 const total=computed(()=>groups.value.reduce((n,g)=>n+g.total,0))
 const hasSide=computed(()=>groups.value.some(g=>g.section==='SIDE' && g.total))
 const name=computed(()=>deckName(props.deck))
@@ -62,7 +63,7 @@ function exportImage(){
           <small v-if="details" class="recipe-index">{{ num+1 }}</small>
           <div class="lib-print"><LibraryThumbnail :placeholder="images" :image="images?e.image:null" :src="images && !(e.variantId && e.image)?e.imageUrl:undefined" :language="e.imageLanguage" :printing="e" v-slot="{art}">
             <span><span :lang="e.language || ''">{{ e.name }}</span><CardTextCredit :card="e"/><small>{{ e.number }}</small><small v-if="art?.reference || (art?.src && e.imageBasis==='SELECTED_ARTWORK')"><ArtworkCredit :language="art.language" :printing="e"/></small></span>
-          </LibraryThumbnail></div><div class="recipe-quantity"><b>×{{ e.quantity }}</b><template v-if="details"><small>{{ e.rarity||pt('레어도 미기재') }}</small>
+          </LibraryThumbnail></div><div class="recipe-quantity"><b>×{{ e.quantity }}</b><template v-if="details"><small>{{ rarities.get(e)||pt('레어도 미기재') }}</small>
             <small v-if="e.ownedCopies!=null">{{ pt('보유 수량') }} {{ e.ownedCopies }}</small></template></div>
         </li></ul>
         <template v-else>
@@ -71,7 +72,7 @@ function exportImage(){
               <LibraryThumbnail :image="entry.image" :src="entry.variantId&&entry.image?undefined:entry.imageUrl" :language="entry.imageLanguage" :printing="entry" v-slot="{art}">
                 <span v-if="!art" class="recipe-art"><small>{{ rt('이미지 없음') }}</small></span>
                 <span v-if="details" class="recipe-tags"><small v-if="missing(entry,index)" :title="pt('부족')">−</small><small v-if="limited(entry)!=null" :title="pt('대회 제한')">{{ limited(entry) }}</small>
-                  <small v-else-if="entry.rarity && entry.rarity.length<=4">{{ entry.rarity }}</small></span>
+                  <small v-else-if="rarities.get(entry) && rarities.get(entry).length<=4">{{ rarities.get(entry) }}</small></span>
                 <strong :lang="entry.language || ''">{{ entry.name }}</strong><small>{{ entry.number }}</small><small v-if="art?.reference || (art?.src && entry.imageBasis==='SELECTED_ARTWORK')"><ArtworkCredit :printing="entry" :language="art.language" disable-link/></small>
                 <CardTextCredit :card="entry"/>
               </LibraryThumbnail>

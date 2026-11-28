@@ -30,7 +30,7 @@
 
 영문 유희왕 대표 이미지는 일일 카드 동기화 시 공개 인쇄본 최대 12개를 받아 기존 WebP 아틀라스 작업 대기열에 등록한다. 카드 API의 작은 대표 이미지 URL을 검증하고 1년간 재사용하며 운영자가 작업한 변형 이미지는 유지한다. 출처가 특정 팩의 일러스트나 판본 언어를 보증하지 않는 이미지는 대표 그림으로 표시한다.
 
-유희왕의 **카드 참고 이미지**는 코나미 카드 ID(CID)와 YGOResources 매니페스트에서 대조한 언어별 일러스트다. 한국 데이터베이스 13,861개 CID, 영어 NEURON 14,068개, 일본어 NEURON 14,429개가 연결된다. 러시 듀얼은 제외한다. 인쇄본 그림이 없는 언어에서는 확인된 해당 지역의 가장 낮은 일러스트 번호를 사용하고, 그 언어도 없으면 표시한 지역을 함께 돌려준다. 이 그림은 같은 카드의 일러스트이며 특정 팩의 테두리·판번호·효과가 실린 카드 스캔을 보증하지 않는다. 출처는 사용한 개별 PNG URL이다. 서버에는 경로만 저장하고 해당 그림을 열 때 CDN에서 읽는다. [제공자 이용 안내](https://github.com/yugioh-artworks/artworks-index#readme) · [사용한 경로 매니페스트](https://github.com/yugioh-artworks/artworks-index/blob/433fe3d2223d3453b7732b5bad016196fb7b092f/manifest.json)
+유희왕의 **카드 참고 이미지**는 코나미 카드 ID(CID)와 YGOResources 매니페스트에서 대조한 언어별 일러스트다. 한국 데이터베이스 13,861개 CID, 영어 NEURON 14,068개, 일본어 NEURON 14,429개가 연결된다. 러시 듀얼은 제외한다. 인쇄본 그림이 없는 언어에서는 확인된 해당 지역의 가장 낮은 일러스트 번호를 사용하고, 그 언어도 없으면 표시한 지역을 함께 돌려준다. 이 그림은 같은 카드의 일러스트이며 특정 팩의 테두리·판번호·효과가 실린 카드 스캔을 보증하지 않는다. 출처는 사용한 개별 PNG URL이다. 워커가 출처에서 검증한 그림을 서버에 WebP로 저장한다. 도감은 저장된 그림을 로컬 미디어 경로에서 불러온다. [제공자 이용 안내](https://github.com/yugioh-artworks/artworks-index#readme) · [사용한 경로 매니페스트](https://github.com/yugioh-artworks/artworks-index/blob/433fe3d2223d3453b7732b5bad016196fb7b092f/manifest.json)
 
 포켓몬 인쇄본의 기준은 한국판 `ko_id`다. 이름과 인쇄본 키 또는 카드 지문이 일치하고 해당 필드가 하나로 결정될 때 언어별 기술·효과와 이미지를 연결한다. 한국·일본판은 지역 발행사 이미지 URL을 사용한다. 영어 그림은 제품·번호·영문명을 대조한다. TCGdex의 영문 카드 목록과 Pokémon TCG API 유지관리자가 커밋별로 배포한 카드 데이터를 읽으며, 그림의 근거 URL을 `specs.imageSources.en`에 저장한다. [TCGdex REST](https://tcgdex.dev/) · [Pokémon TCG API 데이터](https://github.com/PokemonTCG/pokemon-tcg-data)
 

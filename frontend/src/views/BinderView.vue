@@ -4,6 +4,7 @@ import { t as uiText } from '../i18n'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { request } from '../api'
+import { facetLabel } from '../pack'
 import { useSession } from '../stores/session'
 import { gameName, languages, locale } from '../i18n'
 import CardTextCredit from '../components/CardTextCredit.vue'
@@ -165,7 +166,7 @@ async function save() {
         <ul v-else-if="result" class="lib-list" :class="{'binder-pockets':view==='grid'}"><li v-for="card in result.items" :key="[card.cardId,card.edition,card.condition,card.tradable].join('-')">
           <div class="lib-print"><LibraryThumbnail placeholder :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card" v-slot="{art}"><div>
             <RouterLink :to="{name:'card',params:{id:card.cardId},query:{lang:locale}}" :lang="card.language || ''">{{ card.name }}</RouterLink>
-            <CardTextCredit :card="card"/><small>{{ [card.number,card.rarity,editionName(card.edition),conditionName(card.condition),card.tradable?$t('거래 가능'):''].filter(Boolean).join(' · ') }}</small>
+            <CardTextCredit :card="card"/><small>{{ [card.number,facetLabel('rarity',card.rarity,card.gameCode),editionName(card.edition),conditionName(card.condition),card.tradable?$t('거래 가능'):''].filter(Boolean).join(' · ') }}</small>
             <small v-if="art?.reference"><ArtworkCredit :language="art.language" :printing="card"/></small>
           </div></LibraryThumbnail></div>
           <button class="secondary" :disabled="busy" :aria-label="card.name+$t(' 수량 수정')" @click="open(card,card.quantity,card.quantity,$event.currentTarget)">{{ card.quantity }}{{ $t("장 수정") }}</button>

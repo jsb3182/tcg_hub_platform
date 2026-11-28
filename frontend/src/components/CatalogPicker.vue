@@ -2,6 +2,7 @@
 import { locale } from '../i18n'
 import { ref, watch } from 'vue'
 import { request } from '../api'
+import { facetLabel } from '../pack'
 import LibraryThumbnail from './LibraryThumbnail.vue'
 import CardTextCredit from './CardTextCredit.vue'
 import ArtworkCredit from './ArtworkCredit.vue'
@@ -33,7 +34,7 @@ watch([query, page, () => props.game, retry, locale], (_, __, cleanup) => {
     <p v-else-if="!items.length">{{ $t("검색 결과가 없습니다.") }}</p>
     <ul v-else class="lib-list">
       <li v-for="card in items" :key="card.id">
-        <div class="lib-print"><LibraryThumbnail :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card" v-slot="{art}"><div><strong :lang="card.language || ''">{{ card.name }}</strong><CardTextCredit :card="card"/><small>{{ [card.number,card.packName,card.rarity].filter(Boolean).join(' · ') }}</small><small v-if="art?.reference"><ArtworkCredit :language="art.language" :printing="card"/></small></div></LibraryThumbnail></div>
+        <div class="lib-print"><LibraryThumbnail :image="card.image" :src="card.imageUrl" :language="card.imageLanguage" :printing="card" v-slot="{art}"><div><strong :lang="card.language || ''">{{ card.name }}</strong><CardTextCredit :card="card"/><small>{{ [card.number,card.packName,facetLabel('rarity',card.rarity,card.gameCode)].filter(Boolean).join(' · ') }}</small><small v-if="art?.reference"><ArtworkCredit :language="art.language" :printing="card"/></small></div></LibraryThumbnail></div>
         <button type="button" class="secondary" :aria-label="card.name + $t(' 추가')" :disabled="disabled" @click="$emit('pick',card,$event.currentTarget)">{{ $t("추가") }}</button>
       </li>
     </ul>

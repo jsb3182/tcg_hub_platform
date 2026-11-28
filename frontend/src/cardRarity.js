@@ -33,6 +33,8 @@ const shared = [
 ]
 const terms = new Map(shared.flatMap(names=>names.map(name=>[name.toLowerCase(),names])))
 const ygoTerms = new Map(Object.entries(ygo).flatMap(([code,names])=>[code,...names].map(name=>[name.toLowerCase(),code])))
+const onePieceSpecial = ['스페셜 카드','Special Card','スペシャルカード']
+const onePieceSpecialTerms = new Set(['sp','spカード',...onePieceSpecial.map(name=>name.toLowerCase())])
 
 export function rarityBadges(card, lang) {
   const i=['ko','en','ja'].indexOf(lang)
@@ -46,7 +48,8 @@ export function rarityBadges(card, lang) {
     for (const entry of entries) {
       const key=entry.toLowerCase()
       const code=isYgo && ygoTerms.get(key)
-      if (code) badges.set(code,{code,label:ygo[code][i]})
+      if (card.gameCode==='ONEPIECE' && onePieceSpecialTerms.has(key)) badges.set('SP',{code:'SP',label:onePieceSpecial[i]})
+      else if (code) badges.set(code,{code,label:ygo[code][i]})
       else if (terms.has(key)) {
         const label=terms.get(key)[i]
         badges.set(label,{code:'',label})
