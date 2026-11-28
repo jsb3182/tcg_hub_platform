@@ -3,9 +3,11 @@ package kr.tcghub;
 /** Resolve each field independently; an available name does not imply translated rules or artwork. */
 final class CardEdition {
     private CardEdition() {}
-    static final String LEGACY_JOIN = """
+    private static final String LEGACY_EDITION = """
              left join legacy_card_edition linked on linked.card_id=c.id
                  and linked.matched_number=c.number and linked.matched_name=c.original_name
+            """;
+    static final String LEGACY_JOIN = LEGACY_EDITION + """
              left join wiki_card_document wiki on wiki.game_code=c.game_code and wiki.lookup_key=
                  case when c.game_code='YUGIOH' and starts_with(c.legacy_key,'catalog:YUGIOH:')
                       then 'cid:'||(c.specs->>'konami_id')
@@ -15,6 +17,24 @@ final class CardEdition {
                  and (wiki.passcode is null or c.specs->>'passcode' is null or wiki.passcode=c.specs->>'passcode')
              left join card_korean_reading kr_read on kr_read.card_id=c.id and kr_read.due_at is null
             """;
+    private static final String REGIONAL_ART = """
+            left join yugioh_reference_art ygo_art on c.game_code='YUGIOH'
+                and ygo_art.cid=coalesce(nullif(c.specs->>'konami_id',''),linked.konami_id::text)
+            """;
+    private static final String ART_EDITIONS = """
+            (values ('ko',c.specs->'images'->>'ko',false),('en',c.specs->'images'->>'en',false),
+                    ('ja',c.specs->'images'->>'ja',false),
+                    ('ko','https://artworks-ko-db.ygoresources.com'||ygo_art.ko_path,true),
+                    ('en','https://artworks-en-n.ygoresources.com'||ygo_art.en_path,true),
+                    ('ja','https://artworks-jp-n.ygoresources.com'||ygo_art.ja_path,true)) v(lang,url,reference)
+            """;
+    // Start with cached files: an approved URL or a Neuron-only variant is not a catalog thumbnail.
+    static final String CARDS_WITH_ART = """
+            select a.card_id from catalog_art_file f join catalog_art_card a on a.file_id=f.id
+            join card c on c.id=a.card_id
+            """ + LEGACY_EDITION + REGIONAL_ART + """
+            where f.storage_key is not null and f.source_url in (select v.url from
+            """ + ART_EDITIONS + ") ";
     static final String JOIN = LEGACY_JOIN + """
             cross join lateral (select
                 coalesce(nullif(c.specs->'names'->>:lang,''),nullif(linked.names->>:lang,'')) as name,
@@ -60,25 +80,19 @@ final class CardEdition {
                 case when reviewed.basis='PRINTED_NAME' or (requested.effect is null
                      and (nullif(c.effect,'') is null or c.specs->>'language' is distinct from :lang))
                      then reviewed.effect end as effect) correction
-            left join yugioh_reference_art ygo_art on c.game_code='YUGIOH'
-                and ygo_art.cid=coalesce(nullif(c.specs->>'konami_id',''),linked.konami_id::text)
-            cross join lateral (select 'https://artworks-ko-db.ygoresources.com'||ygo_art.ko_path as ko,
-                'https://artworks-en-n.ygoresources.com'||ygo_art.en_path as en,
-                'https://artworks-jp-n.ygoresources.com'||ygo_art.ja_path as ja) regional
+            """ + REGIONAL_ART + """
             left join lateral (
                 select '/media/'||f.storage_key as url,v.lang,case when v.reference then 'CARD_REFERENCE' end as basis,
                        case when v.reference then v.url else c.specs->'imageSources'->>v.lang end as source,
                        case when not v.reference then c.specs->'imageProducts'->>v.lang end as product
-                  from (values
-                    (1,cast(:lang as text),nullif(c.specs->'images'->>:lang,''),false),
-                    (2,cast(:lang as text),case :lang when 'ko' then regional.ko
-                                                     when 'en' then regional.en when 'ja' then regional.ja end,true),
-                    (3,c.specs->>'language',nullif(c.specs->'images'->>(c.specs->>'language'),''),false),
-                    (4,'ko',regional.ko,true),(5,'en',regional.en,true),(6,'ja',regional.ja,true)
-                  ) v(priority,lang,url,reference)
+                  from
+            """ + ART_EDITIONS + """
                   join catalog_art_file f on f.source_url=v.url and f.storage_key is not null
                   join catalog_art_card allowed on allowed.file_id=f.id and allowed.card_id=c.id
-                 order by v.priority limit 1
+                 order by case when v.lang=:lang and not v.reference then 1 when v.lang=:lang then 2
+                               when not v.reference and v.lang=c.specs->>'language' then 3
+                               when not v.reference then 4 else 5 end,
+                          case v.lang when 'ko' then 1 when 'en' then 2 else 3 end limit 1
             ) art on true
             """;
     static final String NAME = "coalesce(correction.name,requested.name,case when original.lang=:lang then c.original_name end,requested.reference_name,wiki_label.name,case when c.specs->>'language' is distinct from :lang then supplement.name end,case when :lang='ko' then kr_read.name end,c.name)";
